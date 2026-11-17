@@ -1,0 +1,22 @@
+{
+  "name": "@nha-choi/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@nha-choi/game-core": "*",
+    "@nha-choi/protocol": "*",
+    "socket.io": "4.8.4"
+  }
+}
