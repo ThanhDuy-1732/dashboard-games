@@ -1,0 +1,117 @@
+import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { mkdir } from 'node:fs/promises';
+const require=createRequire(import.meta.url);
+const {chromium}=require('playwright');
+const browser=await chromium.launch({headless:true,executablePath:process.env.BROWSER_EXECUTABLE||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});
+const page=await browser.newPage({viewport:{width:1440,height:1050},deviceScaleFactor:1});
+const errors=[];
+page.on('pageerror',error=>errors.push(error.message));
+const base=process.env.PREVIEW_URL||'http://127.0.0.1:4173/design/';
+await mkdir(new URL('./previews/',import.meta.url),{recursive:true});
+const screenshots=new URL('./previews/',import.meta.url).pathname;
+try {
+  await page.goto(base);
+  assert.equal(await page.locator('.board-cell').count(),40,'Board has 40 spaces');
+  assert.equal(await page.locator('.board-cell .location-thumbnail').count(),26,'All 22 streets and 4 stations have a location photo');
+  await page.locator('img.location-thumbnail').evaluateAll(images=>Promise.all(images.map(image=>image.decode())));
+  assert.equal(await page.locator('img.location-thumbnail').evaluateAll(images=>images.every(image=>image.complete&&image.naturalWidth>0)),true,'Every local location image loads');
+  assert.equal(await page.locator('#bot-count option').count(),5,'Offline offers 1–5 bots');
+  assert.equal(await page.locator('[data-screen="home"]').isVisible(),true);
+  await page.screenshot({path:screenshots+'dashboard-desktop.png',fullPage:true});
+  await page.getByRole('button',{name:'Chơi Cờ tỷ phú'}).click();
+  await page.screenshot({path:screenshots+'setup-desktop.png',fullPage:true});
+  await page.locator('[data-mode="bluetooth"]').click();
+  assert.equal(await page.locator('#setup-submit').isDisabled(),true,'Bluetooth disabled on web');
+  await page.locator('#platform').selectOption('ios');
+  assert.equal(await page.locator('#setup-submit').isEnabled(),true,'Mobile preview can enter Bluetooth sample');
+  await page.locator('#setup-submit').click();
+  assert.equal(await page.locator('#lobby-mode-label').textContent(),'Phòng Bluetooth mẫu');
+  await page.locator('[data-screen="lobby"] [data-go="setup"]').first().click();
+  await page.locator('[data-mode="online"]').click();
+  await page.locator('[data-room-action="join"]').click();
+  await page.locator('#room-code').fill('bad');
+  await page.locator('#setup-submit').click();
+  assert.equal(await page.locator('#room-code-error').isVisible(),true,'Invalid room codes have an error');
+  await page.locator('#room-code').fill('NHA246');
+  await page.locator('#player-name').fill('<b>Khách</b>');
+  await page.locator('#setup-submit').click();
+  assert.equal(await page.locator('.seat strong').first().textContent(),'<b>Khách</b>','User name rendered as plain text');
+  assert.equal(await page.locator('.seat strong b').count(),0);
+  await page.locator('[data-screen="lobby"] [data-go="setup"]').first().click();
+  await page.locator('#player-name').fill('Bạn');
+  await page.locator('[data-room-action="create"]').click();
+  await page.locator('#setup-submit').click();
+  await page.screenshot({path:screenshots+'lobby-desktop.png',fullPage:true});
+  await page.locator('#start-lobby').click();
+  await page.locator('#roll-dice').click();
+  assert.equal(await page.locator('#property-dialog').isVisible(),true);
+  assert.ok((await page.locator('#property-dialog .location-photo').getAttribute('alt')).includes('Hàng Buồm'));
+  assert.equal(await page.locator('#property-dialog .photo-credit a').count(),2,'Photo source and license are linked');
+  assert.equal(await page.locator('.board-cell.current').getAttribute('data-space'),'6');
+  await page.locator('#buy-property').click();
+  assert.equal(await page.locator('#balance').textContent(),'1.400');
+  await page.locator('[data-screen="game"] [data-go="setup"]').click();
+  await page.locator('[data-mode="offline"]').click();
+  await page.locator('#bot-count').selectOption('5');
+  await page.locator('#setup-submit').click();
+  assert.equal(await page.locator('#player-list .player-row').count(),6);
+  await page.locator('[data-screen="game"] [data-go="setup"]').click();
+  await page.locator('#bot-count').selectOption('3');
+  await page.locator('#setup-submit').click();
+  await page.screenshot({path:screenshots+'board-desktop.png',fullPage:true});
+  await page.locator('#roll-dice').click();
+  await page.locator('#auction-property').click();
+  assert.equal(await page.locator('#auction-dialog').isVisible(),true);
+  await page.locator('#bid-amount').fill('80');
+  await page.locator('#place-bid').click();
+  assert.equal(await page.locator('#current-bid').textContent(),'80');
+  await page.keyboard.press('Escape');
+  await page.locator('[data-screen="game"] [data-rules]').click();
+  assert.equal(await page.locator('#rules-dialog').isVisible(),true);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('#rules-dialog').isVisible(),false);
+  for(const width of [360,390,768,1024,1440]) {
+    await page.setViewportSize({width,height:900});
+    for(const screen of ['home','setup','lobby','game']) {
+      await page.goto(base+'#'+screen);
+      await page.locator('[data-screen="'+screen+'"]').waitFor({state:'visible'});
+      assert.equal(await page.locator('[data-screen="'+screen+'"]').isVisible(),true);
+      const dimensions=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,width:innerWidth}));
+      assert.ok(dimensions.scroll<=dimensions.width,screen+' must not overflow at '+width+'px: '+JSON.stringify(dimensions));
+      if(width===390)await page.screenshot({path:screenshots+screen+'-mobile.png',fullPage:true});
+    }
+  }
+  await page.locator('[data-space="39"]').click();
+  assert.equal(await page.locator('#tile-name').textContent(),'Phố Phú Mỹ');
+  assert.equal(await page.locator('#tile-photo').isVisible(),true);
+  await page.locator('#tile-photo').evaluate(el=>el.decode());
+  assert.ok((await page.locator('#tile-photo').getAttribute('alt')).includes('Phú Mỹ'));
+  await page.screenshot({path:screenshots+'location-detail-desktop.png',fullPage:false});
+  await page.setViewportSize({width:390,height:844});
+  const modalDimensions=await page.locator('#tile-details').evaluate(el=>({height:el.getBoundingClientRect().height,width:el.getBoundingClientRect().width,viewport:innerWidth}));
+  assert.ok(modalDimensions.width<=modalDimensions.viewport,'Photo modal fits mobile width');
+  await page.screenshot({path:screenshots+'location-detail-mobile.png',fullPage:false});
+  await page.keyboard.press('Escape');
+  await page.locator('[data-space="0"]').click();
+  assert.equal(await page.locator('#tile-photo').isVisible(),false,'Special cells do not reuse previous location photos');
+  await page.keyboard.press('Escape');
+  await page.emulateMedia({reducedMotion:'reduce'});
+  await page.goto(base);
+  await page.keyboard.press('Tab');
+  assert.ok(await page.evaluate(()=>document.activeElement!==document.body),'Keyboard can focus controls');
+  assert.deepEqual(errors,[],'No browser script errors');
+  await page.setViewportSize({width:800,height:900});
+  await page.goto(base+'#home');
+  const missingNames=[];
+  for(const name of ['Khám phá','Vào bàn chơi','Luật chơi']){
+    if(await page.locator('.main-nav').getByRole('button',{name,exact:true}).count()!==1)missingNames.push('Tablet navigation: '+name);
+  }
+  for(const [id,name] of [['rules-dialog','Một vòng luật chơi'],['property-dialog','Phố Hàng Buồm'],['auction-dialog','Phố Hàng Buồm'],['tile-details','Ô cờ']]){
+    await page.locator('#'+id).evaluate(el=>el.showModal());
+    if(await page.getByRole('dialog',{name,exact:true}).count()!==1)missingNames.push('Dialog: '+id);
+    await page.locator('#'+id).evaluate(el=>el.close());
+  }
+  assert.deepEqual(missingNames,[],'Collapsed navigation and dialogs must have accessible names');
+  console.log('PASS: 26 local location photos, credits and mobile details; 40 spaces; 1–5 bots; platform-aware Bluetooth; room validation; safe names; lobby; dice; purchase; auction; rules; keyboard; accessible tablet navigation and 4 named dialogs; 20 responsive screen checks; no browser errors.');
+} finally { await browser.close(); }

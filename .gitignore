@@ -1,0 +1,12 @@
+node_modules/
+dist/
+dist-native/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+.superpowers/
+coverage/
+playwright-report/
+test-results/
+.DS_Store
