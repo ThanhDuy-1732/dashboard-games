@@ -2,7 +2,9 @@
 
 Dashboard game với Cờ tỷ phú truyền thống, web/PWA trước rồi Android/iOS dùng chung lõi luật và giao diện.
 
-Đang triển khai theo `docs/superpowers/plans/2026-11-17-game-hub-implementation.md`. `design/` là bản mẫu tương tác, không phải game hoàn chỉnh. Workspace sản phẩm ở `apps/` và `packages/`.
+Đã hoàn thành lõi luật A1–A4 và giao diện/offline/bot A5. Đang làm lưu ván A6; online, PWA và mobile chưa hoàn thành.
+
+Triển khai theo `docs/superpowers/plans/2026-11-17-game-hub-implementation.md`. `design/` là bản mẫu tương tác, không phải game hoàn chỉnh. Workspace sản phẩm ở `apps/` và `packages/`.
 
 ## Phát triển
 
@@ -14,3 +16,5 @@ Node 24, npm workspaces. Sau khi checkout: `npm ci`.
 - `npm run typecheck`, `npm run lint`, `npm run build`: kiểm tra và build các workspace.
 
 Bộ luật: `docs/rules/classic-v1.md`. Các phase chưa hoàn thành không được coi là tính năng đã hoạt động.
+
+Kiểm tra dependency gần nhất: runtime (`npm audit --omit=dev`) 0 lỗ hổng được báo. Dev toolchain hiện bị báo qua picomatch 4.0.7 (GHSA-fc5q-39xc-vjpf), chưa có phiên bản vá trên registry tại thời điểm kiểm tra; không force-downgrade cả Vite/Vitest/ESLint chỉ theo đề xuất audit. Dev server chỉ bind localhost, không dùng glob từ đầu vào người chơi.

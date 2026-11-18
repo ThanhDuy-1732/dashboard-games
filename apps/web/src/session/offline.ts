@@ -1,0 +1,133 @@
+import { chooseBotAction, createGame } from "@nha-choi/game-core";
+import type { PlayerConfig, GameState, Token } from "@nha-choi/game-core";
+import { createAuthority } from "@nha-choi/protocol";
+import type {
+  GameSession,
+  SessionUpdate,
+  CommandEnvelope,
+} from "@nha-choi/protocol";
+import { cryptoRandom } from "../random.js";
+export interface OfflineSession extends GameSession {
+  snapshot(): GameState;
+}
+export function createOfflineSession({
+  human,
+  botCount,
+}: {
+  human: PlayerConfig;
+  botCount: number;
+}): OfflineSession {
+  if (!Number.isInteger(botCount) || botCount < 1 || botCount > 5)
+    throw new RangeError("Chọn từ 1 đến 5 đối thủ máy.");
+  const tokens: Token[] = ["car", "cat", "hat", "ship", "dog", "plane"];
+  const bots = tokens
+    .filter((t) => t !== human.token)
+    .slice(0, botCount)
+    .map(
+      (token, i): PlayerConfig => ({
+        id: `bot-${i + 1}`,
+        name: `Máy ${i + 1}`,
+        token,
+        kind: "bot",
+      }),
+    );
+  const authority = createAuthority(
+    createGame(
+      {
+        gameId: crypto.randomUUID(),
+        players: [{ ...human, kind: "human" }, ...bots],
+      },
+      cryptoRandom,
+    ),
+    cryptoRandom,
+  );
+  const listeners = new Set<(update: SessionUpdate) => void>();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let closed = false;
+  let failure: string | undefined;
+  function update(): SessionUpdate {
+    return {
+      connection: closed ? "closed" : failure ? "paused" : "connected",
+      view: authority.getView(human.id),
+      ...(failure ? { reason: failure } : {}),
+    };
+  }
+  function emit() {
+    for (const listener of listeners) listener(update());
+  }
+  function schedule() {
+    clearTimeout(timer);
+    if (closed || failure) return;
+    const state = authority.snapshot();
+    if (state.phase === "finished") return;
+    let actor: string | undefined;
+    if (state.phase === "auction")
+      actor = state.auction!.participants.find(
+        (id) =>
+          id !== state.auction!.bidder &&
+          state.players.find((p) => p.id === id)?.kind === "bot",
+      );
+    else if (state.phase === "debt") actor = state.debt!.payer;
+    else if (state.phase === "mortgage-transfer")
+      actor = state.mortgageTransfers[0]!.playerId;
+    else
+      actor =
+        state.trades.find(
+          (t) => state.players.find((p) => p.id === t.to)?.kind === "bot",
+        )?.to ?? state.turn.playerId;
+    if (!actor || state.players.find((p) => p.id === actor)?.kind !== "bot")
+      return;
+    const botId = actor;
+    timer = setTimeout(() => {
+      if (closed) return;
+      try {
+        const view = authority.getView(botId);
+        const reply = authority.dispatch(botId, {
+          protocolVersion: 1,
+          gameId: view.gameId,
+          commandId: crypto.randomUUID(),
+          expectedRevision: view.revision,
+          action: chooseBotAction(view),
+        });
+        if (!reply.ok)
+          failure = `Máy không thực hiện được hành động: ${reply.code}.`;
+      } catch {
+        failure = "Máy gặp lỗi khi xử lý lượt. Ván hiện tại được giữ nguyên.";
+      }
+      emit();
+      schedule();
+    }, 120);
+  }
+  schedule();
+  return {
+    async send(command: CommandEnvelope) {
+      if (closed || failure)
+        return {
+          ok: false,
+          code: "PAUSED",
+          commandId: command.commandId,
+          revision: authority.snapshot().revision,
+        };
+      const reply = authority.dispatch(human.id, command);
+      emit();
+      schedule();
+      return reply;
+    },
+    subscribe(listener) {
+      listeners.add(listener);
+      listener(update());
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    async close() {
+      closed = true;
+      clearTimeout(timer);
+      emit();
+      listeners.clear();
+    },
+    snapshot() {
+      return authority.snapshot();
+    },
+  };
+}
