@@ -110,20 +110,22 @@ export function App() {
         ),
     });
   }, [session]);
+  const backAction = useRef<() => boolean>(() => false);
+  backAction.current = () => {
+    if (page === "home" && !session) return false;
+    navigate("home");
+    return true;
+  };
   useEffect(
     () =>
       attachAndroidBack(
-        () => {
-          if (page === "home" && !session) return false;
-          navigate("home");
-          return true;
-        },
+        () => backAction.current(),
         () =>
           setError(
             "Chưa xử lý được nút quay lại. Hãy dùng điều hướng trong ứng dụng.",
           ),
       ),
-    [page, session, update?.view?.phase],
+    [],
   );
 
   useEffect(() => {

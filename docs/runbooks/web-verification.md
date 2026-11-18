@@ -17,4 +17,4 @@ Lần đầu bộ kiểm tra 6 cửa sổ WebKit vượt thời gian của kịc
 
 Giới hạn: trình duyệt desktop không chứng minh iPhone/Android thật; chưa có public HTTPS backend hoặc thử tải thực tế nhiều phòng; backend một process mất ván online khi restart. Bản lưu offline không bị restart backend ảnh hưởng. Full dependency audit có 19 cảnh báo dev-only, runtime audit 0. Cache PWA cũ được giữ cho tab cũ và chưa tự dọn theo tuổi.
 
-Sau B1/B4 phần dùng chung: chạy lại 27/27 E2E (9 mỗi trình duyệt), gồm fallback dialog trên WebView cũ; full unit/integration 104/104. Web giữ WEB-PASS.
+Sau B1/B4 phần dùng chung: chạy lại 27/27 E2E (9 mỗi trình duyệt), gồm fallback dialog trên WebView cũ; full unit/integration 105/105. Web giữ WEB-PASS.

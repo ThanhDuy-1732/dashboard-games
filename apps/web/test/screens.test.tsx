@@ -1,13 +1,20 @@
 import "fake-indexeddb/auto";
 // @vitest-environment jsdom
 import { afterEach, beforeAll, expect, it } from "vitest";
-import { cleanup, render, screen, fireEvent } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  fireEvent,
+  act,
+} from "@testing-library/react";
 import { ActionPanel } from "../src/components/ActionPanel.js";
 import { AssetsDialog } from "../src/components/AssetsDialog.js";
 import { makeState } from "../../../packages/game-core/test/fixtures/state-factory.js";
 import { projectGame } from "@nha-choi/game-core";
 import { vi } from "vitest";
 import { App } from "../src/App.js";
+import * as lifecycle from "../src/platform-lifecycle.js";
 afterEach(cleanup);
 beforeAll(() => {
   // jsdom has no native modal dialog implementation; actual dialog behavior is checked in Playwright.
@@ -186,4 +193,29 @@ it("reads_the_complete_bundled_rulebook_inside_the_app_without_opening_an_extern
     screen.getByRole("region", { name: "Bộ luật đầy đủ" }).textContent,
   ).toContain("Phố Phú Mỹ");
   expect(screen.queryByRole("link", { name: "Đọc bộ luật đầy đủ" })).toBeNull();
+});
+
+it("keeps_the_native_back_listener_registered_across_navigation", () => {
+  const attach = vi
+    .spyOn(lifecycle, "attachAndroidBack")
+    .mockReturnValue(() => {});
+  try {
+    render(<App />);
+    const back = attach.mock.calls[0]![0];
+    fireEvent.click(
+      screen.getByRole("button", { name: "Chơi Cờ tỷ phú", exact: true }),
+    );
+    expect(attach).toHaveBeenCalledTimes(1);
+    let handled = false;
+    act(() => {
+      handled = back();
+    });
+    expect(handled).toBe(true);
+    expect(
+      screen.getByRole("button", { name: "Chơi Cờ tỷ phú", exact: true }),
+    ).toBeTruthy();
+    expect(attach).toHaveBeenCalledTimes(1);
+  } finally {
+    attach.mockRestore();
+  }
 });
