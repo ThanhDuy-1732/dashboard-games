@@ -15,11 +15,15 @@
     "dev:web": "npm run dev --workspace @nha-choi/web",
     "dev:server": "npm run dev --workspace @nha-choi/server",
     "build": "npm run build --workspaces --if-present",
-    "build:web": "npm run build --workspace @nha-choi/game-core && npm run build --workspace @nha-choi/protocol && npm run build --workspace @nha-choi/web",
+    "build:web": "npm run build:shared && npm run build --workspace @nha-choi/web",
     "typecheck": "tsc -b",
     "lint": "eslint packages apps --max-warnings 0",
     "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "build:shared": "npm run build --workspace @nha-choi/game-core && npm run build --workspace @nha-choi/protocol",
+    "predev:web": "npm run build:shared",
+    "predev:server": "npm run build:shared",
+    "pretest:e2e": "npm run build:web"
   },
   "devDependencies": {
     "@playwright/test": "1.65.1",

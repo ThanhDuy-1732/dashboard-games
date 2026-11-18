@@ -5,9 +5,11 @@ import { Icon } from "../components/Icon.js";
 export function Setup({
   onStart,
   onBack,
+  busy = false,
 }: {
   onStart: (human: PlayerConfig, botCount: number) => void;
   onBack: () => void;
+  busy?: boolean;
 }) {
   const [mode, setMode] = useState<"offline" | "online" | "bluetooth">(
     "offline",
@@ -171,7 +173,7 @@ export function Setup({
             <button
               className="button primary full"
               type="submit"
-              disabled={mode !== "offline"}
+              disabled={mode !== "offline" || busy}
             >
               Bắt đầu ván <Icon name="arrow" />
             </button>

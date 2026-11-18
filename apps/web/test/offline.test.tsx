@@ -1,6 +1,8 @@
 import { expect, it, vi } from "vitest";
 import { createOfflineSession } from "../src/session/offline.js";
 import type { SessionUpdate } from "@nha-choi/protocol";
+import { makeState } from "../../../packages/game-core/test/fixtures/state-factory.js";
+import { makeSavedGame } from "../src/storage/save-schema.js";
 it("creates_1_to_5_bots_and_stops_scheduling_when_closed", async () => {
   vi.useFakeTimers();
   try {
@@ -27,6 +29,49 @@ it("creates_1_to_5_bots_and_stops_scheduling_when_closed", async () => {
         botCount: 6,
       }),
     ).toThrow();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+it("resume_restores_debt_auction_jail_and_bot_turn_without_replaying_actions", async () => {
+  vi.useFakeTimers();
+  try {
+    for (const phase of [
+      "debt",
+      "auction",
+      "jail-choice",
+      "awaiting-roll",
+    ] as const) {
+      const state = makeState();
+      state.phase = phase;
+      if (phase === "debt") {
+        state.players[0]!.cash = 0;
+        state.debt = { payer: "p1", payee: "bank", amount: 50 };
+      }
+      if (phase === "auction")
+        state.auction = {
+          kind: "property",
+          spaceId: 6,
+          bid: 0,
+          bidder: null,
+          participants: ["p1", "p2"],
+        };
+      if (phase === "jail-choice") {
+        state.players[0]!.position = 10;
+        state.players[0]!.jail = { turns: 1 };
+      }
+      if (phase === "awaiting-roll") state.turn.playerId = "p2";
+      const session = createOfflineSession(
+        { human: state.players[0]!, botCount: 1 },
+        makeSavedGame(state, "p1"),
+      );
+      expect(session.snapshot()).toEqual(state);
+      session.pause("Saving");
+      const before = session.snapshot();
+      await vi.advanceTimersByTimeAsync(500);
+      expect(session.snapshot()).toEqual(before);
+      await session.close();
+    }
   } finally {
     vi.useRealTimers();
   }

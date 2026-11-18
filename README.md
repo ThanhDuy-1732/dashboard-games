@@ -2,7 +2,7 @@
 
 Dashboard game với Cờ tỷ phú truyền thống, web/PWA trước rồi Android/iOS dùng chung lõi luật và giao diện.
 
-Đã hoàn thành lõi luật A1–A4 và giao diện/offline/bot A5. Đang làm lưu ván A6; online, PWA và mobile chưa hoàn thành.
+Đã hoàn thành A1–A6: lõi luật, giao diện offline, bot, tự lưu và tiếp tục ván. Online, PWA và mobile đang được triển khai.
 
 Triển khai theo `docs/superpowers/plans/2026-11-17-game-hub-implementation.md`. `design/` là bản mẫu tương tác, không phải game hoàn chỉnh. Workspace sản phẩm ở `apps/` và `packages/`.
 

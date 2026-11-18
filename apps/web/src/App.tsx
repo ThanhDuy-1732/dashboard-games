@@ -1,6 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { GameAction, PlayerConfig } from "@nha-choi/game-core";
-import type { GameSession } from "@nha-choi/protocol";
 import { Home } from "./screens/Home.js";
 import { Setup } from "./screens/Setup.js";
 import { Game } from "./screens/Game.js";
@@ -8,7 +7,11 @@ import { Results } from "./screens/Results.js";
 import { Icon } from "./components/Icon.js";
 import { Dialog } from "./components/Dialog.js";
 import { createOfflineSession } from "./session/offline.js";
+import type { OfflineSession } from "./session/offline.js";
 import { useGameSession } from "./session/useGameSession.js";
+import { useOfflineSave, saveErrorMessage } from "./storage/useOfflineSave.js";
+import { SaveError } from "./storage/save.js";
+import type { SavedGame } from "./storage/save-schema.js";
 const ERROR_TEXT: Record<string, string> = {
   NOT_AUTHORIZED: "Hành động này không thuộc lượt hoặc quyền của bạn.",
   INSUFFICIENT_FUNDS: "Bạn chưa đủ tiền để thực hiện hành động này.",
@@ -20,8 +23,14 @@ const ERROR_TEXT: Record<string, string> = {
 };
 export function App() {
   const [page, setPage] = useState<"home" | "setup" | "game">("home");
-  const [session, setSession] = useState<GameSession | null>(null);
+  const [session, setSession] = useState<OfflineSession | null>(null);
   const update = useGameSession(session);
+  const persistence = useOfflineSave(session);
+  const operation = useRef(false);
+  const [newGame, setNewGame] = useState<{
+    human: PlayerConfig;
+    botCount: number;
+  } | null>(null);
   const [rules, setRules] = useState(false);
   const [leave, setLeave] = useState<"home" | "setup" | null>(null);
   const [pending, setPending] = useState(false);
@@ -31,27 +40,116 @@ export function App() {
     document.documentElement.scrollTop = 0;
   }, [page]);
   const navigate = (next: "home" | "setup") => {
+    if (operation.current) return;
     if (session && update?.view?.phase !== "finished") {
       setLeave(next);
       return;
     }
-    setSession(null);
+    if (session) {
+      void exit(next);
+      return;
+    }
     setPage(next);
     setError("");
   };
-  function start(human: PlayerConfig, botCount: number) {
+  async function start(
+    human: PlayerConfig,
+    botCount: number,
+    saved?: SavedGame,
+    replace = false,
+  ) {
+    if (operation.current) return;
+    operation.current = true;
+    setPending(true);
+    let created: OfflineSession | undefined;
     try {
-      setSession(createOfflineSession({ human, botCount }));
+      if (!saved && !replace) {
+        try {
+          const previous = await persistence.store.load();
+          if (previous.save?.state.phase !== "finished" && previous.save) {
+            setNewGame({ human, botCount });
+            return;
+          }
+          replace = Boolean(previous.save);
+        } catch (reason) {
+          if (
+            reason instanceof SaveError &&
+            ["INCOMPATIBLE", "CORRUPT"].includes(reason.code)
+          ) {
+            setNewGame({ human, botCount });
+            setError(saveErrorMessage(reason));
+            return;
+          }
+          throw reason;
+        }
+      }
+      if (!(await persistence.store.claim())) throw new SaveError("LEASE_LOST");
+      created = createOfflineSession({ human, botCount }, saved);
+      created.pause("Đang chuẩn bị bản lưu.");
+      await persistence.write(created, replace);
+      created.resume();
+      setSession(created);
+      setNewGame(null);
       setPage("game");
       setError("");
-    } catch {
-      setError(
-        "Chưa tạo được ván. Hãy kiểm tra tên và số người chơi rồi thử lại.",
+      persistence.dismissNotice();
+    } catch (reason) {
+      await created?.close();
+      await persistence.store.release().catch(() => {});
+      setError(saveErrorMessage(reason));
+    } finally {
+      operation.current = false;
+      setPending(false);
+    }
+  }
+  async function resume() {
+    if (operation.current) return;
+    try {
+      if (!(await persistence.store.claim())) throw new SaveError("LEASE_LOST");
+      const result = await persistence.store.load();
+      if (!result.save) {
+        setError("Không còn ván đã lưu trên thiết bị này.");
+        await persistence.store.release();
+        return;
+      }
+      const save = result.save;
+      await start(
+        save.state.players.find((p) => p.id === save.humanId)!,
+        save.state.players.length - 1,
+        save,
       );
+    } catch (reason) {
+      await persistence.store.release().catch(() => {});
+      setError(saveErrorMessage(reason));
+    }
+  }
+  async function exit(next: "home" | "setup") {
+    if (!session || operation.current) return;
+    operation.current = true;
+    setPending(true);
+    try {
+      session.pause("Đang lưu ván trước khi rời.");
+      await persistence.write(session);
+      await session.close();
+      setSession(null);
+      setPage(next);
+      setLeave(null);
+      await persistence.store.release();
+    } catch (reason) {
+      setError(saveErrorMessage(reason));
+    } finally {
+      operation.current = false;
+      setPending(false);
     }
   }
   async function send(action: GameAction) {
-    if (!session || !update?.view || pending) return;
+    if (
+      !session ||
+      !update?.view ||
+      pending ||
+      update.connection !== "connected"
+    )
+      return;
     setPending(true);
     setError("");
     try {
@@ -160,6 +258,15 @@ export function App() {
               </strong>
             </div>
             <div className="header-tools">
+              {session && (
+                <span className="save-indicator">
+                  {persistence.error
+                    ? "Chưa lưu"
+                    : persistence.saved?.revision === update?.view?.revision
+                      ? "Đã lưu"
+                      : "Đang lưu…"}
+                </span>
+              )}
               <span className="platform-select">
                 <Icon name="globe" /> Web
               </span>
@@ -171,6 +278,28 @@ export function App() {
             </div>
           </header>
           <main id="main" tabIndex={-1}>
+            {persistence.notice && (
+              <div className="app-error">
+                {persistence.notice}
+                <button
+                  aria-label="Đóng thông báo bản lưu"
+                  onClick={persistence.dismissNotice}
+                >
+                  <Icon name="close" />
+                </button>
+              </div>
+            )}
+            {persistence.error && (
+              <div className="app-error" role="alert">
+                <span>{persistence.error}</span>
+                <button
+                  className="text-button"
+                  onClick={() => void persistence.retry()}
+                >
+                  Thử lưu lại
+                </button>
+              </div>
+            )}
             {error && (
               <div className="app-error" role="alert">
                 {error}
@@ -182,7 +311,7 @@ export function App() {
                 </button>
               </div>
             )}
-            {update?.connection === "paused" && (
+            {update?.connection === "paused" && !persistence.error && (
               <p className="app-error" role="alert">
                 {update.reason ?? "Ván đang tạm dừng."}
               </p>
@@ -191,10 +320,17 @@ export function App() {
               <Home
                 onPlay={() => navigate("setup")}
                 onRules={() => setRules(true)}
+                saved={persistence.saved}
+                onResume={() => void resume()}
+                busy={pending}
               />
             )}
             {page === "setup" && (
-              <Setup onStart={start} onBack={() => navigate("home")} />
+              <Setup
+                onStart={start}
+                onBack={() => navigate("home")}
+                busy={pending}
+              />
             )}
             {page === "game" &&
               (!update?.view ? (
@@ -208,7 +344,7 @@ export function App() {
               ) : (
                 <Game
                   view={update.view}
-                  pending={pending}
+                  pending={pending || update.connection !== "connected"}
                   onAction={send}
                   onLeave={() => setLeave("home")}
                 />
@@ -281,20 +417,42 @@ export function App() {
         <Dialog title="Rời ván đang chơi?" onClose={() => setLeave(null)}>
           <h2>Rời ván đang chơi?</h2>
           <p className="dialog-lead">
-            Rời ván sẽ kết thúc phiên đang chơi trên thiết bị này.
+            Ván sẽ được lưu trên thiết bị này. Bạn có thể tiếp tục từ trang chủ.
           </p>
           <button
             className="button primary full"
-            onClick={() => {
-              setSession(null);
-              setPage(leave);
-              setLeave(null);
-            }}
+            disabled={pending}
+            onClick={() => void exit(leave)}
           >
-            Rời ván
+            Lưu và rời ván
           </button>
           <button className="text-button full" onClick={() => setLeave(null)}>
             Tiếp tục chơi
+          </button>
+        </Dialog>
+      )}
+      {newGame && (
+        <Dialog title="Thay thế ván đã lưu?" onClose={() => setNewGame(null)}>
+          <h2>Thay thế ván đã lưu?</h2>
+          <p className="dialog-lead">
+            Bắt đầu ván mới sẽ thay thế ván đang được lưu trên thiết bị này. Bản
+            lưu cũ được giữ cho tới khi ghi ván mới thành công.
+          </p>
+          <button
+            className="button primary full"
+            disabled={pending}
+            onClick={() =>
+              void start(newGame.human, newGame.botCount, undefined, true)
+            }
+          >
+            Bắt đầu ván mới
+          </button>
+          <button
+            className="text-button full"
+            disabled={pending}
+            onClick={() => setNewGame(null)}
+          >
+            Giữ ván đã lưu
           </button>
         </Dialog>
       )}

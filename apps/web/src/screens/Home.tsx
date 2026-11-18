@@ -1,11 +1,18 @@
 import { Icon } from "../components/Icon.js";
 import { boardPosition } from "../components/Board.js";
+import type { SavedGame } from "../storage/save-schema.js";
 export function Home({
   onPlay,
   onRules,
+  saved = null,
+  onResume,
+  busy = false,
 }: {
   onPlay: () => void;
   onRules: () => void;
+  saved?: SavedGame | null;
+  onResume?: () => void;
+  busy?: boolean;
 }) {
   return (
     <section className="screen">
@@ -20,6 +27,33 @@ export function Home({
           <span className="status-dot" /> Cứ vào chơi thôi
         </span>
       </div>
+      {saved && (
+        <section className="resume-card">
+          <span className="tip-icon">
+            <Icon name="dice" />
+          </span>
+          <div>
+            <h2>
+              {saved.state.phase === "finished"
+                ? "Ván đấu gần nhất"
+                : "Tiếp tục cuộc vui"}
+            </h2>
+            <p>
+              {saved.state.players.find((p) => p.id === saved.humanId)?.name} ·{" "}
+              {saved.state.players.length} người · Lượt{" "}
+              {saved.state.turn.number}
+            </p>
+          </div>
+          <button
+            className="button secondary"
+            disabled={busy}
+            onClick={onResume}
+          >
+            {saved.state.phase === "finished" ? "Xem kết quả" : "Tiếp tục ván"}
+            <Icon name="arrow" />
+          </button>
+        </section>
+      )}
       <section className="hero">
         <div className="hero-copy">
           <span className="game-label">

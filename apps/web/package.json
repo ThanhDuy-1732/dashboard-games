@@ -12,6 +12,7 @@
     "@nha-choi/game-core": "*",
     "@nha-choi/protocol": "*",
     "react": "19.3.1",
-    "react-dom": "19.3.1"
+    "react-dom": "19.3.1",
+    "zod": "4.6.7"
   }
 }

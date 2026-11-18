@@ -7,16 +7,23 @@ import type {
   CommandEnvelope,
 } from "@nha-choi/protocol";
 import { cryptoRandom } from "../random.js";
+import { savedGameSchema } from "../storage/save-schema.js";
+import type { SavedGame } from "../storage/save-schema.js";
 export interface OfflineSession extends GameSession {
   snapshot(): GameState;
+  pause(reason: string): void;
+  resume(): void;
 }
-export function createOfflineSession({
-  human,
-  botCount,
-}: {
-  human: PlayerConfig;
-  botCount: number;
-}): OfflineSession {
+export function createOfflineSession(
+  {
+    human,
+    botCount,
+  }: {
+    human: PlayerConfig;
+    botCount: number;
+  },
+  saved?: SavedGame,
+): OfflineSession {
   if (!Number.isInteger(botCount) || botCount < 1 || botCount > 5)
     throw new RangeError("Chọn từ 1 đến 5 đối thủ máy.");
   const tokens: Token[] = ["car", "cat", "hat", "ship", "dog", "plane"];
@@ -31,14 +38,18 @@ export function createOfflineSession({
         kind: "bot",
       }),
     );
+  const restored = saved ? savedGameSchema.parse(saved) : undefined;
+  if (restored && restored.humanId !== human.id)
+    throw new Error("Offline player does not match snapshot");
   const authority = createAuthority(
-    createGame(
-      {
-        gameId: crypto.randomUUID(),
-        players: [{ ...human, kind: "human" }, ...bots],
-      },
-      cryptoRandom,
-    ),
+    restored?.state ??
+      createGame(
+        {
+          gameId: crypto.randomUUID(),
+          players: [{ ...human, kind: "human" }, ...bots],
+        },
+        cryptoRandom,
+      ),
     cryptoRandom,
   );
   const listeners = new Set<(update: SessionUpdate) => void>();
@@ -128,6 +139,18 @@ export function createOfflineSession({
     },
     snapshot() {
       return authority.snapshot();
+    },
+    pause(reason) {
+      if (closed) return;
+      failure = reason;
+      clearTimeout(timer);
+      emit();
+    },
+    resume() {
+      if (closed) return;
+      failure = undefined;
+      emit();
+      schedule();
     },
   };
 }
