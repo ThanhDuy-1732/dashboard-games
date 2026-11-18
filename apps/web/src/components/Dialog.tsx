@@ -1,3 +1,4 @@
+import "dialog-polyfill/dist/dialog-polyfill.css";
 import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { Icon } from "./Icon.js";
@@ -17,9 +18,18 @@ export function Dialog({
       document.activeElement instanceof HTMLElement
         ? document.activeElement
         : null;
-    dialog.showModal();
+    let active = true;
+    if (typeof dialog.showModal === "function") dialog.showModal();
+    else
+      void import("dialog-polyfill").then(({ default: polyfill }) => {
+        if (active) {
+          polyfill.registerDialog(dialog);
+          dialog.showModal();
+        }
+      });
     return () => {
-      dialog.close();
+      active = false;
+      dialog.close?.();
       opener?.focus();
     };
   }, []);

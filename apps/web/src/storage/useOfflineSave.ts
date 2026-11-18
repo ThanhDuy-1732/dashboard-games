@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { OfflineSession } from "../session/offline.js";
+import { isNative } from "../platform.js";
 import { createSaveStore, SaveError } from "./save.js";
 import { makeSavedGame } from "./save-schema.js";
 import type { SavedGame } from "./save-schema.js";
@@ -19,7 +20,7 @@ export function saveErrorMessage(error: unknown): string {
   return "Chưa lưu được ván. Kiểm tra dung lượng và quyền lưu dữ liệu của trình duyệt rồi thử lại. Bản lưu trước vẫn được giữ.";
 }
 export function useOfflineSave(session: OfflineSession | null) {
-  const [store] = useState(() => createSaveStore());
+  const [store] = useState(() => createSaveStore("nha-choi", isNative()));
   const [saved, setSaved] = useState<SavedGame | null>(null);
   const savedRef = useRef<SavedGame | null>(null);
   const [notice, setNotice] = useState("");

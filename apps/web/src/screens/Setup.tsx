@@ -1,3 +1,4 @@
+import { isNative, onlineServerUrl } from "../platform.js";
 import { useState } from "react";
 import type { PlayerConfig, Token } from "@nha-choi/game-core";
 import { TOKEN_ART } from "../components/Board.js";
@@ -15,6 +16,7 @@ export function Setup({
   onResumeOnline?: () => void;
   busy?: boolean;
 }) {
+  const onlineConfigured = Boolean(onlineServerUrl());
   const [mode, setMode] = useState<"offline" | "online" | "bluetooth">(
     new URLSearchParams(location.search).has("room") ? "online" : "offline",
   );
@@ -65,7 +67,9 @@ export function Setup({
                 icon: "bt",
                 name: "Chơi gần nhau",
                 description: "Mỗi người một điện thoại, cùng một cuộc vui.",
-                note: "Bluetooth · Cần ứng dụng mobile",
+                note: isNative()
+                  ? "Bluetooth · Chưa khả dụng"
+                  : "Bluetooth · Cần ứng dụng mobile",
                 color: "yellow",
               },
             ] as const
@@ -98,6 +102,7 @@ export function Setup({
               return;
             }
             if (mode === "online") {
+              if (!onlineConfigured) return;
               if (
                 joining &&
                 !/^[A-Z0-9]{6}$/.test(roomCode.trim().toUpperCase())
@@ -133,10 +138,17 @@ export function Setup({
               <p>Chọn quân cờ, rồi để máy vào bàn cùng bạn.</p>
             </div>
           </div>
+          {mode === "online" && !onlineConfigured && (
+            <p className="info-note">
+              Online chưa khả dụng trong bản ứng dụng này. Bạn vẫn có thể chơi
+              với máy khi offline.
+            </p>
+          )}
           {mode === "bluetooth" ? (
             <div className="info-note">
-              Mở ứng dụng Android hoặc iOS để chơi qua Bluetooth. Bản web không
-              kết nối Bluetooth giữa các điện thoại.
+              {isNative()
+                ? "Chế độ Bluetooth chưa khả dụng trong bản ứng dụng này."
+                : "Mở ứng dụng Android hoặc iOS để chơi qua Bluetooth. Bản web không kết nối Bluetooth giữa các điện thoại."}
             </div>
           ) : (
             <>
@@ -243,7 +255,11 @@ export function Setup({
             <button
               className="button primary full"
               type="submit"
-              disabled={mode === "bluetooth" || busy}
+              disabled={
+                mode === "bluetooth" ||
+                (mode === "online" && !onlineConfigured) ||
+                busy
+              }
             >
               {mode === "online"
                 ? joining

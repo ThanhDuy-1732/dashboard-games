@@ -52,7 +52,7 @@ export function chooseBotAction(view: PlayerView): GameAction {
   if (view.phase === "debt") {
     const sell = hint("sell-building")?.spaceIds?.[0];
     if (sell !== undefined) return { type: "sell-building", spaceId: sell };
-    const mortgage = hint("mortgage")?.spaceIds?.toSorted(
+    const mortgage = hint("mortgage")?.spaceIds?.slice().sort(
       (a, b) => BOARD[b]!.mortgage! - BOARD[a]!.mortgage!,
     )[0];
     if (mortgage !== undefined) return { type: "mortgage", spaceId: mortgage };

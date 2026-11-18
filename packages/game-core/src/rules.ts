@@ -22,7 +22,7 @@ export function recordEvent(
   details: Omit<Partial<GameEvent>, "id" | "type" | "text"> = {},
 ) {
   state.recentEvents.push({
-    id: (state.recentEvents.at(-1)?.id ?? 0) + 1,
+    id: (state.recentEvents[state.recentEvents.length-1]?.id ?? 0) + 1,
     type,
     text,
     ...details,

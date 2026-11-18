@@ -11,7 +11,7 @@ export default defineConfig({
   server: { proxy },
   preview: { proxy },
   define: { __BUILD_ID__: JSON.stringify(Date.now().toString()) },
-  build: { outDir: native ? "dist-native" : "dist" },
+  build: { outDir: native ? "dist-native" : "dist", target:["safari15","chrome100"] },
   plugins: [
     VitePWA({
       disable: native,

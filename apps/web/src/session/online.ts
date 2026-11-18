@@ -1,3 +1,4 @@
+import { isNative, onlineServerUrl } from "../platform.js";
 import { io } from "socket.io-client";
 import type { Token } from "@nha-choi/game-core";
 import type {
@@ -9,9 +10,7 @@ import type {
   LobbyView,
 } from "@nha-choi/protocol";
 const KEY = "nha-choi-online-v1";
-export const ONLINE_URL =
-  import.meta.env?.VITE_SERVER_URL ||
-  (typeof location === "undefined" ? "http://127.0.0.1:3001" : location.origin);
+export const ONLINE_URL = onlineServerUrl();
 export const roomError = (code: string) =>
   ({
     SERVER_CLOSING: "Máy chủ đang bảo trì, chưa nhận phòng mới.",
@@ -81,6 +80,7 @@ async function connect(
   input: { resumeToken: string; name?: string; token?: Token; code?: string },
   resuming: boolean,
 ): Promise<OnlineSession> {
+  if(isNative()&&!onlineServerUrl(serverUrl))throw new Error("Chơi online cần địa chỉ máy chủ HTTPS được cấu hình cho bản ứng dụng này. Chơi với máy vẫn hoạt động offline.");
   const record = JSON.stringify({ serverUrl, resumeToken: input.resumeToken });
   try {
     const previousRecord = sessionStorage.getItem(KEY);

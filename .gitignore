@@ -10,3 +10,11 @@ coverage/
 playwright-report/
 test-results/
 .DS_Store
+
+apps/mobile/build/
+apps/mobile/android/.gradle/
+apps/mobile/android/**/build/
+apps/mobile/android/local.properties
+apps/mobile/ios/App/Pods/
+apps/mobile/ios/App/App/public/
+apps/mobile/android/app/src/main/assets/public/

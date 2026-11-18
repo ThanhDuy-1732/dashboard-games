@@ -39,7 +39,10 @@ function request<T>(value: IDBRequest<T>): Promise<T> {
     value.onerror = () => reject(value.error);
   });
 }
-export function createSaveStore(name = "nha-choi"): SaveStore {
+export function createSaveStore(
+  name = "nha-choi",
+  singleView = false,
+): SaveStore {
   const owner = crypto.randomUUID();
   let acquired = false;
   let opening: Promise<IDBDatabase> | undefined;
@@ -79,6 +82,8 @@ export function createSaveStore(name = "nha-choi"): SaveStore {
     }
   }
   function canWrite(lease: Lease | undefined) {
+    // Native projects permit one WebView; a cold start replaces the dead process.
+    if (singleView && !acquired) return true;
     if (
       acquired &&
       lease &&

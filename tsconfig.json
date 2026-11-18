@@ -12,6 +12,9 @@
     },
     {
       "path": "apps/web"
+    },
+    {
+      "path": "./apps/mobile"
     }
   ]
 }

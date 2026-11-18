@@ -6,11 +6,15 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173",
     "build": "tsc -b && vite build",
-    "preview": "vite preview --host 127.0.0.1 --port 5173"
+    "preview": "vite preview --host 127.0.0.1 --port 5173",
+    "build:native": "tsc -b && NATIVE_BUILD=1 vite build --mode native"
   },
   "dependencies": {
+    "@capacitor/core": "8.6.2",
     "@nha-choi/game-core": "*",
     "@nha-choi/protocol": "*",
+    "core-js": "3.51.0",
+    "dialog-polyfill": "0.5.6",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "socket.io-client": "4.8.4",

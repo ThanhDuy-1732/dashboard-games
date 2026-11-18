@@ -59,3 +59,29 @@ test("keyboard_dialogs_and_responsive_game_are_accessible", async ({
     ),
   ).toBe(true);
 });
+test("supports_legacy_webviews_without_native_dialog_methods", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
+      value: undefined,
+      configurable: true,
+    });
+    Object.defineProperty(HTMLDialogElement.prototype, "close", {
+      value: undefined,
+      configurable: true,
+    });
+  });
+  await page.goto("/");
+  const trigger = page
+    .getByRole("button", { name: "Luật chơi", exact: true })
+    .first();
+  await trigger.focus();
+  await page.keyboard.press("Enter");
+  await expect(
+    page.getByRole("dialog", { name: "Luật chơi Cờ tỷ phú" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Mình hiểu rồi" }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+});

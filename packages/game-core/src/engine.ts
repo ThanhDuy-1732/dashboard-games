@@ -128,7 +128,7 @@ export function applyAction(
   random: RandomSource,
 ): ActionResult {
   const state = structuredClone(input);
-  const previousEvent = input.recentEvents.at(-1)?.id ?? 0;
+  const previousEvent = input.recentEvents[input.recentEvents.length-1]?.id ?? 0;
   try {
     const player = playerById(state, actor);
     requireRule(!player.bankrupt, "NOT_AUTHORIZED");

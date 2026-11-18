@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Nhà Chơi</string>
+    <string name="title_activity_main">Nhà Chơi</string>
+    <string name="package_name">dev.nhachoi.app</string>
+    <string name="custom_url_scheme">dev.nhachoi.app</string>
+</resources>

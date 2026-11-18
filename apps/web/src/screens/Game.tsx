@@ -63,7 +63,7 @@ export function Game({
             >
               {view.recentEvents
                 .slice(-15)
-                .toReversed()
+                .reverse()
                 .map((event) => (
                   <li key={event.id}>
                     <span className="activity-dot" />

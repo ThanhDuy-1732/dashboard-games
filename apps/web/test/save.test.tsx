@@ -218,3 +218,17 @@ it("recovers_previous_save_when_a_building_auction_has_no_legal_targets", async 
   expect(await store.load()).toEqual({ save, recovered: true });
   await store.release();
 });
+it("native_single_window_cold_start_claims_the_saved_game_without_waiting_for_a_dead_writer", async () => {
+  const name = crypto.randomUUID(),
+    oldProcess = createSaveStore(name, true);
+  await oldProcess.claim();
+  const save = makeSavedGame(makeState(), "p1");
+  await oldProcess.save(save);
+  const coldStart = createSaveStore(name, true);
+  expect(await coldStart.claim()).toBe(true);
+  expect((await coldStart.load()).save).toEqual(save);
+  await expect(oldProcess.save(save)).rejects.toMatchObject({
+    code: "LEASE_LOST",
+  });
+  await coldStart.release();
+});

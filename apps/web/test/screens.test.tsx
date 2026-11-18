@@ -152,3 +152,25 @@ it("submits_the_selected_building_auction_street", () => {
   fireEvent.click(screen.getByRole("button", { name: "Trả giá", exact: true }));
   expect(send).toHaveBeenCalledWith({ type: "bid", amount: 1, spaceId: 9 });
 });
+it("explains_unconfigured_native_online_before_creating_a_room", async () => {
+  const { Capacitor } = await import("@capacitor/core");
+  const { Setup } = await import("../src/screens/Setup.js");
+  const platform = vi.spyOn(Capacitor, "getPlatform").mockReturnValue("ios");
+  try {
+    render(<Setup onStart={() => {}} onBack={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /^Chơi online/ }));
+    expect(
+      (
+        screen.getByRole("button", {
+          name: "Tạo phòng",
+          exact: true,
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    expect(
+      screen.getByText(/Online chưa khả dụng trong bản ứng dụng này/),
+    ).toBeTruthy();
+  } finally {
+    platform.mockRestore();
+  }
+});

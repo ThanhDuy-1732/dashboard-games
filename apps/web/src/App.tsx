@@ -10,6 +10,7 @@ import {
 import type { OnlineSession } from "./session/online.js";
 import { Lobby } from "./screens/Lobby.js";
 import type { GameAction, PlayerConfig, Token } from "@nha-choi/game-core";
+import { getPlatform } from "./platform.js";
 import { PwaStatus } from "./components/PwaStatus.js";
 import { Home } from "./screens/Home.js";
 import { Setup } from "./screens/Setup.js";
@@ -56,8 +57,12 @@ export function App() {
     setPending(true);
     setError("");
     try {
+      if (input && !ONLINE_URL)
+        throw new Error(
+          "Bản mobile này chưa cấu hình máy chủ HTTPS. Bạn vẫn có thể chơi với máy khi offline.",
+        );
       const created = await (input
-        ? connectOnlineRoom({ serverUrl: ONLINE_URL, ...input })
+        ? connectOnlineRoom({ serverUrl: ONLINE_URL!, ...input })
         : resumeOnlineRoom());
       setSession(created);
       setPage("game");
@@ -316,7 +321,12 @@ export function App() {
                 </span>
               )}
               <span className="platform-select">
-                <Icon name="globe" /> Web
+                <Icon name="globe" />{" "}
+                {getPlatform() === "web"
+                  ? "Web"
+                  : getPlatform() === "ios"
+                    ? "iOS"
+                    : "Android"}
               </span>
               <span className="guest-avatar">
                 {update?.view?.players.find(
