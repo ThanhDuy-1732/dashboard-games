@@ -90,6 +90,39 @@ try {
       .click();
   }
   await expect(page.locator(".board-cell")).toHaveCount(40);
+  run("shell", "input", "keyevent", "4");
+  await expect(
+    page.getByRole("dialog", { name: "Rời ván đang chơi?" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Tiếp tục chơi", exact: true })
+    .click();
+  run("shell", "input", "keyevent", "3");
+  await expect(
+    page.getByText("Ván đang tạm dừng khi ứng dụng ở nền.", { exact: true }),
+  ).toBeVisible();
+  const backgroundSave = await saved(page);
+  run("shell", "am", "start", "-W", "-n", `${app}/.MainActivity`);
+  await expect(
+    page.getByText("Ván đang tạm dừng khi ứng dụng ở nền.", { exact: true }),
+  ).toHaveCount(0);
+  await expect(page.locator(".board-cell")).toHaveCount(40);
+  expect((await saved(page)).gameId).toBe(backgroundSave.gameId);
+  await page
+    .getByRole("button", { name: "Luật chơi", exact: true })
+    .last()
+    .click();
+  await page
+    .getByRole("button", { name: "Đọc bộ luật đầy đủ", exact: true })
+    .click();
+  await expect(
+    page.getByRole("region", { name: "Bộ luật đầy đủ" }),
+  ).toContainText("Phố Phú Mỹ");
+  run("shell", "input", "keyevent", "4");
+  await expect(
+    page.getByRole("dialog", { name: "Luật chơi Cờ tỷ phú" }),
+  ).toHaveCount(0);
+  await expect(page.locator(".board-cell")).toHaveCount(40);
   const roll = page.getByRole("button", { name: /^Gieo/ });
   if (await roll.count()) await roll.click();
   await expect(page.locator(".save-indicator")).toHaveText("Đã lưu");

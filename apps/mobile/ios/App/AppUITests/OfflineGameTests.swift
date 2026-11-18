@@ -25,6 +25,10 @@ final class OfflineGameTests: XCTestCase {
         XCTAssertTrue(board.waitForExistence(timeout: 15))
         guard board.exists else { return }
         XCTAssertTrue(app.staticTexts["Đã lưu"].waitForExistence(timeout: 15))
+        XCUIDevice.shared.press(.home)
+        app.activate()
+        XCTAssertTrue(board.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Đã lưu"].waitForExistence(timeout: 15))
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.lifetime = .keepAlways
         add(attachment)

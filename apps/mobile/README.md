@@ -29,7 +29,9 @@ Bật một Android emulator hoặc chọn máy bằng ANDROID_SERIAL, rồi:
 npm run test:android
 ```
 
-Script chỉ cài/mở `dev.nhachoi.app`, kết nối WebView của app đó, đặt offline trong WebView để kiểm tra reload, 26 ảnh, không SW, lưu và cold start. Giữ nguyên dữ liệu ứng dụng, không reset emulator. Nếu có bản lưu của lần thử trước, tiếp tục ván đó.
+Nút Back đóng hộp thoại đang mở trước; nếu đang chơi thì hỏi xác nhận rời ván. Khi ra nền, offline tạm dừng và ghi bản lưu; online ngắt kết nối chủ động, trở lại phải nhận trạng thái từ server trước khi thao tác.
+
+Script chỉ cài/mở `dev.nhachoi.app`, kết nối WebView của app đó, đặt offline trong WebView để kiểm tra reload, 26 ảnh, không SW, lưu và cold start, nút Back, chuyển nền/foreground và đọc đầy đủ luật trong ứng dụng. Giữ nguyên dữ liệu ứng dụng, không reset emulator. Nếu có bản lưu của lần thử trước, tiếp tục ván đó.
 
 Bật iOS simulator rồi chọn UUID:
 

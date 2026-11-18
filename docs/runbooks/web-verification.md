@@ -16,3 +16,5 @@ Các lỗi đã sửa sau rà soát: tab cũ ghi đè lịch sử; trao lại đ
 Lần đầu bộ kiểm tra 6 cửa sổ WebKit vượt thời gian của kịch bản; đã cho các bước chuẩn bị độc lập chạy song song và đặt giới hạn 60 giây cho kịch bản 6 người, giữ nguyên timeout từng khẳng định. Lần đầu axe phát hiện nhật ký dài chưa nhận tiêu điểm trên Firefox; đã sửa rồi chạy lại đủ 24 ca đạt.
 
 Giới hạn: trình duyệt desktop không chứng minh iPhone/Android thật; chưa có public HTTPS backend hoặc thử tải thực tế nhiều phòng; backend một process mất ván online khi restart. Bản lưu offline không bị restart backend ảnh hưởng. Full dependency audit có 19 cảnh báo dev-only, runtime audit 0. Cache PWA cũ được giữ cho tab cũ và chưa tự dọn theo tuổi.
+
+Sau B1/B4 phần dùng chung: chạy lại 27/27 E2E (9 mỗi trình duyệt), gồm fallback dialog trên WebView cũ; full unit/integration 104/104. Web giữ WEB-PASS.

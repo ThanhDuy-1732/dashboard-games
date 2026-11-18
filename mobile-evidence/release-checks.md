@@ -21,3 +21,15 @@
 - App update giữ save trên thiết bị thật; ký iOS thiết bị/TestFlight và bản Android release/store.
 
 Các thiếu hụt trên giữ B2/B3, phần thiết bị của B4 và B5 ở trạng thái chưa đạt. Không đăng store hoặc triển khai công khai trong task này.
+
+## B4 — phần độc lập với thiết bị thật đã làm
+
+- Capacitor App 8.1.2: tuần tự hóa appStateChange, cleanup listener idempotent; web không đăng ký native listener.
+- Offline ra nền dừng bot, ghi snapshot rồi release lease; trở lại claim/ghi hợp lệ trước khi resume. Lỗi lưu giữ trạng thái tạm dừng và hiện thông báo.
+- Online ra nền ngắt socket, cả phòng tạm dừng; trở lại xác thực proof và nhận projection mới rồi mới bật hành động. Test adapter dùng máy chủ Socket.IO thật giữ đúng revision, không phát lại thanh toán.
+- Android Back đóng modal trên cùng trước; ở bàn chơi hiện xác nhận rời; tại trang chủ mới thoát app. Actual Android WebView đã kiểm tra Back + hủy, Back từ luật, Home + foreground, ảnh/snapshot/cold start.
+- iOS XCTest đã kiểm tra Home + activate, giữ bàn/trạng thái đã lưu và terminate/launch/resume.
+- Luật đầy đủ đọc ngay trong modal từ nguồn đóng gói, không gọi cửa sổ Safari cho URL capacitor:// (không được hỗ trợ). Android kiểm tra đọc luật khi offline.
+- Lần kiểm tra cuối: 104 unit/integration đạt; 27/27 production E2E vẫn đạt; lint/typecheck, build web/native và Android/iOS đạt. iOS/Android simulator checks đạt.
+
+Người dùng xác nhận chưa có HTTPS backend. Chưa thử native online chéo với web qua internet; chưa nghiệm thu B4 thiết bị hoặc MOBILE-PASS. Phần Bluetooth vẫn dừng ở gate đã ghi, không có plugin radio hoặc gameplay Bluetooth được bật.

@@ -101,6 +101,8 @@ interface GameSession {
 //   view:PlayerView|null; reason?:string };
 ```
 
+B4 bổ sung `GameSession.setActive(active:boolean):Promise<void>` để transport tạm dừng/kết nối lại theo vòng đời native; web không tự gọi thay đổi nền tảng.
+
 `RoomSession extends GameSession` có `.setReady(ready:boolean):Promise<RoomReply>`, `.startGame():Promise<RoomReply>`, `.subscribeLobby(listener:(view:LobbyView)=>void):()=>void`. Online và Bluetooth implement RoomSession, offline chỉ cần GameSession. `LobbyView` có roomId, code (online), hostId, capacity:6, players gồm id/name/token/ready/connected; không chứa resume token. `RoomReply` được định nghĩa tại A7 và dùng chung ở B3.
 
 `GameAction` là discriminated union bằng `type`: `roll`, `buy-property`, `decline-property`, `bid`, `pass-auction`, `build`, `sell-building`, `mortgage`, `unmortgage`, `offer-trade`, `accept-trade`, `reject-trade`, `resolve-mortgage-transfer`, `pay-jail`, `use-jail-card`, `declare-bankruptcy`, `end-turn`. Payload tài sản dùng board index cố định 0–39; tiền là số nguyên không âm, không chuỗi/float. Các effect tự động của ô/thẻ được core giải quyết, client không gửi giá mua, tiền thuê, kết quả xúc xắc hay người thắng.

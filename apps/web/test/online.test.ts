@@ -59,6 +59,15 @@ it("resumes_the_same_seat_and_latest_revision_after_refresh_without_replaying_a_
   expect(first.ok).toBe(true);
   expect(await actor.send(envelope)).toEqual(first);
   await vi.waitFor(() => expect(latest?.view?.revision).toBe(first.revision));
+  let guestUpdate: SessionUpdate | undefined;
+  guest.subscribe((value) => {
+    guestUpdate = value;
+  });
+  await host.setActive(false);
+  await vi.waitFor(() => expect(guestUpdate?.connection).toBe("paused"));
+  await host.setActive(true);
+  await vi.waitFor(() => expect(guestUpdate?.connection).toBe("connected"));
+  expect(guestUpdate?.view?.revision).toBe(first.revision);
   await host.close();
   vi.stubGlobal("sessionStorage", hostStore);
   const resumed = await resumeOnlineRoom();

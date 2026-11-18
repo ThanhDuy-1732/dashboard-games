@@ -1,3 +1,4 @@
+import rulebook from "../../../docs/rules/classic-v1.md?raw";
 import { useEffect, useRef, useState } from "react";
 import type { LobbyView } from "@nha-choi/protocol";
 import {
@@ -10,6 +11,10 @@ import {
 import type { OnlineSession } from "./session/online.js";
 import { Lobby } from "./screens/Lobby.js";
 import type { GameAction, PlayerConfig, Token } from "@nha-choi/game-core";
+import {
+  attachPlatformLifecycle,
+  attachAndroidBack,
+} from "./platform-lifecycle.js";
 import { getPlatform } from "./platform.js";
 import { PwaStatus } from "./components/PwaStatus.js";
 import { Home } from "./screens/Home.js";
@@ -81,9 +86,46 @@ export function App() {
     botCount: number;
   } | null>(null);
   const [rules, setRules] = useState(false);
+  const [fullRules, setFullRules] = useState(false);
   const [leave, setLeave] = useState<"home" | "setup" | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  useEffect(() => {
+    if (!session) return;
+    return attachPlatformLifecycle(session, {
+      onActive: offline
+        ? async (active) => {
+            if (!active) {
+              await offline.setActive(false);
+              await persistence.write(offline);
+              await persistence.store.release();
+            } else await persistence.retry();
+          }
+        : undefined,
+      onError: (reason) =>
+        setError(
+          offline
+            ? saveErrorMessage(reason)
+            : "Phiên chơi đang tạm dừng. Hãy kết nối lại phòng.",
+        ),
+    });
+  }, [session]);
+  useEffect(
+    () =>
+      attachAndroidBack(
+        () => {
+          if (page === "home" && !session) return false;
+          navigate("home");
+          return true;
+        },
+        () =>
+          setError(
+            "Chưa xử lý được nút quay lại. Hãy dùng điều hướng trong ứng dụng.",
+          ),
+      ),
+    [page, session, update?.view?.phase],
+  );
+
   useEffect(() => {
     document.getElementById("main")?.focus({ preventScroll: true });
     document.documentElement.scrollTop = 0;
@@ -486,14 +528,23 @@ export function App() {
               đôi.
             </li>
           </ol>
-          <a
+          <button
             className="button secondary full"
-            href="/rules.txt"
-            target="_blank"
-            rel="noreferrer"
+            aria-expanded={fullRules}
+            onClick={() => setFullRules(!fullRules)}
           >
-            Đọc bộ luật đầy đủ
-          </a>
+            {fullRules ? "Thu gọn bộ luật" : "Đọc bộ luật đầy đủ"}
+          </button>
+          {fullRules && (
+            <pre
+              className="full-rulebook"
+              role="region"
+              aria-label="Bộ luật đầy đủ"
+              tabIndex={0}
+            >
+              {rulebook}
+            </pre>
+          )}
           <button
             className="button primary full"
             onClick={() => setRules(false)}

@@ -10,6 +10,7 @@
     "build:native": "tsc -b && NATIVE_BUILD=1 vite build --mode native"
   },
   "dependencies": {
+    "@capacitor/app": "8.1.2",
     "@capacitor/core": "8.6.2",
     "@nha-choi/game-core": "*",
     "@nha-choi/protocol": "*",

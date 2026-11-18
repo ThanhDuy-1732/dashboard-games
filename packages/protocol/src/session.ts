@@ -7,6 +7,7 @@ export interface SessionUpdate {
   reason?: string;
 }
 export interface GameSession {
+  setActive(active: boolean): Promise<void>;
   send(command: CommandEnvelope): Promise<CommandReply>;
   subscribe(listener: (update: SessionUpdate) => void): () => void;
   close(): Promise<void>;

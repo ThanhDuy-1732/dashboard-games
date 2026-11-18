@@ -3114,3 +3114,15 @@ dialog + .backdrop {
   background: #16362c66;
   backdrop-filter: blur(5px);
 }
+.full-rulebook {
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 48vh;
+  overflow: auto;
+  padding: 14px;
+  background: var(--paper);
+  border-radius: 12px;
+}

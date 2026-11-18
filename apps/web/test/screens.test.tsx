@@ -174,3 +174,16 @@ it("explains_unconfigured_native_online_before_creating_a_room", async () => {
     platform.mockRestore();
   }
 });
+it("reads_the_complete_bundled_rulebook_inside_the_app_without_opening_an_external_window", () => {
+  render(<App />);
+  fireEvent.click(
+    screen.getAllByRole("button", { name: "Luật chơi", exact: true })[0]!,
+  );
+  fireEvent.click(
+    screen.getByRole("button", { name: "Đọc bộ luật đầy đủ", exact: true }),
+  );
+  expect(
+    screen.getByRole("region", { name: "Bộ luật đầy đủ" }).textContent,
+  ).toContain("Phố Phú Mỹ");
+  expect(screen.queryByRole("link", { name: "Đọc bộ luật đầy đủ" })).toBeNull();
+});

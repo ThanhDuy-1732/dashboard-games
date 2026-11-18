@@ -23,3 +23,15 @@ Các quyết định và giới hạn đã ghi trong quá trình thực hiện, 
 - Final: Ruling: select a legal building target when bidding, then build there if winner — equivalent player choice while board is frozen, avoids a second placement phase; rulebook clarified. Cost: a bidder must choose before committing the bid rather than after winning.
 
 Không có phát hiện nhỏ từ rà soát độc lập được hoãn lại.
+
+## Android/iOS và điểm dừng kiểm chứng
+
+- Task 1: Ruling: single-window native cold start takes over the previous process lease immediately, while a previously acquired writer remains fenced after takeover — necessary because force-kill cannot emit pagehide; iOS multiple scenes disabled and Android singleTask. Cost: enabling native multi-window later requires revisiting this policy. Web tab fencing unchanged.
+
+- Task 1: Ruling: keep compile target iOS15.0 and supply standard structuredClone/dialog fallbacks plus UUID WebCrypto fallback; replace ES2023 array methods and add Safari15 CSS fallbacks — avoids treating a modern simulator as proof of oldest-device support. Real iOS15 and airplane-mode iPhone tests remain unverified.
+
+- Ruling: stop Bluetooth integration at the real-device gate and continue only independent native lifecycle checks from B4 — required by plan, user has no hardware; does not replace BLE, reduce promised capacity, or label simulations as PASS.
+
+- Task 4: Ruling: add setActive to GameSession and optional lifecycle save callback — one shared transport contract, offline callback retains IndexedDB save/lease ordering without a separate native storage adapter. Cost: future Bluetooth adapter must implement setActive; no runtime fallback to another transport.
+
+- Task 4: Ruling: full rulebook displayed inside the app from canonical text — Capacitor iOS target=_blank opens UIApplication for capacitor:// URLs, so the original local-file link cannot work. Same UI now works on web and both native platforms; no remote document dependency.

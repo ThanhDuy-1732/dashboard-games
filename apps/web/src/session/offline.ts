@@ -107,7 +107,8 @@ export function createOfflineSession(
           action: chooseBotAction(view),
         });
         if (!reply.ok)
-          failure = `Máy không thực hiện được hành động: ${reply.code}.`;
+          failure =
+            "Máy chưa thực hiện được bước tiếp theo. Ván được giữ để bạn thử mở lại.";
       } catch {
         failure = "Máy gặp lỗi khi xử lý lượt. Ván hiện tại được giữ nguyên.";
       }
@@ -117,6 +118,10 @@ export function createOfflineSession(
   }
   schedule();
   return {
+    async setActive(active) {
+      if (active) this.resume();
+      else this.pause("Ván đang tạm dừng khi ứng dụng ở nền.");
+    },
     async send(command: CommandEnvelope) {
       if (closed || failure)
         return {

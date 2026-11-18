@@ -80,7 +80,10 @@ async function connect(
   input: { resumeToken: string; name?: string; token?: Token; code?: string },
   resuming: boolean,
 ): Promise<OnlineSession> {
-  if(isNative()&&!onlineServerUrl(serverUrl))throw new Error("Chơi online cần địa chỉ máy chủ HTTPS được cấu hình cho bản ứng dụng này. Chơi với máy vẫn hoạt động offline.");
+  if (isNative() && !onlineServerUrl(serverUrl))
+    throw new Error(
+      "Chơi online cần địa chỉ máy chủ HTTPS được cấu hình cho bản ứng dụng này. Chơi với máy vẫn hoạt động offline.",
+    );
   const record = JSON.stringify({ serverUrl, resumeToken: input.resumeToken });
   try {
     const previousRecord = sessionStorage.getItem(KEY);
@@ -109,6 +112,7 @@ async function connect(
     view: null,
     reason: "Đang kết nối phòng…",
   };
+  let serverUpdate: SessionUpdate | null = null;
   const listeners = new Set<(value: SessionUpdate) => void>();
   const lobbyListeners = new Set<(value: LobbyView) => void>();
   const publish = (value: SessionUpdate) => {
@@ -150,6 +154,25 @@ async function connect(
     }
   }, 20000);
   const session: OnlineSession = {
+    async setActive(foreground) {
+      if (!active || update.connection === "closed") return;
+      if (!foreground) {
+        socket.disconnect();
+        authenticated = false;
+        publish({
+          ...update,
+          connection: "paused",
+          reason: "Ứng dụng đang ở nền. Ván tạm dừng cho tới khi kết nối lại.",
+        });
+      } else if (!socket.connected) {
+        publish({
+          ...update,
+          connection: "reconnecting",
+          reason: "Đang đồng bộ lại phòng…",
+        });
+        socket.connect();
+      }
+    },
     get selfId() {
       return selfId;
     },
@@ -219,9 +242,20 @@ async function connect(
     if (active) publishLobby(value);
   });
   socket.on("game:update", (value: SessionUpdate) => {
-    if (active) publish(value);
+    serverUpdate = value;
+    if (active)
+      publish(
+        authenticated || value.connection === "closed"
+          ? value
+          : {
+              ...value,
+              connection: "reconnecting",
+              reason: "Đang xác thực và đồng bộ lại phòng…",
+            },
+      );
   });
   socket.on("connect", () => {
+    serverUpdate = null;
     void (async () => {
       try {
         const reply = await request<RoomReply>(
@@ -244,7 +278,8 @@ async function connect(
         selfId = reply.selfId;
         authenticated = true;
         publishLobby(reply.room);
-        if (!reply.room.started && !reply.room.closed)
+        if (serverUpdate) publish(serverUpdate);
+        else if (!reply.room.started && !reply.room.closed)
           publish({ connection: "connected", view: null });
         clearTimeout(initialTimeout);
         resolveInitial(session);

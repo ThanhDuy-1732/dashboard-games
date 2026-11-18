@@ -157,7 +157,7 @@ export function Board({
       <div className="board-bottom">
         <span>
           <span className="status-dot" />
-          Luật classic-v1 · Phiên {view.revision}
+          Luật truyền thống · Lượt {view.turn.number}
         </span>
         <span>Chạm ô cờ để xem ảnh và chi tiết</span>
       </div>
