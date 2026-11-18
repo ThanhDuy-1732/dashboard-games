@@ -3052,3 +3052,17 @@ select {
     grid-template-columns: 1fr;
   }
 }
+.pwa-status {
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: #eaf1e5;
+  color: #24553d;
+  font-size: 13px;
+}
+.pwa-status .text-button {
+  display: inline;
+  margin: 0 8px;
+  padding: 6px;
+  text-decoration: underline;
+}

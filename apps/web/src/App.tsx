@@ -10,6 +10,7 @@ import {
 import type { OnlineSession } from "./session/online.js";
 import { Lobby } from "./screens/Lobby.js";
 import type { GameAction, PlayerConfig, Token } from "@nha-choi/game-core";
+import { PwaStatus } from "./components/PwaStatus.js";
 import { Home } from "./screens/Home.js";
 import { Setup } from "./screens/Setup.js";
 import { Game } from "./screens/Game.js";
@@ -325,6 +326,7 @@ export function App() {
             </div>
           </header>
           <main id="main" tabIndex={-1}>
+            <PwaStatus inGame={Boolean(session)} />
             {persistence.notice && (
               <div className="app-error">
                 {persistence.notice}

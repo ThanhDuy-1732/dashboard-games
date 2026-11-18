@@ -145,10 +145,10 @@ Không nhất thiết tạo file rỗng trước: mỗi task tạo đúng file n
 
 **Interfaces:** `registerPwa({isNative:boolean,inGame:()=>boolean,onOfflineReady:()=>void,onUpdateReady:()=>void})`; native build sẽ không register service worker. IndexedDB save A6 độc lập với CacheStorage.
 
-- [ ] **RED:** production build có manifest/icons/SW; truy cập lần đầu xong mới báo offline-ready; đóng và mở lại URL khi offline vẫn vào dashboard/game, đủ 26 ảnh; update giữa ván không reload; hủy update giữ ván. Run: `npx vitest run apps/web/test/pwa.test.tsx` + `npx playwright test apps/web/e2e/pwa.spec.ts` trên Vite preview, không trên dev server.
-- [ ] **Implement:** injectManifest + Workbox precache `**/*.{html,js,css,jpg,jpeg,png,svg,json,webp,woff2}` và manifest; không cache socket/room API. Offline-ready chỉ sau SW activate và hoàn tất cache. Update prompt ở thời điểm an toàn, không skipWaiting/clientsClaim ép reload ván; giữ cache cũ cho client cũ tới khi chuyển xong. Rulebook/assets credits có trong bản build.
-- [ ] **GREEN:** thử build v1 → lưu ván → build v2 → từ chối rồi chấp nhận update; save đọc lại đúng. Ngắt mạng trước khi precache xong phải báo chưa sẵn sàng thay vì giả khả năng offline; Android Chrome và Safari/WebKit có hướng dẫn cài phù hợp, không giả nút cài nếu browser không hỗ trợ.
-- [ ] **Checkpoint:** commit `feat: ship installable offline PWA with safe updates`.
+- [x] **RED:** production build có manifest/icons/SW; truy cập lần đầu xong mới báo offline-ready; đóng và mở lại URL khi offline vẫn vào dashboard/game, đủ 26 ảnh; update giữa ván không reload; hủy update giữ ván. Run: `npx vitest run apps/web/test/pwa.test.tsx` + `npx playwright test apps/web/e2e/pwa.spec.ts` trên Vite preview, không trên dev server.
+- [x] **Implement:** injectManifest + Workbox precache `**/*.{html,js,css,jpg,jpeg,png,svg,json,webp,woff2}` và manifest; không cache socket/room API. Offline-ready chỉ sau SW activate và hoàn tất cache. Update prompt ở thời điểm an toàn, không skipWaiting/clientsClaim ép reload ván; giữ cache cũ cho client cũ tới khi chuyển xong. Rulebook/assets credits có trong bản build.
+- [x] **GREEN:** thử build v1 → lưu ván → build v2 → từ chối rồi chấp nhận update; save đọc lại đúng. Ngắt mạng trước khi precache xong phải báo chưa sẵn sàng thay vì giả khả năng offline; Android Chrome và Safari/WebKit có hướng dẫn cài phù hợp, không giả nút cài nếu browser không hỗ trợ.
+- [x] **Checkpoint:** commit `feat: ship installable offline PWA with safe updates`.
 
 ### Task 10: A10 — Gate WEB-PASS và bàn giao chạy web
 
