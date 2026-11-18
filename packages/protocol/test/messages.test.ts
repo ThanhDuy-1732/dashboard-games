@@ -58,3 +58,33 @@ it("validates_full_state_before_loading", () => {
     gameStateSchema.safeParse({ ...state, rulesVersion: "other" }).success,
   ).toBe(false);
 });
+
+it("rejects_strings_that_cannot_be_saved_in_postgresql_jsonb", () => {
+  for (const value of ["bad\u0000name", "bad\uD800", "bad\uDC00"]) {
+    expect(
+      playerConfigSchema.safeParse({
+        id: "p1",
+        name: value,
+        token: "car",
+        kind: "human",
+      }).success,
+    ).toBe(false);
+    expect(
+      commandSchema.safeParse({
+        protocolVersion: 1,
+        gameId: "g1",
+        commandId: crypto.randomUUID(),
+        expectedRevision: 0,
+        action: { type: "reject-trade", tradeId: value },
+      }).success,
+    ).toBe(false);
+  }
+  expect(
+    playerConfigSchema.safeParse({
+      id: "p1",
+      name: "Việt Nam 🎲",
+      token: "car",
+      kind: "human",
+    }).success,
+  ).toBe(true);
+});

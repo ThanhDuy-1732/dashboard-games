@@ -23,7 +23,7 @@ Preview để kiểm tra cục bộ, không dùng Vite làm máy chủ productio
 
 Backend: HOST (mặc định 127.0.0.1), PORT (3001), ALLOWED_ORIGINS (danh sách origin đầy đủ, phân tách dấu phẩy). Không tin X-Forwarded-For mặc định; rate limit tại backend dùng địa chỉ kết nối, nên khi reverse proxy nhiều người dùng chung giới hạn IP. Cần thêm giới hạn tại proxy nếu đưa ra công khai. Không chạy nhiều backend process hoặc load balance: phòng hiện nằm trong bộ nhớ một process.
 
-Web mặc định kết nối cùng origin; Vite dev/preview proxy `/socket.io` tới 127.0.0.1:3001 (đổi bằng BACKEND_PROXY_URL khi khởi động Vite). Nếu backend khác origin, đặt VITE_SERVER_URL trong `apps/web/.env.local` trước build và thêm origin web vào allowlist backend. Biến VITE_* là dữ liệu công khai trong gói; không đặt khóa bí mật ở đây. Root `.env.example` là hướng dẫn, server đọc biến từ môi trường, không tự nạp root .env.
+Web mặc định kết nối cùng origin; Vite dev/preview proxy `/socket.io` tới 127.0.0.1:3001 (đổi bằng BACKEND_PROXY_URL khi khởi động Vite). Nếu backend khác origin, đặt VITE_SERVER_URL trong `apps/web/.env.local` trước build và thêm origin web vào allowlist backend. Biến VITE_* là dữ liệu công khai trong gói; không đặt khóa bí mật ở đây. Root `.env.example` là hướng dẫn. Scripts backend tự nạp root `.env` nếu có; biến môi trường hosting được ưu tiên. Cấu hình DATABASE_URL chỉ ở backend, xem neon.md.
 
 Chỉ ngắt mạng sau thông báo đã sẵn sàng offline. Toàn bộ 26 ảnh, credits và luật đã được đóng gói; chỉ chế độ với máy hoạt động khi offline. Trình duyệt có thể thu hồi dữ liệu website nếu người dùng xóa hoặc thiếu dung lượng; bản lưu nằm trên thiết bị, không đồng bộ tài khoản.
 
@@ -33,9 +33,9 @@ Cập nhật: xuất bản bản build mới cùng tất cả assets. Không xó
 
 Mất mạng của người còn chơi làm cả ván online tạm dừng. Cùng tab có thể tải lại hoặc vào Chơi online → Kết nối lại phòng trước. Phiên lưu trong sessionStorage; đóng tab có thể mất khả năng lấy lại ghế. Kết nối mới dùng cùng phiên sẽ thay kết nối cũ. Sau 120 giây, người còn lại có quyền kết thúc không người thắng. Không tự thay bằng máy hoặc tính phá sản.
 
-Phòng chờ trống xóa ngay; ghế lobby mất mạng giữ 120 giây rồi chuyển chủ; lobby không hoạt động 30 phút sẽ đóng. Ván có người kết nối không tự hết hạn; ván toàn bộ offline đóng sau 30 phút. Ván kết thúc giữ 10 phút. Khởi động lại backend mất ván online; bản offline trên thiết bị giữ nguyên.
+Phòng chờ trống xóa ngay; ghế lobby mất mạng giữ 120 giây rồi chuyển chủ; lobby không hoạt động 30 phút sẽ đóng. Ván có người kết nối không tự hết hạn; ván toàn bộ offline đóng sau 30 phút. Ván kết thúc giữ 10 phút. Nếu có DATABASE_URL, ván online được lưu và khôi phục sau restart; cùng phiên/proof cũ cần kết nối lại. Nếu không cấu hình DB ở chế độ phát triển, restart vẫn mất ván online. Bản offline trên thiết bị giữ nguyên.
 
-Trước bảo trì, ngừng nhận phòng mới ở reverse proxy, thông báo người đang chơi và chờ ván hoàn tất khi có thể. SIGINT/SIGTERM gửi thông báo đóng ván không người thắng rồi đóng kết nối. Không có lưu bền online hoặc chuyển phòng qua process khác; không hứa khôi phục ván sau restart. Health check: GET /health.
+Trước bảo trì, ngừng nhận phòng mới ở reverse proxy, thông báo người đang chơi và chờ ván hoàn tất khi có thể. SIGINT/SIGTERM với Neon giữ checkpoint và ngắt kết nối để người chơi resume sau restart. Không có chuyển phòng trực tiếp qua process khác; chỉ một backend được quyền ghi. Không DB thì vẫn đóng/mất ván như chế độ phát triển. Health check: GET /health, trả 503 nếu lưu trữ gặp lỗi. Hướng dẫn database và lease: [neon.md](neon.md).
 
 ## Kiểm tra
 

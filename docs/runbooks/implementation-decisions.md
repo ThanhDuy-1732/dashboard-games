@@ -35,3 +35,11 @@ Không có phát hiện nhỏ từ rà soát độc lập được hoãn lại.
 - Task 4: Ruling: add setActive to GameSession and optional lifecycle save callback — one shared transport contract, offline callback retains IndexedDB save/lease ordering without a separate native storage adapter. Cost: future Bluetooth adapter must implement setActive; no runtime fallback to another transport.
 
 - Task 4: Ruling: full rulebook displayed inside the app from canonical text — Capacitor iOS target=_blank opens UIApplication for capacitor:// URLs, so the original local-file link cannot work. Same UI now works on web and both native platforms; no remote document dependency.
+
+## Neon persistence
+
+- Ruling: PostgreSQL checkpoints retain online room state, hashed resume proofs and bounded command receipts; all room mutations are serialized and published only after commit. An uncertain commit forces a database reload before another mutation.
+- Ruling: retain one long-running Socket.IO backend, fenced by a 45-second database lease; a second writer is rejected. PostgreSQL does not make this backend suitable for Vercel Functions or multiple instances.
+- Ruling: reset reconnect grace after restart so maintenance downtime does not immediately discard surviving rooms. Existing lobby/game/closed-room expiry still applies after recovery.
+- Ruling: healthy empty registries stop periodic database queries so Neon can sleep; an unhealthy registry continues recovery attempts without waiting for user traffic.
+- Final review: fixed empty-registry health recovery, uncommitted revisions in immediate error replies, lost resume proof after a failed leave, and PostgreSQL-incompatible input strings. Each has a regression test; no reported findings deferred.

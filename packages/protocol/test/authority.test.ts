@@ -61,3 +61,31 @@ it("bounds_reply_cache_and_rejects_an_evicted_stale_command", () => {
   });
   expect(authority.snapshot().revision).toBe(1);
 });
+it("restores_durable_state_and_original_command_replies_without_rerolling", () => {
+  const authority = createAuthority(makeState(), randomTape([1, 2]));
+  const first = { ...command, action: { type: "roll" as const } };
+  const reply = authority.dispatch("p1", first);
+  expect(reply.ok).toBe(true);
+  const checkpoint = authority.checkpoint();
+  const restored = createAuthority(
+    checkpoint.state,
+    randomTape([]),
+    checkpoint.replies,
+  );
+  expect(restored.dispatch("p1", first)).toEqual(reply);
+  expect(restored.snapshot()).toEqual(authority.snapshot());
+  expect(
+    restored.dispatch("p1", { ...first, action: { type: "end-turn" } }),
+  ).toMatchObject({ ok: false, code: "COMMAND_ID_REUSED" });
+  checkpoint.state.players[0]!.cash = 0;
+  expect(restored.snapshot().players[0]!.cash).not.toBe(0);
+});
+it("rejects_invalid_durable_receipts_without_mutating_the_checkpoint", () => {
+  const authority = createAuthority(makeState(), randomTape([1, 2]));
+  authority.dispatch("p1", { ...command, action: { type: "roll" } });
+  const checkpoint = authority.checkpoint();
+  checkpoint.replies[0]!.reply.revision = 999;
+  expect(() =>
+    createAuthority(checkpoint.state, randomTape([]), checkpoint.replies),
+  ).toThrow();
+});

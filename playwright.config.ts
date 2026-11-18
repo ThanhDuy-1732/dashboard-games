@@ -31,6 +31,7 @@ export default defineConfig({
     },
     {
       command: "npm run start --workspace @nha-choi/server",
+      env: { DATABASE_URL: "", NODE_ENV: "test" },
       url: "http://127.0.0.1:3001/health",
       reuseExistingServer: false,
     },

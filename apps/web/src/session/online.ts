@@ -13,8 +13,10 @@ const KEY = "nha-choi-online-v1";
 export const ONLINE_URL = onlineServerUrl();
 export const roomError = (code: string) =>
   ({
+    STORAGE_UNAVAILABLE:
+      "Máy chủ chưa lưu được dữ liệu. Ván được giữ lại; hãy đợi rồi kết nối lại.",
     SERVER_CLOSING: "Máy chủ đang bảo trì, chưa nhận phòng mới.",
-    INVALID_ROOM: "Phòng không còn tồn tại. Máy chủ có thể đã khởi động lại.",
+    INVALID_ROOM: "Phòng không còn tồn tại hoặc đã hết hạn.",
     ROOM_FULL: "Phòng đã đủ 6 người.",
     TOKEN_TAKEN: "Quân cờ này đã có người chọn. Hãy chọn quân khác.",
     NOT_HOST: "Chỉ chủ phòng mới có thể bắt đầu.",
@@ -219,13 +221,15 @@ async function connect(
       return request("game:end-interrupted", {});
     },
     async leaveRoom() {
-      try {
-        if (socket.connected && authenticated)
-          await request<RoomReply>("room:leave", {});
-      } finally {
-        if (!lobby?.started || lobby.closed) forget();
-        await session.close();
-      }
+      if (socket.connected && authenticated) {
+        const reply = await request<RoomReply>("room:leave", {});
+        if (!reply.ok) throw new Error(roomError(reply.code));
+      } else if (!lobby?.started && !lobby?.closed)
+        throw new Error(
+          "Chưa xác nhận rời phòng. Hãy kết nối lại rồi thử tiếp.",
+        );
+      if (!lobby?.started || lobby.closed) forget();
+      await session.close();
     },
     async close() {
       if (!active) return;
@@ -264,6 +268,23 @@ async function connect(
         );
         if (!active) return;
         if (!reply.ok) {
+          if (
+            [
+              "STORAGE_UNAVAILABLE",
+              "SERVER_ERROR",
+              "SERVER_CLOSING",
+              "RATE_LIMITED",
+            ].includes(reply.code)
+          ) {
+            authenticated = false;
+            publish({
+              ...update,
+              connection: "reconnecting",
+              reason: roomError(reply.code),
+            });
+            socket.io.engine?.close();
+            return;
+          }
           publish({
             ...update,
             connection: "closed",

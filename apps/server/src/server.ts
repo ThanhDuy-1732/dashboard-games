@@ -12,6 +12,7 @@ import {
 import type { RoomReply, CommandReply } from "@nha-choi/protocol";
 import type { RandomSource } from "@nha-choi/game-core";
 import { Rooms } from "./rooms.js";
+import type { RoomStore } from "./database.js";
 import { serverRandom } from "./random.js";
 interface Options {
   port?: number;
@@ -19,6 +20,7 @@ interface Options {
   origins?: string[];
   now?: () => number;
   random?: RandomSource;
+  store?: RoomStore;
 }
 export async function createGameServer({
   port = 3001,
@@ -26,12 +28,15 @@ export async function createGameServer({
   origins = ["http://127.0.0.1:5173", "http://localhost:5173"],
   now = Date.now,
   random = serverRandom,
+  store,
 }: Options = {}) {
+  let healthy = true,
+    closing = false;
   const http = createServer((req, res) => {
     res.setHeader("Content-Type", "application/json");
     if (req.url === "/health") {
-      res.writeHead(200);
-      res.end(JSON.stringify({ ok: true }));
+      res.writeHead(healthy && !closing ? 200 : 503);
+      res.end(JSON.stringify({ ok: healthy && !closing }));
     } else {
       res.writeHead(404);
       res.end(JSON.stringify({ error: "NOT_FOUND" }));
@@ -57,6 +62,54 @@ export async function createGameServer({
     next();
   });
   const rooms = new Rooms(io, random, now);
+  if (store) {
+    try {
+      rooms.restore(await store.load());
+    } catch (error) {
+      await store.close().catch(() => {});
+      io.close();
+      throw error;
+    }
+  }
+  let queue: Promise<void> = Promise.resolve(),
+    pending = 0;
+  const disconnected = new Set<string>();
+  async function mutate<T>(work: () => T): Promise<T> {
+    if (!store) return work();
+    if (pending >= 256) throw new Error("Room queue is full");
+    pending++;
+    const result = queue.then(async () => {
+      if (!healthy || store.needsReload()) {
+        rooms.restore(await store.load(), "recover");
+        healthy = true;
+        rooms.publishAll();
+      }
+      const dropped = [...disconnected];
+      const value = await rooms.durable(
+        () => {
+          for (const id of dropped) rooms.disconnect(id);
+          return work();
+        },
+        (records) => store.save(records),
+      );
+      for (const id of dropped) disconnected.delete(id);
+      return value;
+    });
+    queue = result.then(
+      () => {},
+      () => {},
+    );
+    try {
+      return await result;
+    } catch (error) {
+      healthy = false;
+      rooms.storageUnavailable();
+      throw error;
+    } finally {
+      pending--;
+    }
+  }
+
   const limits = new Map<string, { count: number; start: number }>();
   function consume(key: string, max: number, window: number) {
     let value = limits.get(key);
@@ -76,6 +129,10 @@ export async function createGameServer({
     ) {
       socket.on(event, (payload: unknown, ack: unknown) => {
         if (typeof ack !== "function") return;
+        if (closing) {
+          ack({ ok: false, code: "SERVER_CLOSING" });
+          return;
+        }
         if (
           !consume(
             joining
@@ -93,11 +150,14 @@ export async function createGameServer({
           ack({ ok: false, code: "INVALID_INPUT" });
           return;
         }
-        try {
-          ack(handler(parsed.data));
-        } catch {
-          ack({ ok: false, code: "SERVER_ERROR" });
-        }
+        void mutate(() => handler(parsed.data))
+          .then((value) => ack(value))
+          .catch(() =>
+            ack({
+              ok: false,
+              code: store ? "STORAGE_UNAVAILABLE" : "SERVER_ERROR",
+            }),
+          );
       });
     }
     roomRequest(
@@ -128,6 +188,15 @@ export async function createGameServer({
     );
     socket.on("game:command", (payload: unknown, ack: unknown) => {
       if (typeof ack !== "function") return;
+      if (closing) {
+        ack({
+          ok: false,
+          commandId: "invalid",
+          revision: rooms.currentRevision(socket.id),
+          code: "PAUSED",
+        });
+        return;
+      }
       if (!consume(`game:${rooms.sessionKey(socket.id)}`, 20, 1000)) {
         const raw = payload as { commandId?: unknown } | null;
         const reply: CommandReply = {
@@ -140,24 +209,35 @@ export async function createGameServer({
         ack(reply);
         return;
       }
-      try {
-        ack(rooms.command(socket.id, payload));
-      } catch {
-        const reply: CommandReply = {
-          ok: false,
-          commandId: "invalid",
-          revision: rooms.currentRevision(socket.id),
-          code: "INVALID_GAME",
-        };
-        ack(reply);
-      }
+      void mutate(() => rooms.command(socket.id, payload))
+        .then((value) => ack(value))
+        .catch(() => {
+          const raw = payload as { commandId?: unknown } | null;
+          const reply: CommandReply = {
+            ok: false,
+            commandId:
+              typeof raw?.commandId === "string" ? raw.commandId : "invalid",
+            revision: rooms.currentRevision(socket.id),
+            code: store ? "STORAGE_UNAVAILABLE" : "INVALID_GAME",
+          };
+          ack(reply);
+        });
     });
-    socket.on("disconnect", () => rooms.disconnect(socket.id));
+    socket.on("disconnect", () => {
+      if (closing) return;
+      if (!store) {
+        rooms.disconnect(socket.id);
+        return;
+      }
+      disconnected.add(socket.id);
+      void mutate(() => {}).catch(() => {});
+    });
   });
   const interval = setInterval(() => {
-    rooms.sweep();
     for (const [key, value] of limits)
       if (now() - value.start > 60000) limits.delete(key);
+    if (closing || pending || (store && healthy && rooms.size === 0)) return;
+    void mutate(() => rooms.sweep()).catch(() => {});
   }, 1000);
   interval.unref();
   try {
@@ -171,18 +251,32 @@ export async function createGameServer({
   } catch (error) {
     clearInterval(interval);
     io.close();
+    await store?.close().catch(() => {});
     throw error;
   }
   const address = http.address() as AddressInfo;
+  let closePromise: Promise<void> | null = null;
   return {
     url: `http://${host}:${address.port}`,
     rooms,
-    beginDrain: () => rooms.closeAll(),
-    close: () =>
-      new Promise<void>((resolve) => {
-        clearInterval(interval);
-        rooms.closeAll();
-        io.close(() => resolve());
-      }),
+    beginDrain: () => mutate(() => rooms.closeAll()),
+    close: () => {
+      if (closePromise) return closePromise;
+      closing = true;
+      clearInterval(interval);
+      closePromise = (async () => {
+        await queue;
+        if (store) {
+          try {
+            await mutate(() => rooms.pauseForRestart());
+          } catch {
+            healthy = false;
+          }
+        } else rooms.closeAll();
+        await new Promise<void>((resolve) => io.close(() => resolve()));
+        await store?.close();
+      })();
+      return closePromise;
+    },
   };
 }

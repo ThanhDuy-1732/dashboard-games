@@ -5,14 +5,50 @@ import type {
   RandomSource,
   PlayerView,
 } from "@nha-choi/game-core";
-import { commandSchema } from "./messages.js";
+import { z } from "zod";
+import { commandSchema, commandReplySchema } from "./messages.js";
 import type {
   CommandEnvelope,
   CommandReply,
   CommandErrorCode,
 } from "./messages.js";
 import { gameStateSchema } from "./state-schema.js";
+export const authorityCheckpointSchema = z
+  .strictObject({
+    state: gameStateSchema,
+    replies: z
+      .array(
+        z.strictObject({
+          actor: z.string().min(1).max(64),
+          command: commandSchema,
+          reply: commandReplySchema,
+        }),
+      )
+      .max(6144),
+  })
+  .superRefine(({ state, replies }, ctx) => {
+    const seen = new Set<string>(),
+      counts = new Map<string, number>();
+    for (const entry of replies) {
+      const key = `${entry.actor}:${entry.command.commandId}`;
+      counts.set(entry.actor, (counts.get(entry.actor) ?? 0) + 1);
+      if (
+        !state.players.some((p) => p.id === entry.actor) ||
+        entry.command.gameId !== state.gameId ||
+        entry.command.commandId !== entry.reply.commandId ||
+        entry.reply.revision > state.revision ||
+        entry.reply.revision !==
+          entry.command.expectedRevision + (entry.reply.ok ? 1 : 0) ||
+        seen.has(key) ||
+        counts.get(entry.actor)! > 1024
+      )
+        ctx.addIssue({ code: "custom", message: "Invalid command receipt" });
+      seen.add(key);
+    }
+  });
+export type AuthorityCheckpoint = z.infer<typeof authorityCheckpointSchema>;
 export interface GameAuthority {
+  checkpoint(): AuthorityCheckpoint;
   dispatch(actor: PlayerId, command: CommandEnvelope): CommandReply;
   cachedReply(
     actor: PlayerId,
@@ -24,12 +60,28 @@ export interface GameAuthority {
 export function createAuthority(
   initial: GameState,
   random: RandomSource,
+  receipts: AuthorityCheckpoint["replies"] = [],
 ): GameAuthority {
-  let state = structuredClone(gameStateSchema.parse(initial));
+  const parsed = authorityCheckpointSchema.parse({
+    state: initial,
+    replies: receipts,
+  });
+  let state = structuredClone(parsed.state);
   const caches = new Map<
     string,
     Map<string, { fingerprint: string; reply: CommandReply }>
   >();
+  for (const entry of parsed.replies) {
+    let cache = caches.get(entry.actor);
+    if (!cache) {
+      cache = new Map();
+      caches.set(entry.actor, cache);
+    }
+    cache.set(entry.command.commandId, {
+      fingerprint: JSON.stringify(entry.command),
+      reply: structuredClone(entry.reply),
+    });
+  }
   function cachedReply(
     actor: PlayerId,
     command: CommandEnvelope,
@@ -48,6 +100,18 @@ export function createAuthority(
         };
   }
   return {
+    checkpoint() {
+      return structuredClone({
+        state,
+        replies: [...caches].flatMap(([actor, cache]) =>
+          [...cache.values()].map((value) => ({
+            actor,
+            command: JSON.parse(value.fingerprint) as CommandEnvelope,
+            reply: value.reply,
+          })),
+        ),
+      });
+    },
     cachedReply,
     dispatch(actor, command) {
       const fail = (code: CommandErrorCode): CommandReply => ({

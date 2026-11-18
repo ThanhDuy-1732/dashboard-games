@@ -11,6 +11,8 @@ import type {
   CommandReply,
   SessionUpdate,
 } from "@nha-choi/protocol";
+import { roomCheckpointSchema } from "./room-checkpoint.js";
+import type { RoomCheckpoint } from "./room-checkpoint.js";
 import type { Server } from "socket.io";
 interface Member {
   id: string;
@@ -35,6 +37,8 @@ interface Room {
 const hash = (value: string) =>
   createHash("sha256").update(value).digest("hex");
 export class Rooms {
+  private pendingCheckpoint: RoomCheckpoint[] | null = null;
+  private effects: (() => void)[] | null = null;
   private draining = false;
   private rooms = new Map<string, Room>();
   private codes = new Map<string, string>();
@@ -45,6 +49,143 @@ export class Rooms {
     private random: RandomSource,
     private now: () => number,
   ) {}
+  get size() {
+    return this.rooms.size;
+  }
+  private effect(work: () => void) {
+    if (this.effects) this.effects.push(work);
+    else work();
+  }
+  checkpoint(): RoomCheckpoint[] {
+    return [...this.rooms.values()].map((room) => ({
+      ...room,
+      schemaVersion: 1,
+      members: structuredClone(room.members),
+      authority: room.authority?.checkpoint() ?? null,
+    }));
+  }
+  restore(
+    records: RoomCheckpoint[],
+    mode: "rollback" | "restart" | "recover" = "restart",
+  ) {
+    const parsed = records.map((record) => roomCheckpointSchema.parse(record));
+    if (
+      new Set(parsed.map((room) => room.id)).size !== parsed.length ||
+      new Set(parsed.map((room) => room.code)).size !== parsed.length ||
+      new Set(
+        parsed.flatMap((room) =>
+          room.members.map((member) => member.tokenHash),
+        ),
+      ).size !== parsed.reduce((n, room) => n + room.members.length, 0)
+    )
+      throw new Error("Invalid room registry");
+    const oldBindings = [...this.bindings.keys()];
+    this.rooms.clear();
+    this.codes.clear();
+    this.bindings.clear();
+    this.secrets.clear();
+    for (const record of parsed) {
+      const { authority, ...data } = record;
+      if (mode !== "rollback") {
+        let lostConnection = false;
+        for (const member of data.members) {
+          if (
+            mode === "restart" ||
+            (member.socketId &&
+              !this.io.sockets.sockets.get(member.socketId)?.connected)
+          ) {
+            member.socketId = null;
+            member.disconnectedAt = this.now();
+            lostConnection = true;
+          }
+        }
+        if (lostConnection) data.lastActivity = this.now();
+        data.publishedCanEnd = false;
+      }
+      const room: Room = {
+        ...data,
+        authority: authority
+          ? createAuthority(authority.state, this.random, authority.replies)
+          : null,
+      };
+      this.rooms.set(room.id, room);
+      this.codes.set(room.code, room.id);
+      for (const member of room.members) {
+        this.secrets.set(member.tokenHash, {
+          roomId: room.id,
+          playerId: member.id,
+        });
+        if (member.socketId)
+          this.bindings.set(member.socketId, {
+            roomId: room.id,
+            playerId: member.id,
+          });
+      }
+    }
+    if (mode === "recover")
+      for (const socketId of oldBindings)
+        if (!this.bindings.has(socketId))
+          this.effect(() =>
+            this.io.sockets.sockets.get(socketId)?.disconnect(true),
+          );
+  }
+  async durable<T>(
+    work: () => T,
+    save: (records: RoomCheckpoint[]) => Promise<void>,
+  ): Promise<T> {
+    const before = this.checkpoint();
+    this.pendingCheckpoint = before;
+    this.effects = [];
+    let committed = false;
+    try {
+      const result = work();
+      await save(this.checkpoint());
+      committed = true;
+      this.pendingCheckpoint = null;
+      const effects = this.effects;
+      this.effects = null;
+      for (const effect of effects) effect();
+      return result;
+    } catch (error) {
+      if (!committed) this.restore(before, "rollback");
+      this.effects = null;
+      throw error;
+    } finally {
+      this.pendingCheckpoint = null;
+    }
+  }
+  publishAll() {
+    for (const room of this.rooms.values()) {
+      this.publish(room);
+      if (!room.authority && room.closedAt === null)
+        for (const member of room.members)
+          if (member.socketId) {
+            const socketId = member.socketId;
+            this.effect(() =>
+              this.io.to(socketId).emit("game:update", {
+                connection: "connected",
+                view: null,
+              } satisfies SessionUpdate),
+            );
+          }
+    }
+  }
+  storageUnavailable() {
+    for (const room of this.rooms.values())
+      for (const member of room.members)
+        if (member.socketId)
+          this.io.to(member.socketId).emit("game:update", {
+            connection: "paused",
+            view: room.authority?.getView(member.id) ?? null,
+            reason:
+              "Chưa lưu được ván vào máy chủ. Ván tạm dừng; hãy đợi kết nối lại.",
+            canEndInterrupted: false,
+          } satisfies SessionUpdate);
+  }
+  pauseForRestart() {
+    this.draining = true;
+    for (const socketId of [...this.bindings.keys()]) this.disconnect(socketId);
+  }
   private view(room: Room): LobbyView {
     return {
       roomId: room.id,
@@ -84,7 +225,9 @@ export class Rooms {
     this.bindings.set(socketId, { roomId: room.id, playerId: member.id });
     if (previous && previous !== socketId) {
       this.bindings.delete(previous);
-      this.io.sockets.sockets.get(previous)?.disconnect(true);
+      this.effect(() =>
+        this.io.sockets.sockets.get(previous)?.disconnect(true),
+      );
     }
   }
   private add(room: Room, socketId: string, input: CreateRoomInput): RoomReply {
@@ -235,7 +378,8 @@ export class Rooms {
     room.publishedCanEnd = canEnd;
     for (const member of room.members) {
       if (!member.socketId) continue;
-      this.io.to(member.socketId).emit("room:update", lobby);
+      const socketId = member.socketId;
+      this.effect(() => this.io.to(socketId).emit("room:update", lobby));
       if (room.authority || room.closedAt !== null) {
         const update: SessionUpdate = {
           connection:
@@ -252,7 +396,7 @@ export class Rooms {
               : {}),
           canEndInterrupted: canEnd,
         };
-        this.io.to(member.socketId).emit("game:update", update);
+        this.effect(() => this.io.to(socketId).emit("game:update", update));
       }
     }
   }
@@ -287,6 +431,12 @@ export class Rooms {
     return reply;
   }
   currentRevision(socketId: string) {
+    if (this.pendingCheckpoint)
+      return (
+        this.pendingCheckpoint.find((room) =>
+          room.members.some((member) => member.socketId === socketId),
+        )?.authority?.state.revision ?? 0
+      );
     return this.bound(socketId)?.room.authority?.snapshot().revision ?? 0;
   }
   sessionKey(socketId: string) {

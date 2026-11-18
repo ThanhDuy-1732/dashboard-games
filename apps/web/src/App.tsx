@@ -30,6 +30,8 @@ import { useOfflineSave, saveErrorMessage } from "./storage/useOfflineSave.js";
 import { SaveError } from "./storage/save.js";
 import type { SavedGame } from "./storage/save-schema.js";
 const ERROR_TEXT: Record<string, string> = {
+  STORAGE_UNAVAILABLE:
+    "Máy chủ chưa xác nhận lưu được hành động. Hãy đợi đồng bộ lại trước khi tiếp tục.",
   NOT_AUTHORIZED: "Hành động này không thuộc lượt hoặc quyền của bạn.",
   INSUFFICIENT_FUNDS: "Bạn chưa đủ tiền để thực hiện hành động này.",
   STALE_REVISION:
@@ -232,7 +234,11 @@ export function App() {
       setLeave(null);
       if (offline) await persistence.store.release();
     } catch (reason) {
-      setError(saveErrorMessage(reason));
+      setError(
+        online && reason instanceof Error
+          ? reason.message
+          : saveErrorMessage(reason),
+      );
     } finally {
       operation.current = false;
       setPending(false);
@@ -262,7 +268,9 @@ export function App() {
             "Không thể thực hiện. Hãy kiểm tra trạng thái ván rồi thử lại.",
         );
     } catch {
-      setError("Không gửi được hành động. Ván hiện tại được giữ nguyên.");
+      setError(
+        "Chưa nhận được xác nhận. Hãy đợi đồng bộ lại và kiểm tra bàn chơi trước khi thử tiếp.",
+      );
     } finally {
       setPending(false);
     }

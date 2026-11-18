@@ -31,3 +31,9 @@ Hướng dẫn chạy, cấu hình và giới hạn: [web runbook](docs/runbooks
 Build: `npm run build:mobile`, `npm run build:android`, `npm run build:ios`. APK debug ở `apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk`; iOS simulator app ở `apps/mobile/build/ios/Build/Products/Debug-iphonesimulator/App.app`.
 
 [Bằng chứng và phần chưa kiểm tra](mobile-evidence/release-checks.md), [gate Bluetooth](mobile-evidence/bluetooth-spike.md), [các quyết định khi triển khai](docs/runbooks/implementation-decisions.md).
+
+## Lưu online với Neon
+
+Đã thêm lưu bền phòng/trạng thái online, proof dạng hash và phản hồi lệnh để khôi phục sau khi backend restart. Đặt DATABASE_URL ở backend hoặc root .env (không commit). Khi NODE_ENV=production, thiếu DATABASE_URL sẽ dừng. Backend chỉ chạy một instance; frontend vẫn deploy Vercel riêng.
+
+[Hướng dẫn Neon](docs/runbooks/neon.md). `npm run test:database` chạy kiểm tra tích hợp thật bằng scope test riêng; suite mặc định không ghi vào database thật.

@@ -105,3 +105,77 @@ it("failed_join_preserves_the_credential_for_the_previous_live_room", async () =
   cleanup.push(() => restored.close());
   expect(restored.selfId).toBe(original.selfId);
 });
+it("retries_a_transient_database_admission_failure_without_losing_the_new_session", async () => {
+  type Record = import("../../server/src/room-checkpoint.js").RoomCheckpoint;
+  let records: Record[] = [],
+    fail = true;
+  const app = await createGameServer({
+    port: 0,
+    store: {
+      needsReload() {
+        return false;
+      },
+      async load() {
+        return structuredClone(records);
+      },
+      async save(next) {
+        if (fail) {
+          fail = false;
+          throw new Error("temporary storage failure");
+        }
+        records = structuredClone(next);
+      },
+      async close() {},
+    },
+  });
+  cleanup.push(app.close);
+  vi.stubGlobal("sessionStorage", storage());
+  const session = await connectOnlineRoom({
+    serverUrl: app.url,
+    name: "Khôi phục",
+    token: "car",
+  });
+  cleanup.push(() => session.close());
+  expect(session.selfId).toBeTruthy();
+  expect(records).toHaveLength(1);
+  expect(records[0]!.members).toHaveLength(1);
+});
+
+it("keeps_the_room_and_proof_when_leaving_cannot_be_saved", async () => {
+  type Record = import("../../server/src/room-checkpoint.js").RoomCheckpoint;
+  let records: Record[] = [],
+    fail = false;
+  const app = await createGameServer({
+    port: 0,
+    store: {
+      needsReload: () => false,
+      async load() {
+        return structuredClone(records);
+      },
+      async save(next) {
+        if (fail) {
+          fail = false;
+          throw new Error("database unavailable");
+        }
+        records = structuredClone(next);
+      },
+      async close() {},
+    },
+  });
+  cleanup.push(app.close);
+  const saved = storage();
+  vi.stubGlobal("sessionStorage", saved);
+  const host = await connectOnlineRoom({
+    serverUrl: app.url,
+    name: "Bạn",
+    token: "car",
+  });
+  cleanup.push(() => host.close());
+  const proof = saved.getItem("nha-choi-online-v1");
+  fail = true;
+  await expect(host.leaveRoom()).rejects.toThrow();
+  expect(saved.getItem("nha-choi-online-v1")).toBe(proof);
+  await host.leaveRoom();
+  expect(saved.getItem("nha-choi-online-v1")).toBeNull();
+  expect(records).toHaveLength(0);
+});

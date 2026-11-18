@@ -28,6 +28,7 @@ export interface LobbyView {
   }[];
 }
 export type RoomErrorCode =
+  | "STORAGE_UNAVAILABLE"
   | "SERVER_CLOSING"
   | "INVALID_INPUT"
   | "SERVER_ERROR"
