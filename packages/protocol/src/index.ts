@@ -4,3 +4,8 @@ export { gameStateSchema } from "./state-schema.js";
 export { createAuthority } from "./authority.js";
 export type { GameAuthority } from "./authority.js";
 export * from "./rooms.js";
+export {
+  fragmentBleMessage,
+  BleReassembler,
+  BleFrameError,
+} from "./ble-frames.js";
