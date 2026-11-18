@@ -1,5 +1,6 @@
 import type { GameState, PlayerId } from "./types.js";
 import { playerById, recordEvent, requireRule } from "./rules.js";
+import { buildableSpaces } from "./assets.js";
 import { BOARD } from "./board.js";
 export function getRent(
   state: GameState,
@@ -62,6 +63,7 @@ export function auctionAction(
   state: GameState,
   actor: PlayerId,
   amount?: number,
+  spaceId?: number,
 ): boolean {
   const auction = state.auction;
   requireRule(state.phase === "auction" && auction);
@@ -72,6 +74,14 @@ export function auctionAction(
   } else {
     requireRule(Number.isSafeInteger(amount) && amount > auction.bid);
     requireRule(playerById(state, actor).cash >= amount, "INSUFFICIENT_FUNDS");
+    if (auction.kind !== "property") {
+      const target = spaceId ?? auction.targets?.[actor];
+      requireRule(
+        target !== undefined &&
+          buildableSpaces(state, actor, auction.kind).includes(target),
+      );
+      auction.targets![actor] = target;
+    } else requireRule(spaceId === undefined);
     auction.bid = amount;
     auction.bidder = actor;
   }

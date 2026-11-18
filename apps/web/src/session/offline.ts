@@ -78,7 +78,13 @@ export function createOfflineSession(
           id !== state.auction!.bidder &&
           state.players.find((p) => p.id === id)?.kind === "bot",
       );
-    else if (state.phase === "debt") actor = state.debt!.payer;
+    else if (state.phase === "debt")
+      actor =
+        state.trades.find(
+          (t) =>
+            t.from === state.debt!.payer &&
+            state.players.find((p) => p.id === t.to)?.kind === "bot",
+        )?.to ?? state.debt!.payer;
     else if (state.phase === "mortgage-transfer")
       actor = state.mortgageTransfers[0]!.playerId;
     else

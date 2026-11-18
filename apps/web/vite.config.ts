@@ -1,7 +1,15 @@
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 const native = process.env.NATIVE_BUILD === "1";
+const proxy = {
+  "/socket.io": {
+    target: process.env.BACKEND_PROXY_URL || "http://127.0.0.1:3001",
+    ws: true,
+  },
+};
 export default defineConfig({
+  server: { proxy },
+  preview: { proxy },
   define: { __BUILD_ID__: JSON.stringify(Date.now().toString()) },
   build: { outDir: native ? "dist-native" : "dist" },
   plugins: [

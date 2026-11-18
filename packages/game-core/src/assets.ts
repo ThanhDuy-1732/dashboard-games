@@ -36,13 +36,19 @@ export function requireManagement(
     ].includes(state.phase),
   );
 }
-export function buildableSpaces(state: GameState, actor: PlayerId): number[] {
+export function buildableSpaces(
+  state: GameState,
+  actor: PlayerId,
+  kind?: "house" | "hotel",
+): number[] {
   return BOARD.filter((space) => {
     const property = state.board[space.id]!;
     if (
       space.kind !== "street" ||
       property.owner !== actor ||
-      property.buildings >= 5
+      property.buildings >= 5 ||
+      (kind !== undefined &&
+        (property.buildings === 4 ? "hotel" : "house") !== kind)
     )
       return false;
     const group = groupSpaces(space.id);

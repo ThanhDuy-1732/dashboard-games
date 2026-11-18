@@ -2,6 +2,11 @@ import "fake-indexeddb/auto";
 // @vitest-environment jsdom
 import { afterEach, beforeAll, expect, it } from "vitest";
 import { cleanup, render, screen, fireEvent } from "@testing-library/react";
+import { ActionPanel } from "../src/components/ActionPanel.js";
+import { AssetsDialog } from "../src/components/AssetsDialog.js";
+import { makeState } from "../../../packages/game-core/test/fixtures/state-factory.js";
+import { projectGame } from "@nha-choi/game-core";
+import { vi } from "vitest";
 import { App } from "../src/App.js";
 afterEach(cleanup);
 beforeAll(() => {
@@ -82,4 +87,68 @@ it("asks_before_replacing_an_unfinished_saved_game", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Giữ ván đã lưu" }));
   expect((await store.load()).save?.gameId).toBe("game-1");
   await store.remove();
+});
+
+it("asks_before_liquidating_every_building_in_a_color_group", () => {
+  const state = makeState();
+  for (const id of [1, 3]) {
+    state.board[id]!.owner = "p1";
+    state.board[id]!.buildings = 5;
+  }
+  state.bank.hotels = 10;
+  state.bank.houses = 0;
+  const send = vi.fn();
+  render(
+    <AssetsDialog
+      view={projectGame(state, "p1")}
+      onAction={send}
+      onClose={() => {}}
+      pending={false}
+    />,
+  );
+  fireEvent.click(
+    screen.getAllByRole("button", { name: "Bán công trình", exact: true })[0]!,
+  );
+  expect(send).not.toHaveBeenCalled();
+  expect(
+    screen.getByRole("heading", { name: "Thanh lý toàn bộ nhóm màu?" }),
+  ).toBeTruthy();
+  expect(screen.getByText(/250/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Hủy thanh lý" }));
+  expect(send).not.toHaveBeenCalled();
+  fireEvent.click(
+    screen.getAllByRole("button", { name: "Bán công trình", exact: true })[0]!,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Xác nhận thanh lý" }));
+  expect(send).toHaveBeenCalledWith({ type: "sell-building", spaceId: 1 });
+});
+
+it("submits_the_selected_building_auction_street", () => {
+  const state = makeState();
+  for (const id of [1, 3]) state.board[id]!.owner = "p1";
+  for (const id of [6, 8, 9]) state.board[id]!.owner = "p2";
+  state.phase = "auction";
+  state.auction = {
+    kind: "house",
+    spaceId: 1,
+    bid: 0,
+    bidder: null,
+    participants: ["p1", "p2"],
+    targets: { p1: 1, p2: 6 },
+  };
+  const send = vi.fn();
+  render(
+    <ActionPanel
+      view={projectGame(state, "p2")}
+      onAction={send}
+      pending={false}
+      onAssets={() => {}}
+      onTrade={() => {}}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText("Xây công trình tại đây nếu thắng"), {
+    target: { value: "9" },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Trả giá", exact: true }));
+  expect(send).toHaveBeenCalledWith({ type: "bid", amount: 1, spaceId: 9 });
 });

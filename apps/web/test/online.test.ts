@@ -71,3 +71,28 @@ it("resumes_the_same_seat_and_latest_revision_after_refresh_without_replaying_a_
   await vi.waitFor(() => expect(restored?.view?.revision).toBe(first.revision));
   expect(restored?.connection).toBe("connected");
 });
+it("failed_join_preserves_the_credential_for_the_previous_live_room", async () => {
+  const app = await createGameServer({ port: 0 });
+  cleanup.push(app.close);
+  const saved = storage();
+  vi.stubGlobal("sessionStorage", saved);
+  const original = await connectOnlineRoom({
+    serverUrl: app.url,
+    name: "Bạn",
+    token: "car",
+  });
+  const proof = saved.getItem("nha-choi-online-v1");
+  await original.close();
+  await expect(
+    connectOnlineRoom({
+      serverUrl: app.url,
+      name: "Bạn",
+      token: "cat",
+      code: "000000",
+    }),
+  ).rejects.toThrow();
+  expect(saved.getItem("nha-choi-online-v1")).toBe(proof);
+  const restored = await resumeOnlineRoom();
+  cleanup.push(() => restored.close());
+  expect(restored.selfId).toBe(original.selfId);
+});

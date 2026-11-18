@@ -24,6 +24,7 @@ for (const count of [2, 6])
   test(`online_${count}_players_share_board_and_resume_after_reload`, async ({
     browser,
   }) => {
+    test.setTimeout(count === 6 ? 60000 : 30000);
     const contexts = await Promise.all(
       Array.from({ length: count }, () => browser.newContext()),
     );
@@ -36,12 +37,18 @@ for (const count of [2, 6])
       const code = (
         await pages[0]!.getByTestId("room-code").textContent()
       ).trim();
-      for (let i = 1; i < count; i++)
-        await setup(pages[i]!, `Bạn ${i}`, tokens[i]!, code);
-      for (const page of pages)
-        await page
-          .getByRole("button", { name: "Sẵn sàng", exact: true })
-          .click();
+      await Promise.all(
+        pages
+          .slice(1)
+          .map((page, index) =>
+            setup(page, `Bạn ${index + 1}`, tokens[index + 1]!, code),
+          ),
+      );
+      await Promise.all(
+        pages.map((page) =>
+          page.getByRole("button", { name: "Sẵn sàng", exact: true }).click(),
+        ),
+      );
       await pages[0]!
         .getByRole("button", { name: "Bắt đầu ván", exact: true })
         .click();

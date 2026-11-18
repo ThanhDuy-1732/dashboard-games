@@ -72,7 +72,7 @@ export type GameAction =
         | "declare-bankruptcy"
         | "end-turn";
     }
-  | { type: "bid"; amount: number }
+  | { type: "bid"; amount: number; spaceId?: number }
   | {
       type: "build" | "sell-building" | "mortgage" | "unmortgage";
       spaceId: number;

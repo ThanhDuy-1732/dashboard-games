@@ -14,6 +14,10 @@ import type {
 import { gameStateSchema } from "./state-schema.js";
 export interface GameAuthority {
   dispatch(actor: PlayerId, command: CommandEnvelope): CommandReply;
+  cachedReply(
+    actor: PlayerId,
+    command: CommandEnvelope,
+  ): CommandReply | undefined;
   getView(viewer: PlayerId): PlayerView;
   snapshot(): GameState;
 }
@@ -26,7 +30,25 @@ export function createAuthority(
     string,
     Map<string, { fingerprint: string; reply: CommandReply }>
   >();
+  function cachedReply(
+    actor: PlayerId,
+    command: CommandEnvelope,
+  ): CommandReply | undefined {
+    if (command.gameId !== state.gameId || command.protocolVersion !== 1)
+      return undefined;
+    const previous = caches.get(actor)?.get(command.commandId);
+    if (!previous) return undefined;
+    return previous.fingerprint === JSON.stringify(command)
+      ? structuredClone(previous.reply)
+      : {
+          ok: false,
+          code: "COMMAND_ID_REUSED",
+          commandId: command.commandId,
+          revision: state.revision,
+        };
+  }
   return {
+    cachedReply,
     dispatch(actor, command) {
       const fail = (code: CommandErrorCode): CommandReply => ({
         ok: false,
@@ -50,11 +72,8 @@ export function createAuthority(
         caches.set(actor, cache);
       }
       const fingerprint = JSON.stringify(input);
-      const previous = cache.get(input.commandId);
-      if (previous)
-        return previous.fingerprint === fingerprint
-          ? structuredClone(previous.reply)
-          : fail("COMMAND_ID_REUSED");
+      const previous = cachedReply(actor, input);
+      if (previous) return previous;
       if (input.expectedRevision !== state.revision)
         return fail("STALE_REVISION");
       const result = applyAction(state, actor, input.action, random);

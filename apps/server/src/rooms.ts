@@ -35,6 +35,7 @@ interface Room {
 const hash = (value: string) =>
   createHash("sha256").update(value).digest("hex");
 export class Rooms {
+  private draining = false;
   private rooms = new Map<string, Room>();
   private codes = new Map<string, string>();
   private bindings = new Map<string, { roomId: string; playerId: string }>();
@@ -108,6 +109,7 @@ export class Rooms {
     return this.reply(room, member, secret);
   }
   create(socketId: string, input: CreateRoomInput): RoomReply {
+    if (this.draining) return { ok: false, code: "SERVER_CLOSING" };
     if (input.resumeToken && this.secrets.has(hash(input.resumeToken)))
       return this.resume(socketId, input.resumeToken);
     if (this.bindings.has(socketId)) return { ok: false, code: "INVALID_ROOM" };
@@ -134,6 +136,7 @@ export class Rooms {
     return this.add(room, socketId, input);
   }
   join(socketId: string, input: JoinRoomInput): RoomReply {
+    if (this.draining) return { ok: false, code: "SERVER_CLOSING" };
     const roomId = this.codes.get(input.code);
     const room = roomId ? this.rooms.get(roomId) : undefined;
     if (!room || room.closedAt !== null)
@@ -146,6 +149,7 @@ export class Rooms {
           : { ok: false, code: "INVALID_ROOM" };
     }
     if (this.bindings.has(socketId)) return { ok: false, code: "INVALID_ROOM" };
+    if (room.closedAt !== null) return { ok: false, code: "INVALID_ROOM" };
     if (room.authority) return { ok: false, code: "GAME_STARTED" };
     if (room.members.length >= 6) return { ok: false, code: "ROOM_FULL" };
     if (room.members.some((p) => p.token === input.token))
@@ -180,6 +184,7 @@ export class Rooms {
     if (!target) return { ok: false, code: "NOT_AUTHORIZED" };
     const { room, member } = target;
     if (member.id !== room.hostId) return { ok: false, code: "NOT_HOST" };
+    if (room.closedAt !== null) return { ok: false, code: "INVALID_ROOM" };
     if (room.authority) return { ok: false, code: "GAME_STARTED" };
     if (
       room.members.length < 2 ||
@@ -263,13 +268,15 @@ export class Rooms {
       return { ok: false, code: "NOT_AUTHORIZED", commandId, revision: 0 };
     const { room, member } = target;
     const revision = room.authority?.snapshot().revision ?? 0;
-    if (!room.authority || room.closedAt !== null || this.missing(room).length)
-      return { ok: false, code: "PAUSED", commandId, revision };
     if (raw?.protocolVersion !== 1)
       return { ok: false, code: "PROTOCOL_MISMATCH", commandId, revision };
     const parsed = commandSchema.safeParse(payload);
     if (!parsed.success)
       return { ok: false, code: "INVALID_ACTION", commandId, revision };
+    const cached = room.authority?.cachedReply(member.id, parsed.data);
+    if (cached) return cached;
+    if (!room.authority || room.closedAt !== null || this.missing(room).length)
+      return { ok: false, code: "PAUSED", commandId, revision };
     const reply = room.authority.dispatch(member.id, parsed.data);
     room.lastActivity = this.now();
     if (room.authority.snapshot().phase === "finished") {
@@ -382,6 +389,7 @@ export class Rooms {
     }
   }
   closeAll() {
+    this.draining = true;
     for (const room of this.rooms.values()) {
       room.closedAt = this.now();
       room.reason =

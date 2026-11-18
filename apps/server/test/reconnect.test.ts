@@ -117,3 +117,57 @@ it("rejects_incompatible_clients_before_room_authentication", async () => {
     connect(app.url, { protocolVersion: 2, rulesVersion: "classic-v1" }),
   ).rejects.toThrow("PROTOCOL_MISMATCH");
 });
+it("drains_existing_rooms_and_refuses_new_players_before_shutdown", async () => {
+  const { app, host, a } = await pair(Date.now);
+  let update: SessionUpdate | undefined;
+  host.on("game:update", (value) => (update = value));
+  app.beginDrain();
+  await vi.waitFor(() => expect(update?.connection).toBe("closed"));
+  expect(
+    await ack(await connect(app.url), "room:create", {
+      name: "Mới",
+      token: "hat",
+    }),
+  ).toMatchObject({ ok: false, code: "SERVER_CLOSING" });
+  expect(await ack(host, "room:start", {})).toMatchObject({ ok: false });
+  const restarted = await createGameServer({ port: 0 });
+  cleanup.push(restarted.close);
+  expect(
+    await ack(await connect(restarted.url), "room:resume", {
+      resumeToken: a.resumeToken,
+    }),
+  ).toMatchObject({ ok: false, code: "INVALID_ROOM" });
+});
+it("returns_an_original_command_ack_even_when_the_room_is_paused_or_closed", async () => {
+  const { app, host, guest } = await pair(Date.now);
+  let update: SessionUpdate | undefined;
+  host.on("game:update", (value) => (update = value));
+  await ack(host, "room:ready", { ready: true });
+  await ack(guest, "room:ready", { ready: true });
+  await ack(host, "room:start", {});
+  await vi.waitFor(() => expect(update?.view).toBeTruthy());
+  const view = update!.view!;
+  const actor = view.turn.playerId === view.viewerId ? host : guest;
+  const command = {
+    protocolVersion: 1,
+    gameId: view.gameId,
+    commandId: crypto.randomUUID(),
+    expectedRevision: view.revision,
+    action: { type: "roll" },
+  };
+  const first = await ack(actor, "game:command", command);
+  expect(first).toMatchObject({ ok: true });
+  const other = actor === host ? guest : host;
+  other.disconnect();
+  await vi.waitFor(() =>
+    expect(
+      app.rooms.command(actor.id!, {
+        ...command,
+        commandId: crypto.randomUUID(),
+      }),
+    ).toMatchObject({ code: "PAUSED" }),
+  );
+  expect(await ack(actor, "game:command", command)).toEqual(first);
+  app.beginDrain();
+  expect(await ack(actor, "game:command", command)).toEqual(first);
+});

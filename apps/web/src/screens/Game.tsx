@@ -55,7 +55,12 @@ export function Game({
               <h2>Chuyện trên bàn</h2>
               <span>Lượt {view.turn.number}</span>
             </div>
-            <ol aria-live="polite" aria-relevant="additions">
+            <ol
+              tabIndex={0}
+              aria-label="Nhật ký ván chơi"
+              aria-live="polite"
+              aria-relevant="additions"
+            >
               {view.recentEvents
                 .slice(-15)
                 .toReversed()

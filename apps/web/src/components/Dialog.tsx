@@ -13,11 +13,25 @@ export function Dialog({
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const dialog = ref.current!;
+    const opener =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     dialog.showModal();
-    return () => dialog.close();
+    return () => {
+      dialog.close();
+      opener?.focus();
+    };
   }, []);
   return (
-    <dialog ref={ref} aria-label={title} onCancel={onClose}>
+    <dialog
+      ref={ref}
+      aria-label={title}
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+    >
       <button
         className="icon-button dialog-close"
         onClick={onClose}

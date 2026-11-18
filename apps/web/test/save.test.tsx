@@ -162,3 +162,59 @@ it("recovers_corrupt_writer_metadata_without_deleting_game_data", async () => {
   expect((await store.load()).save).toEqual(save);
   await store.release();
 });
+it("fences_a_previous_writer_even_after_the_new_tab_releases_its_lease", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  try {
+    const name = crypto.randomUUID(),
+      a = createSaveStore(name),
+      b = createSaveStore(name);
+    const initial = makeSavedGame(makeState(), "p1");
+    await a.claim();
+    await a.save(initial);
+    vi.setSystemTime(Date.now() + 16000);
+    await b.claim();
+    const newer = structuredClone(initial);
+    newer.revision = newer.state.revision = 2;
+    newer.state.players[0]!.cash = 1250;
+    await b.save(newer);
+    await b.release();
+    const stale = structuredClone(initial);
+    stale.revision = stale.state.revision = 3;
+    await expect(a.save(stale)).rejects.toMatchObject({ code: "STALE_SAVE" });
+    await expect(a.claim()).rejects.toMatchObject({ code: "STALE_SAVE" });
+    expect((await b.load()).save).toEqual(newer);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+it("rejects_equal_revision_with_a_different_history", async () => {
+  const store = createSaveStore(crypto.randomUUID());
+  const save = makeSavedGame(makeState(), "p1");
+  await store.save(save);
+  const different = structuredClone(save);
+  different.state.players[0]!.cash = 1200;
+  await expect(store.save(different)).rejects.toMatchObject({
+    code: "STALE_SAVE",
+  });
+  expect((await store.load()).save).toEqual(save);
+  await store.release();
+});
+it("recovers_previous_save_when_a_building_auction_has_no_legal_targets", async () => {
+  const name = crypto.randomUUID(),
+    store = createSaveStore(name),
+    save = makeSavedGame(makeState(), "p1");
+  await store.save(save);
+  const broken = structuredClone(save);
+  broken.state.phase = "auction";
+  broken.state.auction = {
+    kind: "house",
+    spaceId: 1,
+    bid: 0,
+    bidder: null,
+    participants: ["p1", "p2"],
+  };
+  await rawWrite(name, "previous", save);
+  await rawWrite(name, "current", broken);
+  expect(await store.load()).toEqual({ save, recovered: true });
+  await store.release();
+});

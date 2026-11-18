@@ -112,3 +112,8 @@ describe("atomic trades", () => {
     ).toBe(false);
   });
 });
+it('cannot_retrade_a_mortgaged_deed_with_an_unsettled_transfer_obligation',()=>{
+ const state=makeState();state.phase='debt';state.players[0]!.cash=0;state.debt={payer:'p1',payee:'bank',amount:3};for(const id of [1,3]){state.board[id]!.owner='p1';state.board[id]!.mortgaged=true;}
+ state.mortgageTransfers=[{playerId:'p1',spaceId:1,choice:'keep'},{playerId:'p1',spaceId:3}];
+ expect(applyAction(state,'p1',{type:'offer-trade',to:'p2',give:{cash:0,spaceIds:[3],jailCards:[]},receive:{cash:5,spaceIds:[],jailCards:[]}},randomTape([]))).toMatchObject({ok:false,code:'INVALID_ACTION'});
+});

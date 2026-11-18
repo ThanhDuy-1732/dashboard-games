@@ -22,6 +22,9 @@ export function allowedActions(
         type: "bid",
         minimum: auction.bid + 1,
         maximum: player.cash,
+        ...(auction.kind !== "property"
+          ? { spaceIds: buildableSpaces(state, viewer, auction.kind) }
+          : {}),
       });
     actions.push({ type: "pass-auction" });
     return actions;

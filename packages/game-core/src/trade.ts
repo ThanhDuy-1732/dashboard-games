@@ -24,11 +24,7 @@ function checkBundle(state: GameState, owner: PlayerId, bundle: TradeBundle) {
         state.board[id]!.owner === owner,
     );
     requireRule(groupSpaces(id).every((i) => state.board[i]!.buildings === 0));
-    requireRule(
-      !state.mortgageTransfers.some(
-        (t) => t.spaceId === id && t.choice === "redeem",
-      ),
-    );
+    requireRule(!state.mortgageTransfers.some((t) => t.spaceId === id));
   }
   requireRule(
     bundle.jailCards.every((card) => player.jailCards.includes(card)),

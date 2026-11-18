@@ -29,6 +29,7 @@ export function TradeDialog({
     BOARD.filter(
       (space) =>
         view.board[space.id]!.owner === owner &&
+        !view.mortgageTransfers.some((t) => t.spaceId === space.id) &&
         (space.kind !== "street" ||
           BOARD.filter(
             (s) => s.group === space.group && s.kind === "street",

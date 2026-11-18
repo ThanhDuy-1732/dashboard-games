@@ -10,9 +10,11 @@ import type {
 } from "@nha-choi/protocol";
 const KEY = "nha-choi-online-v1";
 export const ONLINE_URL =
-  import.meta.env?.VITE_SERVER_URL || "http://127.0.0.1:3001";
+  import.meta.env?.VITE_SERVER_URL ||
+  (typeof location === "undefined" ? "http://127.0.0.1:3001" : location.origin);
 export const roomError = (code: string) =>
   ({
+    SERVER_CLOSING: "Máy chủ đang bảo trì, chưa nhận phòng mới.",
     INVALID_ROOM: "Phòng không còn tồn tại. Máy chủ có thể đã khởi động lại.",
     ROOM_FULL: "Phòng đã đủ 6 người.",
     TOKEN_TAKEN: "Quân cờ này đã có người chọn. Hãy chọn quân khác.",
@@ -81,7 +83,12 @@ async function connect(
 ): Promise<OnlineSession> {
   const record = JSON.stringify({ serverUrl, resumeToken: input.resumeToken });
   try {
-    sessionStorage.setItem(KEY, record);
+    const previousRecord = sessionStorage.getItem(KEY);
+    if (previousRecord !== null) sessionStorage.setItem(KEY, previousRecord);
+    else {
+      sessionStorage.setItem(KEY, record);
+      sessionStorage.removeItem(KEY);
+    }
   } catch {
     throw new Error(
       "Trình duyệt không cho lưu phiên. Hãy cho phép lưu dữ liệu để giữ ghế khi kết nối lại.",
@@ -223,7 +230,6 @@ async function connect(
         );
         if (!active) return;
         if (!reply.ok) {
-          forget();
           publish({
             ...update,
             connection: "closed",
@@ -233,6 +239,7 @@ async function connect(
           await session.close();
           return;
         }
+        sessionStorage.setItem(KEY, record);
         resuming = true;
         selfId = reply.selfId;
         authenticated = true;

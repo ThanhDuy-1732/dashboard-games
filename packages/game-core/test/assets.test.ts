@@ -166,3 +166,9 @@ describe("asset management", () => {
     expect(next.phase).toBe("awaiting-roll");
   });
 });
+it('scarce_building_bidder_can_select_any_eligible_street_and_rejects_foreign_targets',()=>{
+ const state=makeState();for(const id of [1,3])state.board[id]!.owner='p1';for(const id of [6,8,9])state.board[id]!.owner='p2';state.bank.houses=1;
+ const opened=act(state,{type:'build',spaceId:1});
+ expect(applyAction(opened,'p2',{type:'bid',amount:1,spaceId:1},randomTape([]))).toMatchObject({ok:false});
+ let next=act(opened,{type:'bid',amount:1,spaceId:9},'p2');next=act(next,{type:'pass-auction'});expect(next.board[9]!.buildings).toBe(1);expect(next.board[6]!.buildings).toBe(0);
+});

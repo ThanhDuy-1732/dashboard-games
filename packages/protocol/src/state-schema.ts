@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { GameState } from "@nha-choi/game-core";
-import { BOARD, CHANCE, COMMUNITY } from "@nha-choi/game-core";
+import { BOARD, CHANCE, COMMUNITY, buildableSpaces } from "@nha-choi/game-core";
 import {
   moneySchema,
   playerConfigSchema,
@@ -235,6 +235,26 @@ export const gameStateSchema: z.ZodType<GameState> = z
           !state.auction.participants.includes(state.auction.bidder)))
     )
       fail("Invalid auction participants");
+    if (state.auction && state.auction.kind !== "property") {
+      const auction = state.auction;
+      if (
+        !auction.targets ||
+        auction.participants.some(
+          (player) => auction.targets?.[player] === undefined,
+        ) ||
+        Object.entries(auction.targets ?? {}).some(
+          ([player, target]) =>
+            !ids.has(player) ||
+            !buildableSpaces(
+              state,
+              player,
+              auction.kind as "house" | "hotel",
+            ).includes(target),
+        ) ||
+        (auction.kind === "house" ? state.bank.houses : state.bank.hotels) !== 1
+      )
+        fail("Invalid building auction targets");
+    }
     if (state.phase === "awaiting-purchase" && state.purchase === null)
       fail("Missing purchase");
     if (state.phase === "mortgage-transfer" && !state.mortgageTransfers.length)

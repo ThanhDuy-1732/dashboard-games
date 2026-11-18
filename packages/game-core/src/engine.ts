@@ -149,7 +149,7 @@ export function applyAction(
         startAuction(state, state.purchase);
         break;
       case "bid":
-        if (auctionAction(state, actor, action.amount))
+        if (auctionAction(state, actor, action.amount, action.spaceId))
           runEffects(state, random);
         break;
       case "pass-auction":

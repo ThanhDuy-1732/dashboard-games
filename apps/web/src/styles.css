@@ -2,7 +2,7 @@
   --paper: #f6f7f2;
   --white: #fff;
   --ink: #203b35;
-  --muted: #738079;
+  --muted: #53634f;
   --green: #0d6758;
   --deep: #095448;
   --mint: #d9eae2;
@@ -158,7 +158,7 @@ button svg {
   font-size: 13px;
   font-weight: 550;
   min-height: 46px;
-  color: #6b7971;
+  color: #53634f;
 }
 .nav-item.active {
   background: #e8f0e7;
@@ -225,14 +225,14 @@ button svg {
 .little-dice {
   font-size: 45px;
   line-height: 1;
-  color: #91a791;
+  color: #52634f;
   transform: rotate(-12deg);
   width: 50px;
 }
 .sidebar-bottom p {
   font-size: 14px;
   line-height: 1.7;
-  color: #758473;
+  color: #52634f;
   margin-top: 14px;
   letter-spacing: -0.2px;
 }
@@ -241,7 +241,7 @@ button svg {
   align-items: center;
   gap: 7px;
   font-size: 9px;
-  color: #879186;
+  color: #52634f;
   margin-top: 34px;
   white-space: nowrap;
 }
@@ -268,7 +268,7 @@ button svg {
 }
 .breadcrumb {
   font-size: 12px;
-  color: #829086;
+  color: #52634f;
 }
 .breadcrumb span {
   margin: 0 13px;
@@ -292,7 +292,7 @@ button svg {
 .platform-select svg {
   width: 16px;
   height: 16px;
-  color: #849184;
+  color: #52634f;
 }
 .platform-select select {
   background: none;
@@ -306,7 +306,7 @@ button svg {
   height: 33px;
   border-radius: 50%;
   background: #e9e6da;
-  color: #7b7764;
+  color: #52634f;
   display: grid;
   place-items: center;
   font-size: 12px;
@@ -347,7 +347,7 @@ h1 > span {
   align-items: center;
   gap: 8px;
   font-size: 10px;
-  color: #7b887b;
+  color: #52634f;
   white-space: nowrap;
   padding-top: 14px;
 }
@@ -658,7 +658,7 @@ h1 > span {
   width: 100%;
   text-align: center;
   font-size: 9px;
-  color: #84957d;
+  color: #52634f;
   font-style: italic;
 }
 .section-title {
@@ -784,12 +784,12 @@ h1 > span {
   padding: 5px 8px;
   border-radius: 5px;
   background: #f4f5ef;
-  color: #808474;
+  color: #52634f;
   white-space: nowrap;
 }
 .tag.green {
   background: #e8f1e9;
-  color: #4c7d58;
+  color: #3b6244;
 }
 .game-description h3 {
   font-size: 24px;
@@ -806,7 +806,7 @@ h1 > span {
   display: flex;
   gap: 16px;
   margin-top: 13px;
-  color: #7e897f;
+  color: #52634f;
   font-size: 9px;
   flex-wrap: wrap;
 }
@@ -842,7 +842,7 @@ h1 > span {
   height: 41px;
   width: 41px;
   border-radius: 12px;
-  color: #7b9376;
+  color: #52634f;
   flex-shrink: 0;
 }
 .start-tip h3 {
@@ -861,7 +861,7 @@ h1 > span {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: #5d7763;
+  color: #3b6244;
   font-size: 11px;
   padding: 9px 0;
   min-height: 36px;
@@ -882,7 +882,7 @@ h1 > span {
   margin: 12px 40px 0;
   padding: 19px 0 24px;
   font-size: 9px;
-  color: #929c8e;
+  color: #52634f;
   gap: 12px;
 }
 .footer-dot {
@@ -951,7 +951,7 @@ h1 > span {
 }
 .lavender {
   background: #eeebf7;
-  color: #8b79b3;
+  color: #65548d;
 }
 .yellow {
   background: #f8edcf;
@@ -973,7 +973,7 @@ h1 > span {
   display: block;
   font-size: 9px;
   font-style: normal;
-  color: #81907f;
+  color: #52634f;
   margin-top: 8px;
 }
 .radio-dot {
@@ -993,7 +993,7 @@ h1 > span {
   gap: 10px;
   margin-top: 3px;
   padding: 13px;
-  color: #899584;
+  color: #52634f;
 }
 .setup-note svg {
   width: 16px;
@@ -1025,7 +1025,7 @@ h1 > span {
   height: 39px;
   background: #f0f2e9;
   border-radius: 12px;
-  color: #7e9277;
+  color: #52634f;
 }
 .panel-heading h2 {
   font-size: 17px;
@@ -1056,7 +1056,7 @@ h1 > span {
   min-width: 0;
 }
 .setup-panel input::placeholder {
-  color: #9aa394;
+  color: #52634f;
 }
 .token-field {
   border: 0;
@@ -1088,7 +1088,7 @@ h1 > span {
   padding: 12px;
   font-size: 10px;
   line-height: 1.7;
-  color: #7b8b74;
+  color: #52634f;
   margin-top: 16px;
 }
 .info-note svg {
@@ -1104,7 +1104,7 @@ h1 > span {
   display: flex;
   align-items: center;
   gap: 7px;
-  color: #86907e;
+  color: #52634f;
   font-size: 9px;
   margin-bottom: 16px;
 }
@@ -1118,7 +1118,7 @@ h1 > span {
 .prototype-note {
   font-size: 9px;
   text-align: center;
-  color: #8b9485;
+  color: #52634f;
   line-height: 1.8;
   margin-top: 12px;
 }
@@ -1135,7 +1135,7 @@ h1 > span {
   padding: 10px;
   font-size: 11px;
   border-radius: 7px;
-  color: #7b8976;
+  color: #52634f;
 }
 .segmented button.selected {
   background: #fff;
@@ -1157,7 +1157,7 @@ h1 > span {
   border-radius: 12px;
   padding: 23px 20px;
   text-align: center;
-  color: #8b79b3;
+  color: #65548d;
 }
 .bluetooth-info > svg {
   width: 30px;
@@ -1242,14 +1242,14 @@ h1 > span {
   top: 10px;
   left: 10px;
   font-size: 9px;
-  color: #8a997f;
+  color: #52634f;
 }
 .lobby-disclaimer {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 10px;
-  color: #8c9684;
+  color: #52634f;
   line-height: 1.8;
 }
 .lobby-disclaimer svg {
@@ -1273,7 +1273,7 @@ h1 > span {
 }
 .lobby-summary > p {
   font-size: 11px;
-  color: #7b8b70;
+  color: #52634f;
   line-height: 1.9;
   margin-top: 15px;
 }
@@ -1290,7 +1290,7 @@ dl {
 }
 .lobby-summary dt,
 .property-prices dt {
-  color: #7c8c72;
+  color: #52634f;
 }
 dd {
   margin: 0;
@@ -1321,7 +1321,7 @@ dd {
   height: 34px;
   background: transparent;
   border-radius: 8px;
-  color: #8a9582;
+  color: #52634f;
 }
 .icon-button:hover {
   background: #edf1e5;
@@ -1364,7 +1364,7 @@ dd {
 .board-brand {
   font-weight: 700;
   font-size: 17px;
-  color: #91a67e;
+  color: #52634f;
   letter-spacing: -0.8px;
 }
 .board-center h1 {
@@ -1375,12 +1375,12 @@ dd {
 }
 .board-center p {
   font-size: 10px;
-  color: #92a080;
+  color: #52634f;
   margin-top: 7px;
 }
 .board-center-label {
   font-size: 8px;
-  color: #91a17f;
+  color: #52634f;
   letter-spacing: 1px;
   margin-top: 25px;
   border-top: 1px solid #d3ddc4;
@@ -1418,7 +1418,7 @@ dd {
 }
 .cell-price {
   font-size: clamp(5px, 0.5vw, 7px);
-  color: #7d8e72;
+  color: #52634f;
   margin-top: 2px;
 }
 .board-cell.special {
@@ -1429,7 +1429,7 @@ dd {
 }
 .cell-symbol {
   font-size: clamp(10px, 1.3vw, 19px);
-  color: #7b9670;
+  color: #52634f;
   line-height: 1;
 }
 .board-cell.current {
@@ -1449,7 +1449,7 @@ dd {
   justify-content: space-between;
   gap: 15px;
   font-size: 8px;
-  color: #91a087;
+  color: #52634f;
   margin-top: 16px;
   line-height: 1.8;
 }
@@ -1504,7 +1504,7 @@ dd {
   align-items: center;
   gap: 6px;
   font-size: 10px;
-  color: #638253;
+  color: #3b6244;
 }
 .turn-player {
   display: flex;
@@ -1535,7 +1535,7 @@ dd {
 .turn-player > div > span {
   font-size: 9px;
   display: block;
-  color: #89987e;
+  color: #52634f;
   margin-top: 5px;
 }
 .balance {
@@ -1544,7 +1544,7 @@ dd {
 }
 .balance small {
   font-size: 8px;
-  color: #8e9a83;
+  color: #52634f;
 }
 .balance strong {
   font-size: 20px !important;
@@ -1566,7 +1566,7 @@ dd {
 }
 .subsection-heading > span {
   font-size: 8px;
-  color: #97a08e;
+  color: #52634f;
 }
 .player-row {
   display: flex;
@@ -1596,7 +1596,7 @@ dd {
 .player-row small {
   display: block;
   font-size: 8px;
-  color: #95a08c;
+  color: #52634f;
   margin-top: 4px;
 }
 .player-row > b {
@@ -1614,7 +1614,7 @@ dd {
   display: flex;
   gap: 10px;
   padding: 9px 0;
-  color: #77886b;
+  color: #52634f;
   align-items: flex-start;
 }
 .activity-dot {
@@ -1633,7 +1633,7 @@ dd {
 .activity-panel small {
   font-size: 8px;
   display: block;
-  color: #9aa38f;
+  color: #52634f;
   margin-top: 4px;
 }
 dialog {
@@ -1675,7 +1675,7 @@ dialog h2 {
   margin: 15px 0;
   font-size: 12px;
   line-height: 1.85;
-  color: #78836f;
+  color: #52634f;
 }
 .rules-list strong {
   color: var(--ink);
@@ -2227,7 +2227,7 @@ dialog > .button {
     flex-direction: column;
     gap: 5px;
     background: none;
-    color: #71856a;
+    color: #52634f;
     padding: 3px 15px;
     font-size: 8px;
     min-width: 72px;
@@ -2591,7 +2591,7 @@ dialog > .button {
   display: block;
   margin-top: 4px;
   font-size: 9px;
-  color: #7c8974;
+  color: #52634f;
 }
 .photo-attribution a {
   text-decoration: underline;
@@ -2712,7 +2712,7 @@ dialog .location-figure + .tag + h2 {
 }
 .center-turn {
   font-size: 9px;
-  color: #708368;
+  color: #52634f;
   margin-top: 14px;
 }
 .action-row {
@@ -2741,7 +2741,7 @@ dialog .location-figure + .tag + h2 {
 .decision-box p {
   font-size: 11px;
   line-height: 1.8;
-  color: #76866e;
+  color: #52634f;
   margin: 9px 0 14px;
 }
 .decision-box .button {
@@ -2773,7 +2773,7 @@ dialog .location-figure + .tag + h2 {
   font-size: 10px;
   line-height: 1.8;
   margin: 6px 0;
-  color: #718269;
+  color: #52634f;
 }
 .assets-list {
   margin-top: 20px;
@@ -2976,7 +2976,7 @@ dialog .location-figure + .tag + h2 {
 }
 .resume-card p {
   font-size: 10px;
-  color: #7d8e72;
+  color: #52634f;
   margin-top: 7px;
   line-height: 1.7;
 }
@@ -2985,7 +2985,7 @@ dialog .location-figure + .tag + h2 {
 }
 .save-indicator {
   font-size: 10px;
-  color: #7b8e71;
+  color: #52634f;
 }
 @media (max-width: 720px) {
   .resume-card {
@@ -3065,4 +3065,27 @@ select {
   margin: 0 8px;
   padding: 6px;
   text-decoration: underline;
+}
+.cell-owner {
+  display: grid;
+  place-items: center;
+  font-size: 7px;
+  font-weight: 700;
+  color: white;
+  width: 12px;
+  height: 12px;
+  border: 1px solid #fff;
+  border-radius: 50%;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

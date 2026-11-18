@@ -27,6 +27,7 @@ export interface LobbyView {
   }[];
 }
 export type RoomErrorCode =
+  | "SERVER_CLOSING"
   | "INVALID_INPUT"
   | "SERVER_ERROR"
   | "INVALID_ROOM"

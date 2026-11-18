@@ -1,6 +1,7 @@
 import { savedGameSchema } from "./save-schema.js";
 import type { SavedGame } from "./save-schema.js";
 export type SaveErrorCode =
+  | "STALE_SAVE"
   | "LEASE_LOST"
   | "INCOMPATIBLE"
   | "CORRUPT"
@@ -40,6 +41,7 @@ function request<T>(value: IDBRequest<T>): Promise<T> {
 }
 export function createSaveStore(name = "nha-choi"): SaveStore {
   const owner = crypto.randomUUID();
+  let acquired = false;
   let opening: Promise<IDBDatabase> | undefined;
   function open() {
     return (opening ??= new Promise<IDBDatabase>((resolve, reject) => {
@@ -78,6 +80,15 @@ export function createSaveStore(name = "nha-choi"): SaveStore {
   }
   function canWrite(lease: Lease | undefined) {
     if (
+      acquired &&
+      lease &&
+      typeof lease.owner === "string" &&
+      Number.isFinite(lease.expires) &&
+      lease.owner !== owner &&
+      lease.expires <= Date.now()
+    )
+      throw new SaveError("STALE_SAVE");
+    if (
       !lease ||
       typeof lease.owner !== "string" ||
       !lease.owner.length ||
@@ -99,18 +110,24 @@ export function createSaveStore(name = "nha-choi"): SaveStore {
       const existing = savedGameSchema.safeParse(current);
       if (!replace && existing.success && existing.data.gameId !== save.gameId)
         throw new SaveError("SAVE_EXISTS");
-      store.put({ owner, expires: Date.now() + LEASE_MS }, "lease");
-      if (
-        !replace &&
-        existing.success &&
-        existing.data.revision >= save.revision
-      )
-        return;
+      if (!replace && existing.success) {
+        if (
+          existing.data.revision > save.revision ||
+          (existing.data.revision === save.revision &&
+            (JSON.stringify(existing.data.state) !==
+              JSON.stringify(save.state) ||
+              existing.data.humanId !== save.humanId))
+        )
+          throw new SaveError("STALE_SAVE");
+        store.put({ owner, expires: Date.now() + LEASE_MS }, "lease");
+        if (existing.data.revision === save.revision) return;
+      } else store.put({ owner, expires: Date.now() + LEASE_MS }, "lease");
       if (current !== undefined && existing.success)
         store.put(current, "previous");
       else if (replace && current !== undefined) store.put(current, "previous");
       store.put(save, "current");
     });
+    acquired = true;
   }
   return {
     load() {
@@ -135,18 +152,20 @@ export function createSaveStore(name = "nha-choi"): SaveStore {
     replace(save) {
       return write(save, true);
     },
-    claim() {
-      return transaction("readwrite", async (store) => {
+    async claim() {
+      const claimed = await transaction("readwrite", async (store) => {
         const lease = (await request(store.get("lease"))) as Lease | undefined;
         if (!canWrite(lease)) return false;
         store.put({ owner, expires: Date.now() + LEASE_MS }, "lease");
         return true;
       });
+      if (claimed) acquired = true;
+      return claimed;
     },
     release() {
       return transaction("readwrite", async (store) => {
         const lease = (await request(store.get("lease"))) as Lease | undefined;
-        if (lease?.owner === owner) store.delete("lease");
+        if (lease?.owner === owner) store.put({ owner, expires: 0 }, "lease");
       });
     },
     remove() {

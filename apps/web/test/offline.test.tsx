@@ -76,3 +76,39 @@ it("resume_restores_debt_auction_jail_and_bot_turn_without_replaying_actions", a
     vi.useRealTimers();
   }
 });
+it("bots_answer_a_human_debtors_offer_before_waiting_for_the_debtor", async () => {
+  vi.useFakeTimers();
+  try {
+    const state = makeState();
+    state.phase = "debt";
+    state.debt = { payer: "p1", payee: "bank", amount: 40 };
+    state.players[0]!.cash = 0;
+    state.board[1]!.owner = "p1";
+    const session = createOfflineSession(
+      { human: state.players[0]!, botCount: 1 },
+      makeSavedGame(state, "p1"),
+    );
+    expect(
+      (
+        await session.send({
+          protocolVersion: 1,
+          gameId: state.gameId,
+          commandId: crypto.randomUUID(),
+          expectedRevision: 0,
+          action: {
+            type: "offer-trade",
+            to: "p2",
+            give: { cash: 0, spaceIds: [1], jailCards: [] },
+            receive: { cash: 40, spaceIds: [], jailCards: [] },
+          },
+        })
+      ).ok,
+    ).toBe(true);
+    await vi.advanceTimersByTimeAsync(120);
+    expect(session.snapshot().board[1]!.owner).toBe("p2");
+    expect(session.snapshot().debt).toBeNull();
+    await session.close();
+  } finally {
+    vi.useRealTimers();
+  }
+});

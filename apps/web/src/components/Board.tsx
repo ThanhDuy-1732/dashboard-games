@@ -93,7 +93,6 @@ export function Board({
                   "--strip": space.color ?? "#9bb4a0",
                 } as CSSProperties
               }
-              aria-label={`${space.name}${property.owner ? `, chủ ${view.players[ownerIndex]!.name}` : ""}${property.mortgaged ? ", đang thế chấp" : ""}`}
               onClick={() => onSelect(space.id)}
             >
               {photo ? (
@@ -104,31 +103,46 @@ export function Board({
                   draggable={false}
                 />
               ) : (
-                <span className="cell-symbol">
+                <span className="cell-symbol" aria-hidden="true">
                   {SYMBOLS[space.kind] ?? "♜"}
                 </span>
               )}
               <span className="cell-name">{space.name}</span>
               {space.price && <span className="cell-price">{space.price}</span>}
+              <span className="sr-only">
+                {property.owner
+                  ? `, chủ ${view.players[ownerIndex]!.name}`
+                  : ", chưa có chủ"}
+                {property.mortgaged ? ", đang thế chấp" : ""}
+                {property.buildings
+                  ? `, ${property.buildings === 5 ? "khách sạn" : `${property.buildings} nhà`}`
+                  : ""}
+                {visitors.length
+                  ? `, có ${visitors.map((p) => p.name).join(", ")}`
+                  : ""}
+              </span>
               {ownerIndex >= 0 && (
                 <span
                   className="cell-owner"
                   style={{ background: PLAYER_COLORS[ownerIndex] }}
                   title={`Chủ: ${view.players[ownerIndex]!.name}`}
-                />
+                  aria-hidden="true"
+                >
+                  {view.players[ownerIndex]!.name[0]}
+                </span>
               )}
               {property.buildings > 0 && (
-                <span className="cell-buildings">
+                <span className="cell-buildings" aria-hidden="true">
                   {property.buildings === 5 ? "🏨" : `⌂${property.buildings}`}
                 </span>
               )}
               {property.mortgaged && (
-                <span className="cell-mortgage" aria-label="Đã thế chấp">
+                <span className="cell-mortgage" aria-hidden="true">
                   M
                 </span>
               )}
               {visitors.length > 0 && (
-                <span className="cell-pawns">
+                <span className="cell-pawns" aria-hidden="true">
                   {visitors.map((p) => (
                     <span key={p.id} title={p.name}>
                       {TOKEN_ART[p.token]}

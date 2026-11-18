@@ -23,9 +23,10 @@
     "build:shared": "npm run build --workspace @nha-choi/game-core && npm run build --workspace @nha-choi/protocol",
     "predev:web": "npm run build:shared",
     "predev:server": "npm run build:shared",
-    "pretest:e2e": "npm run build:web"
+    "pretest:e2e": "npm run build"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@playwright/test": "1.65.1",
     "@testing-library/react": "16.3.3",
     "@testing-library/user-event": "14.6.12",

@@ -177,6 +177,7 @@ export async function createGameServer({
   return {
     url: `http://${host}:${address.port}`,
     rooms,
+    beginDrain: () => rooms.closeAll(),
     close: () =>
       new Promise<void>((resolve) => {
         clearInterval(interval);

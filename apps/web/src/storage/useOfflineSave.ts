@@ -5,6 +5,8 @@ import { makeSavedGame } from "./save-schema.js";
 import type { SavedGame } from "./save-schema.js";
 export function saveErrorMessage(error: unknown): string {
   if (error instanceof SaveError) {
+    if (error.code === "STALE_SAVE")
+      return "Ván đã thay đổi ở tab khác. Hãy tải lại trang rồi tiếp tục bản lưu mới nhất; ván đang mở sẽ không ghi đè tiến độ đó.";
     if (error.code === "LEASE_LOST")
       return "Ván đang được mở ở tab khác. Nếu tab đó đã đóng, hãy thử lại sau vài giây.";
     if (error.code === "INCOMPATIBLE")

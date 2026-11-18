@@ -31,7 +31,11 @@ export const gameActionSchema: z.ZodType<GameAction> = z.union([
       "end-turn",
     ]),
   }),
-  z.strictObject({ type: z.literal("bid"), amount: moneySchema.min(1) }),
+  z.strictObject({
+    type: z.literal("bid"),
+    amount: moneySchema.min(1),
+    spaceId: spaceId.optional(),
+  }),
   z.strictObject({
     type: z.enum(["build", "sell-building", "mortgage", "unmortgage"]),
     spaceId,

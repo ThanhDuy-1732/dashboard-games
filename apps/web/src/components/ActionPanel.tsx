@@ -28,10 +28,16 @@ export function ActionPanel({
   onAssets: () => void;
   onTrade: () => void;
 }) {
+  const [bidTarget, setBidTarget] = useState<number | null>(null);
   const [bid, setBid] = useState(0);
   const self = view.players.find((p) => p.id === view.viewerId)!;
   const can = (type: GameAction["type"]) =>
     view.allowedActions.find((a) => a.type === type);
+  const bidSpaces = can("bid")?.spaceIds ?? [];
+  const target =
+    bidTarget !== null && bidSpaces.includes(bidTarget)
+      ? bidTarget
+      : (view.auction?.targets?.[self.id] ?? bidSpaces[0]);
   const current = view.players.find((p) => p.id === view.turn.playerId)!;
   const incoming = view.trades.filter(
     (t) => t.to === self.id && can("accept-trade")?.tradeIds?.includes(t.id),
@@ -110,9 +116,7 @@ export function ActionPanel({
       )}
       {view.phase === "auction" && (
         <div className="decision-box">
-          <LocationPhoto
-            spaceId={view.auction!.targets?.[self.id] ?? view.auction!.spaceId}
-          />
+          <LocationPhoto spaceId={target ?? view.auction!.spaceId} />
           <h3>
             Đấu giá{" "}
             {view.auction!.kind === "property"
@@ -134,9 +138,30 @@ export function ActionPanel({
                 onAction({
                   type: "bid",
                   amount: Math.max(bid, can("bid")!.minimum!),
+                  ...(view.auction!.kind !== "property"
+                    ? { spaceId: target }
+                    : {}),
                 });
               }}
             >
+              {view.auction!.kind !== "property" && (
+                <>
+                  <label className="field-label" htmlFor="building-target">
+                    Xây công trình tại đây nếu thắng
+                  </label>
+                  <select
+                    id="building-target"
+                    value={target}
+                    onChange={(e) => setBidTarget(Number(e.target.value))}
+                  >
+                    {bidSpaces.map((id) => (
+                      <option value={id} key={id}>
+                        {BOARD[id]!.name}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              )}
               <label className="field-label" htmlFor="bid">
                 Giá bạn trả
               </label>
