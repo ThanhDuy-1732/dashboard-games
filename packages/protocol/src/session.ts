@@ -1,6 +1,7 @@
 import type { PlayerView, PlayerId, Token } from "@nha-choi/game-core";
 import type { CommandEnvelope, CommandReply } from "./messages.js";
 export interface SessionUpdate {
+  canEndInterrupted?: boolean;
   connection: "connected" | "reconnecting" | "paused" | "closed";
   view: PlayerView | null;
   reason?: string;
@@ -11,6 +12,8 @@ export interface GameSession {
   close(): Promise<void>;
 }
 export interface LobbyView {
+  started: boolean;
+  closed: boolean;
   roomId: string;
   code?: string;
   hostId: PlayerId;
@@ -24,6 +27,8 @@ export interface LobbyView {
   }[];
 }
 export type RoomErrorCode =
+  | "INVALID_INPUT"
+  | "SERVER_ERROR"
   | "INVALID_ROOM"
   | "ROOM_FULL"
   | "TOKEN_TAKEN"
@@ -33,9 +38,10 @@ export type RoomErrorCode =
   | "NOT_AUTHORIZED"
   | "RATE_LIMITED";
 export type RoomReply =
-  | { ok: true; room: LobbyView; selfId: PlayerId; resumeToken: string }
+  | { ok: true; room: LobbyView; selfId: PlayerId; resumeToken?: string }
   | { ok: false; code: RoomErrorCode };
 export interface RoomSession extends GameSession {
+  endInterrupted(): Promise<RoomReply>;
   setReady(ready: boolean): Promise<RoomReply>;
   startGame(): Promise<RoomReply>;
   subscribeLobby(listener: (view: LobbyView) => void): () => void;

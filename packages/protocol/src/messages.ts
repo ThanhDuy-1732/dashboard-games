@@ -65,6 +65,7 @@ export const commandSchema = z.strictObject({
 });
 export type CommandEnvelope = z.infer<typeof commandSchema>;
 export type CommandErrorCode =
+  | "RATE_LIMITED"
   | "STALE_REVISION"
   | "NOT_AUTHORIZED"
   | "INVALID_ACTION"

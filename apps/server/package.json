@@ -17,6 +17,7 @@
   "dependencies": {
     "@nha-choi/game-core": "*",
     "@nha-choi/protocol": "*",
-    "socket.io": "4.8.4"
+    "socket.io": "4.8.4",
+    "zod": "4.6.7"
   }
 }
