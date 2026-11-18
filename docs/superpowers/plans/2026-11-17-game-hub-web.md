@@ -66,10 +66,10 @@ Không nhất thiết tạo file rỗng trước: mỗi task tạo đúng file n
 
 **Interfaces:** `createGame({gameId,players},random)` và `applyAction(state,actor,action,random)` theo hợp đồng; không mutate input. RandomSource giả cho test; nguồn thật do caller cấp. Thẻ có discriminated effects và continuation để nợ/di chuyển dây chuyền không mất lượt.
 
-- [ ] **RED:** `starts_with_1500_and_2_to_6_players`; `passes_go_once_per_crossing`; `third_double_goes_to_jail_without_moving`; `jail_double_does_not_grant_extra_roll`; `third_failed_jail_roll_requires_50_then_moves`; `card_moves_back_without_salary`; `held_jail_card_leaves_deck_until_used`; actor ngoài quyền bị từ chối. Run: `npx vitest run packages/game-core/test/movement.test.ts`.
-- [ ] **Implement:** tạo lượt đầu bằng gieo hai xúc xắc cho mỗi người, hòa thì những người hòa gieo lại; xáo mỗi bộ bài một lần, rút rồi đưa cuối bộ trừ thẻ được giữ. Xử lý 3 cách ra tù, đến thăm khác bị giam, thẻ đi tới ga/tiện ích, thẻ chuyển tiền nhiều người, thuế và Free Parking không thưởng; mỗi bước có GameEvent.
-- [ ] **GREEN:** chạy lại `movement.test.ts` và các test A1; assert dice 1–6, revision chỉ tăng khi action hợp lệ, vị trí 0–39, state lỗi không đổi.
-- [ ] **Checkpoint:** commit `feat: implement turns movement cards and jail`.
+- [x] **RED:** `starts_with_1500_and_2_to_6_players`; `passes_go_once_per_crossing`; `third_double_goes_to_jail_without_moving`; `jail_double_does_not_grant_extra_roll`; `third_failed_jail_roll_requires_50_then_moves`; `card_moves_back_without_salary`; `held_jail_card_leaves_deck_until_used`; actor ngoài quyền bị từ chối. Run: `npx vitest run packages/game-core/test/movement.test.ts`.
+- [x] **Implement:** tạo lượt đầu bằng gieo hai xúc xắc cho mỗi người, hòa thì những người hòa gieo lại; xáo mỗi bộ bài một lần, rút rồi đưa cuối bộ trừ thẻ được giữ. Xử lý 3 cách ra tù, đến thăm khác bị giam, thẻ đi tới ga/tiện ích, thẻ chuyển tiền nhiều người, thuế và Free Parking không thưởng; mỗi bước có GameEvent.
+- [x] **GREEN:** chạy lại `movement.test.ts` và các test A1; assert dice 1–6, revision chỉ tăng khi action hợp lệ, vị trí 0–39, state lỗi không đổi.
+- [x] **Checkpoint:** commit `feat: implement turns movement cards and jail`.
 
 ### Task 3: A3 — Mua đất, tiền thuê, đấu giá và thanh toán nợ
 

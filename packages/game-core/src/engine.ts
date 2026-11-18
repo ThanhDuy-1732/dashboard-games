@@ -1,9 +1,9 @@
 import {BOARD} from './board.js';
 import {CHANCE,COMMUNITY} from './cards.js';
 import type {GameState,GameAction,PlayerConfig,PlayerId,RandomSource,ActionResult} from './types.js';
-import {dice,roll} from './movement.js';
+import {dice,roll,runEffects} from './movement.js';
 import {playerById,requireRule,RuleViolation} from './rules.js';
-import {settlePayment} from './economy.js';
+import {auctionAction,buyProperty,settlePayment,startAuction} from './economy.js';
 function shuffled(ids:string[],random:RandomSource){
  for(let i=ids.length-1;i>0;i--){const j=random.int(0,i);requireRule(Number.isInteger(j)&&j>=0&&j<=i,'INVALID_GAME');[ids[i],ids[j]]=[ids[j]!,ids[i]!];}return ids;
 }
@@ -25,6 +25,10 @@ export function applyAction(input:GameState,actor:PlayerId,action:GameAction,ran
   const player=playerById(state,actor);requireRule(!player.bankrupt,'NOT_AUTHORIZED');requireRule(state.phase!=='finished');
   switch(action.type){
    case 'roll':roll(state,actor,random);break;
+   case 'buy-property':buyProperty(state,actor);runEffects(state,random);break;
+   case 'decline-property':requireRule(state.turn.playerId===actor,'NOT_AUTHORIZED');requireRule(state.phase==='awaiting-purchase'&&state.purchase!==null);startAuction(state,state.purchase);break;
+   case 'bid':if(auctionAction(state,actor,action.amount))runEffects(state,random);break;
+   case 'pass-auction':if(auctionAction(state,actor))runEffects(state,random);break;
    case 'pay-jail':
     requireRule(state.turn.playerId===actor,'NOT_AUTHORIZED');requireRule(state.phase==='jail-choice'&&player.jail);requireRule(player.cash>=50,'INSUFFICIENT_FUNDS');
     settlePayment(state,actor,'bank',50);player.jail=null;state.phase='awaiting-roll';break;

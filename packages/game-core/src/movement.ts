@@ -2,7 +2,7 @@ import {BOARD} from './board.js';
 import {CHANCE,COMMUNITY} from './cards.js';
 import type {GameState,PlayerId,RandomSource,CardEffect,Effect} from './types.js';
 import {playerById,recordEvent,requireRule} from './rules.js';
-import {settlePayment} from './economy.js';
+import {getRent,settlePayment} from './economy.js';
 
 export function dice(random:RandomSource):[number,number]{
  const pair:[number,number]=[random.int(1,6),random.int(1,6)];
@@ -27,12 +27,17 @@ function applyCard(state:GameState,id:PlayerId,effect:CardEffect,cardId:string){
   case 'jail-card':player.jailCards.push(cardId);break;
  }
 }
-function land(state:GameState,effect:Extract<Effect,{type:'land'}>,_random:RandomSource){
+function land(state:GameState,effect:Extract<Effect,{type:'land'}>,random:RandomSource){
  const player=playerById(state,effect.playerId);const space=BOARD[player.position]!;
  recordEvent(state,'land',`${player.name} đến ${space.name}.`,{playerId:player.id,spaceId:space.id});
  if(['street','station','utility'].includes(space.kind)){
   const property=state.board[space.id]!;
   if(property.owner===null){state.purchase=space.id;state.phase='awaiting-purchase';}
+  else if(property.owner!==player.id&&!property.mortgaged){
+   let total=(state.turn.dice?.[0]??0)+(state.turn.dice?.[1]??0);
+   if(space.kind==='utility'&&effect.utilityMultiplier){const pair=dice(random);total=pair[0]+pair[1];recordEvent(state,'utility-roll',`Gieo tính tiền tiện ích: ${total}.`,{playerId:player.id,amount:total});}
+   state.pendingEffects.unshift({type:'payment',payer:player.id,payee:property.owner,amount:getRent(state,space.id,total,effect)});
+  }
  }else if(space.kind==='tax')state.pendingEffects.unshift({type:'payment',payer:player.id,payee:'bank',amount:space.tax!});
  else if(space.kind==='go-to-jail')sendToJail(state,player.id);
  else if(space.kind==='chance'||space.kind==='community'){
