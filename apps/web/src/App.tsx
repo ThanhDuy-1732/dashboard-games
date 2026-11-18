@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import type { GameAction, PlayerConfig } from "@nha-choi/game-core";
+import type { LobbyView } from "@nha-choi/protocol";
+import {
+  connectOnlineRoom,
+  resumeOnlineRoom,
+  hasOnlineRoom,
+  ONLINE_URL,
+  roomError,
+} from "./session/online.js";
+import type { OnlineSession } from "./session/online.js";
+import { Lobby } from "./screens/Lobby.js";
+import type { GameAction, PlayerConfig, Token } from "@nha-choi/game-core";
 import { Home } from "./screens/Home.js";
 import { Setup } from "./screens/Setup.js";
 import { Game } from "./screens/Game.js";
@@ -23,9 +33,42 @@ const ERROR_TEXT: Record<string, string> = {
 };
 export function App() {
   const [page, setPage] = useState<"home" | "setup" | "game">("home");
-  const [session, setSession] = useState<OfflineSession | null>(null);
+  const [session, setSession] = useState<OfflineSession | OnlineSession | null>(
+    null,
+  );
   const update = useGameSession(session);
-  const persistence = useOfflineSave(session);
+  const online = session && "selfId" in session ? session : null;
+  const offline = session && "snapshot" in session ? session : null;
+  const persistence = useOfflineSave(offline);
+  const [lobby, setLobby] = useState<LobbyView | null>(null);
+  useEffect(() => {
+    setLobby(null);
+    if (online) return online.subscribeLobby(setLobby);
+  }, [online]);
+  async function joinOnline(input?: {
+    name: string;
+    token: Token;
+    code?: string;
+  }) {
+    if (operation.current) return;
+    operation.current = true;
+    setPending(true);
+    setError("");
+    try {
+      const created = await (input
+        ? connectOnlineRoom({ serverUrl: ONLINE_URL, ...input })
+        : resumeOnlineRoom());
+      setSession(created);
+      setPage("game");
+    } catch (reason) {
+      setError(
+        reason instanceof Error ? reason.message : "Không kết nối được phòng.",
+      );
+    } finally {
+      operation.current = false;
+      setPending(false);
+    }
+  }
   const operation = useRef(false);
   const [newGame, setNewGame] = useState<{
     human: PlayerConfig;
@@ -128,13 +171,16 @@ export function App() {
     operation.current = true;
     setPending(true);
     try {
-      session.pause("Đang lưu ván trước khi rời.");
-      await persistence.write(session);
+      if (offline) {
+        offline.pause("Đang lưu ván trước khi rời.");
+        await persistence.write(offline);
+      }
+      if (online) await online.leaveRoom();
       await session.close();
       setSession(null);
       setPage(next);
       setLeave(null);
-      await persistence.store.release();
+      if (offline) await persistence.store.release();
     } catch (reason) {
       setError(saveErrorMessage(reason));
     } finally {
@@ -171,7 +217,8 @@ export function App() {
       setPending(false);
     }
   }
-  const finished = update?.view?.phase === "finished";
+  const finished =
+    update?.view?.phase === "finished" || Boolean(online && lobby?.closed);
   return (
     <>
       <div className="app-shell">
@@ -258,7 +305,7 @@ export function App() {
               </strong>
             </div>
             <div className="header-tools">
-              {session && (
+              {offline && (
                 <span className="save-indicator">
                   {persistence.error
                     ? "Chưa lưu"
@@ -311,11 +358,30 @@ export function App() {
                 </button>
               </div>
             )}
-            {update?.connection === "paused" && !persistence.error && (
-              <p className="app-error" role="alert">
-                {update.reason ?? "Ván đang tạm dừng."}
-              </p>
-            )}
+            {update &&
+              update.connection !== "connected" &&
+              !persistence.error && (
+                <p className="app-error" role="alert">
+                  {update.reason ?? "Ván đang tạm dừng."}
+                  {online && update.canEndInterrupted && (
+                    <button
+                      className="button secondary"
+                      onClick={() => {
+                        void online
+                          .endInterrupted()
+                          .then((reply) => {
+                            if (!reply.ok) setError(roomError(reply.code));
+                          })
+                          .catch(() =>
+                            setError("Chưa gửi được yêu cầu kết thúc."),
+                          );
+                      }}
+                    >
+                      Kết thúc ván không người thắng
+                    </button>
+                  )}
+                </p>
+              )}
             {page === "home" && (
               <Home
                 onPlay={() => navigate("setup")}
@@ -327,13 +393,24 @@ export function App() {
             )}
             {page === "setup" && (
               <Setup
+                onOnline={(input) => void joinOnline(input)}
+                onResumeOnline={
+                  hasOnlineRoom() ? () => void joinOnline() : undefined
+                }
                 onStart={start}
                 onBack={() => navigate("home")}
                 busy={pending}
               />
             )}
             {page === "game" &&
-              (!update?.view ? (
+              (online && lobby && !lobby.started && !lobby.closed ? (
+                <Lobby
+                  room={lobby}
+                  session={online}
+                  connected={update?.connection === "connected"}
+                  onLeave={() => setLeave("home")}
+                />
+              ) : !update?.view ? (
                 <p className="empty-message">Đang chuẩn bị bàn chơi…</p>
               ) : finished ? (
                 <Results
@@ -417,14 +494,18 @@ export function App() {
         <Dialog title="Rời ván đang chơi?" onClose={() => setLeave(null)}>
           <h2>Rời ván đang chơi?</h2>
           <p className="dialog-lead">
-            Ván sẽ được lưu trên thiết bị này. Bạn có thể tiếp tục từ trang chủ.
+            {online
+              ? lobby?.started
+                ? "Rời phòng sẽ tạm dừng ván cho mọi người. Bạn có thể kết nối lại bằng tab này. Sau 120 giây, người còn lại được quyền kết thúc ván không người thắng."
+                : "Bạn sẽ rời ghế trong phòng chờ."
+              : "Ván sẽ được lưu trên thiết bị này. Bạn có thể tiếp tục từ trang chủ."}
           </p>
           <button
             className="button primary full"
             disabled={pending}
             onClick={() => void exit(leave)}
           >
-            Lưu và rời ván
+            {online ? "Rời phòng" : "Lưu và rời ván"}
           </button>
           <button className="text-button full" onClick={() => setLeave(null)}>
             Tiếp tục chơi

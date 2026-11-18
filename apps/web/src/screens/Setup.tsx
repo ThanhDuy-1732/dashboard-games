@@ -5,18 +5,28 @@ import { Icon } from "../components/Icon.js";
 export function Setup({
   onStart,
   onBack,
+  onOnline,
+  onResumeOnline,
   busy = false,
 }: {
   onStart: (human: PlayerConfig, botCount: number) => void;
   onBack: () => void;
+  onOnline?: (input: { name: string; token: Token; code?: string }) => void;
+  onResumeOnline?: () => void;
   busy?: boolean;
 }) {
   const [mode, setMode] = useState<"offline" | "online" | "bluetooth">(
-    "offline",
+    new URLSearchParams(location.search).has("room") ? "online" : "offline",
   );
   const [name, setName] = useState("");
   const [token, setToken] = useState<Token>("car");
   const [bots, setBots] = useState(3);
+  const [roomCode, setRoomCode] = useState(
+    new URLSearchParams(location.search).get("room") ?? "",
+  );
+  const [joining, setJoining] = useState(
+    Boolean(new URLSearchParams(location.search).get("room")),
+  );
   const [error, setError] = useState("");
   return (
     <section className="screen">
@@ -47,7 +57,7 @@ export function Setup({
                 icon: "globe",
                 name: "Chơi online",
                 description: "Mời bạn bè vào phòng, dù đang ở đâu.",
-                note: "Đang triển khai",
+                note: "2–6 người · Mời bằng mã phòng",
                 color: "lavender",
               },
               {
@@ -87,6 +97,22 @@ export function Setup({
               setError("Nhập tên của bạn, từ 1 đến 20 ký tự.");
               return;
             }
+            if (mode === "online") {
+              if (
+                joining &&
+                !/^[A-Z0-9]{6}$/.test(roomCode.trim().toUpperCase())
+              ) {
+                setError("Nhập mã phòng gồm 6 chữ hoặc số.");
+                return;
+              }
+              setError("");
+              onOnline?.({
+                name: name.trim(),
+                token,
+                ...(joining ? { code: roomCode.trim().toUpperCase() } : {}),
+              });
+              return;
+            }
             if (!Number.isInteger(bots) || bots < 1 || bots > 5) {
               setError("Chọn từ 1 đến 5 đối thủ máy.");
               return;
@@ -107,11 +133,10 @@ export function Setup({
               <p>Chọn quân cờ, rồi để máy vào bàn cùng bạn.</p>
             </div>
           </div>
-          {mode !== "offline" ? (
+          {mode === "bluetooth" ? (
             <div className="info-note">
-              {mode === "bluetooth"
-                ? "Mở ứng dụng Android hoặc iOS để chơi qua Bluetooth. Bản web không kết nối Bluetooth giữa các điện thoại."
-                : "Chế độ online đang được triển khai. Bạn có thể chơi với máy ngay bây giờ."}
+              Mở ứng dụng Android hoặc iOS để chơi qua Bluetooth. Bản web không
+              kết nối Bluetooth giữa các điện thoại.
             </div>
           ) : (
             <>
@@ -143,21 +168,66 @@ export function Setup({
                   ))}
                 </div>
               </fieldset>
-              <label className="field-label" htmlFor="bot-count">
-                Số đối thủ máy
-              </label>
-              <input
-                id="bot-count"
-                type="number"
-                min={1}
-                max={5}
-                value={bots}
-                onChange={(e) => setBots(Number(e.target.value))}
-              />
-              <div className="info-note">
-                <Icon name="bot" />
-                Máy chơi theo cùng bộ luật với bạn.
-              </div>
+              {mode === "offline" ? (
+                <>
+                  <label className="field-label" htmlFor="bot-count">
+                    Số đối thủ máy
+                  </label>
+                  <input
+                    id="bot-count"
+                    type="number"
+                    min={1}
+                    max={5}
+                    value={bots}
+                    onChange={(e) => setBots(Number(e.target.value))}
+                  />
+                  <div className="info-note">
+                    <Icon name="bot" />
+                    Máy chơi theo cùng bộ luật với bạn.
+                  </div>
+                </>
+              ) : (
+                <>
+                  <label className="field-label" htmlFor="room-choice">
+                    Phòng chơi
+                  </label>
+                  <select
+                    id="room-choice"
+                    value={joining ? "join" : "create"}
+                    onChange={(e) => setJoining(e.target.value === "join")}
+                  >
+                    <option value="create">Tạo phòng mới</option>
+                    <option value="join">Vào phòng bằng mã</option>
+                  </select>
+                  {joining && (
+                    <>
+                      <label className="field-label" htmlFor="room-code">
+                        Mã phòng
+                      </label>
+                      <input
+                        id="room-code"
+                        value={roomCode}
+                        maxLength={6}
+                        autoCapitalize="characters"
+                        onChange={(e) =>
+                          setRoomCode(e.target.value.toUpperCase())
+                        }
+                        placeholder="VD: ABC123"
+                      />
+                    </>
+                  )}
+                  {onResumeOnline && (
+                    <button
+                      type="button"
+                      className="text-button full"
+                      disabled={busy}
+                      onClick={onResumeOnline}
+                    >
+                      Kết nối lại phòng trước
+                    </button>
+                  )}
+                </>
+              )}
             </>
           )}
           {error && (
@@ -173,9 +243,14 @@ export function Setup({
             <button
               className="button primary full"
               type="submit"
-              disabled={mode !== "offline" || busy}
+              disabled={mode === "bluetooth" || busy}
             >
-              Bắt đầu ván <Icon name="arrow" />
+              {mode === "online"
+                ? joining
+                  ? "Vào phòng"
+                  : "Tạo phòng"
+                : "Bắt đầu ván"}{" "}
+              <Icon name="arrow" />
             </button>
           </div>
         </form>

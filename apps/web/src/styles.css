@@ -3007,3 +3007,48 @@ dialog .location-figure + .tag + h2 {
     gap: 10px;
   }
 }
+.lobby-layout {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 24px;
+  max-width: 1000px;
+}
+.room-code {
+  font-size: 44px;
+  letter-spacing: 0.14em;
+  color: var(--green);
+}
+.lobby-players {
+  list-style: none;
+  padding: 0;
+}
+.lobby-players li {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid #e6e8e2;
+}
+.lobby-players small {
+  display: block;
+  margin-top: 5px;
+}
+.lobby-token {
+  font-size: 28px;
+}
+select {
+  width: 100%;
+  padding: 13px;
+  border: 1px solid #d8ded4;
+  border-radius: 12px;
+  background: white;
+  font: inherit;
+}
+.setup-panel > .button + .button {
+  margin-top: 12px;
+}
+@media (max-width: 700px) {
+  .lobby-layout {
+    grid-template-columns: 1fr;
+  }
+}

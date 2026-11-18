@@ -22,14 +22,20 @@ export function Game({
   const [assets, setAssets] = useState(false);
   const [trade, setTrade] = useState(false);
   return (
-    <section className="screen">
+    <section
+      className="screen"
+      data-revision={view.revision}
+      data-viewer-id={view.viewerId}
+    >
       <div className="game-topline">
         <button className="back-link" onClick={onLeave}>
           <Icon name="back" />
           Rời bàn chơi
         </button>
         <div className="game-top-tags">
-          <span className="tag green">Đấu máy</span>
+          <span className="tag green">
+            {view.players.some((p) => p.kind === "bot") ? "Đấu máy" : "Online"}
+          </span>
           <span className="tag">Luật truyền thống</span>
         </div>
       </div>

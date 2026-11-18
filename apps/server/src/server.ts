@@ -45,6 +45,17 @@ export async function createGameServer({
       callback(null, origin === undefined || origins.includes(origin));
     },
   });
+  io.use((socket, next) => {
+    const auth = socket.handshake.auth;
+    if (
+      (auth.protocolVersion !== undefined && auth.protocolVersion !== 1) ||
+      (auth.rulesVersion !== undefined && auth.rulesVersion !== "classic-v1")
+    ) {
+      next(new Error("PROTOCOL_MISMATCH"));
+      return;
+    }
+    next();
+  });
   const rooms = new Rooms(io, random, now);
   const limits = new Map<string, { count: number; start: number }>();
   function consume(key: string, max: number, window: number) {
