@@ -33,8 +33,8 @@ Bộ luật cố định cho Nhà Chơi. Cùng dữ liệu và cách phân xử 
 - Chỉ xây khi sở hữu trọn nhóm màu và không đất nào trong nhóm đang thế chấp. Xây/bán đều: chênh lệch công trình giữa các đất tối đa một; khách sạn tính mức 5. Mua từng mức, không bỏ qua bậc.
 - Nhà cần nguồn cung ngân hàng. Khi đổi từ 4 nhà lên khách sạn, trả 4 nhà về ngân hàng và lấy 1 khách sạn. Mỗi công trình trả cùng giá xây của nhóm.
 - Bán công trình được một nửa giá xây. Đổi khách sạn về 4 nhà chỉ khi ngân hàng có đủ 4 nhà và vẫn bán đều. Nếu không đủ nhà, chủ phải bán trọn công trình của cả nhóm về 0 theo giá nửa chi phí đã xây, thay vì tạo nhà mới; UI yêu cầu xác nhận thanh lý nhóm.
-- Nếu có nhiều người muốn công trình cuối cùng, phiên đấu giá công trình cho các chủ đất đủ điều kiện xây; thắng rồi chọn đất hợp lệ và thanh toán giá thắng. Một yêu cầu xây đơn lẻ khi không còn công trình được từ chối; không tạo trước công trình để hứa cho giao dịch khác.
-- Chỉ thế chấp tài sản không có công trình; với đất màu, phải bán hết công trình của cả nhóm trước. Nhận giá thế chấp bằng nửa giá mua. Giải chấp trả giá thế chấp cộng 10%.
+- Khi chỉ còn một công trình và có nhiều chủ đất đủ điều kiện xây, yêu cầu mua mở phiên đấu giá công trình cho các chủ đất đủ điều kiện xây; thắng rồi chọn đất hợp lệ và thanh toán giá thắng. Một yêu cầu xây đơn lẻ khi không còn công trình được từ chối; không tạo trước công trình để hứa cho giao dịch khác.
+- Chỉ thế chấp tài sản không có công trình; với đất màu, phải bán hết công trình của cả nhóm trước. Nhận giá thế chấp bằng nửa giá mua. Giải chấp trả giá thế chấp cộng 10%; phần lãi được làm tròn lên đơn vị nguyên (thế chấp 75 có lãi 8, giải chấp 83).
 
 ## Giao dịch và nợ
 

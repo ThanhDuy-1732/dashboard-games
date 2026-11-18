@@ -1,8 +1,8 @@
 import {BOARD} from './board.js';
 import {CHANCE,COMMUNITY} from './cards.js';
 import type {GameState,PlayerId,RandomSource,CardEffect,Effect} from './types.js';
-import {playerById,recordEvent,requireRule} from './rules.js';
-import {getRent,settlePayment} from './economy.js';
+import {advanceTurn,playerById,recordEvent,requireRule} from './rules.js';
+import {getRent,settlePayment,startAuction} from './economy.js';
 
 export function dice(random:RandomSource):[number,number]{
  const pair:[number,number]=[random.int(1,6),random.int(1,6)];
@@ -49,6 +49,7 @@ function land(state:GameState,effect:Extract<Effect,{type:'land'}>,random:Random
  }
 }
 export function runEffects(state:GameState,random:RandomSource){
+ if(state.phase==='finished'||state.phase==='mortgage-transfer')return;
  while(state.pendingEffects.length){
   const effect=state.pendingEffects.shift()!;
   if(effect.type==='payment'){if(!settlePayment(state,effect.payer,effect.payee,effect.amount))return;}
@@ -56,10 +57,13 @@ export function runEffects(state:GameState,random:RandomSource){
    const player=playerById(state,effect.playerId);if(player.bankrupt)continue;
    if(effect.salary)settlePayment(state,'bank',player.id,200);player.position=effect.spaceId;
    state.pendingEffects.unshift({type:'land',playerId:player.id,stationMultiplier:effect.stationMultiplier,utilityMultiplier:effect.utilityMultiplier});
-  }else land(state,effect,random);
-  if(state.phase==='awaiting-purchase'||state.phase==='auction'||state.phase==='debt'||state.phase==='mortgage-transfer'||state.phase==='finished')return;
+  }else if(effect.type==='auction')startAuction(state,effect.spaceId);
+  else land(state,effect,random);
+  if(['awaiting-purchase','auction','debt','mortgage-transfer','finished'].includes(state.phase))return;
  }
- state.phase=state.turn.extraRoll?'awaiting-roll':'awaiting-end-turn';
+ if(state.mortgageTransfers.length){state.phase='mortgage-transfer';return;}
+ if(playerById(state,state.turn.playerId).bankrupt){state.resumePhase=null;advanceTurn(state);return;}
+ state.phase=state.resumePhase??(state.turn.extraRoll?'awaiting-roll':'awaiting-end-turn');state.resumePhase=null;
 }
 export function roll(state:GameState,actor:PlayerId,random:RandomSource){
  requireRule(state.turn.playerId===actor,'NOT_AUTHORIZED');requireRule(state.phase==='awaiting-roll'||state.phase==='jail-choice');

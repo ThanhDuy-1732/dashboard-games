@@ -29,10 +29,19 @@ export function auctionAction(state:GameState,actor:PlayerId,amount?:number):boo
  if(amount===undefined){requireRule(auction.bidder!==actor);auction.participants=auction.participants.filter(id=>id!==actor);}
  else{requireRule(Number.isSafeInteger(amount)&&amount>auction.bid);requireRule(playerById(state,actor).cash>=amount,'INSUFFICIENT_FUNDS');auction.bid=amount;auction.bidder=actor;}
  if(auction.participants.length===0||(auction.participants.length===1&&auction.bidder!==null)){
-  if(auction.bidder!==null){settlePayment(state,auction.bidder,'bank',auction.bid);state.board[auction.spaceId]!.owner=auction.bidder;recordEvent(state,'auction',`${playerById(state,auction.bidder).name} thắng đấu giá ${BOARD[auction.spaceId]!.name}.`,{spaceId:auction.spaceId,amount:auction.bid});}
+  if(auction.bidder!==null){settlePayment(state,auction.bidder,'bank',auction.bid);
+   if(auction.kind==='property')state.board[auction.spaceId]!.owner=auction.bidder;
+   else placeBuilding(state,auction.targets![auction.bidder]!);
+   recordEvent(state,'auction',`${playerById(state,auction.bidder).name} thắng đấu giá ${auction.kind==='property'?BOARD[auction.spaceId]!.name:'công trình'}.`,{spaceId:auction.targets?.[auction.bidder]??auction.spaceId,amount:auction.bid});
+  }
   state.auction=null;state.phase='awaiting-end-turn';return true;
  }
  return false;
+}
+export function placeBuilding(state:GameState,spaceId:number){
+ const property=state.board[spaceId]!;
+ if(property.buildings===4){requireRule(state.bank.hotels>0);state.bank.hotels--;state.bank.houses+=4;}else{requireRule(state.bank.houses>0);state.bank.houses--;}
+ property.buildings++;
 }
 export function trySettleDebt(state:GameState):boolean {
  const debt=state.debt;if(!debt)return false;

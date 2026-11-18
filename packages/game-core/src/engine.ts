@@ -2,8 +2,10 @@ import {BOARD} from './board.js';
 import {CHANCE,COMMUNITY} from './cards.js';
 import type {GameState,GameAction,PlayerConfig,PlayerId,RandomSource,ActionResult} from './types.js';
 import {dice,roll,runEffects} from './movement.js';
-import {playerById,requireRule,RuleViolation} from './rules.js';
-import {auctionAction,buyProperty,settlePayment,startAuction} from './economy.js';
+import {advanceTurn,playerById,requireRule,RuleViolation} from './rules.js';
+import {auctionAction,buyProperty,settlePayment,startAuction,trySettleDebt} from './economy.js';
+import {build,sellBuilding,mortgage,unmortgage,declareBankruptcy} from './assets.js';
+import {offerTrade,acceptTrade,rejectTrade,resolveMortgageTransfer,finishPaidTransfer} from './trade.js';
 function shuffled(ids:string[],random:RandomSource){
  for(let i=ids.length-1;i>0;i--){const j=random.int(0,i);requireRule(Number.isInteger(j)&&j>=0&&j<=i,'INVALID_GAME');[ids[i],ids[j]]=[ids[j]!,ids[i]!];}return ids;
 }
@@ -17,7 +19,7 @@ export function createGame(config:{gameId:string;players:PlayerConfig[]},random:
  for(let attempts=0;candidates.length>1;attempts++){
   requireRule(attempts<100,'INVALID_GAME');const rolls=candidates.map(id=>({id,total:dice(random).reduce((a,b)=>a+b,0)}));const best=Math.max(...rolls.map(r=>r.total));candidates=rolls.filter(r=>r.total===best).map(r=>r.id);
  }
- return {gameId,rulesVersion:'classic-v1',revision:0,players:players.map(p=>({...p,name:p.name.trim(),cash:1500,position:0,bankrupt:false,jail:null,jailCards:[]})),board:BOARD.map(()=>({owner:null,buildings:0,mortgaged:false})),turn:{playerId:candidates[0]!,doubles:0,dice:null,extraRoll:false,number:1},phase:'awaiting-roll',decks:{chance:shuffled(CHANCE.map(c=>c.id),random),community:shuffled(COMMUNITY.map(c=>c.id),random)},bank:{houses:32,hotels:12},purchase:null,auction:null,debt:null,pendingEffects:[],mortgageTransfers:[],trades:[],recentEvents:[],winner:null};
+ return {gameId,rulesVersion:'classic-v1',revision:0,players:players.map(p=>({...p,name:p.name.trim(),cash:1500,position:0,bankrupt:false,jail:null,jailCards:[]})),board:BOARD.map(()=>({owner:null,buildings:0,mortgaged:false})),turn:{playerId:candidates[0]!,doubles:0,dice:null,extraRoll:false,number:1},phase:'awaiting-roll',decks:{chance:shuffled(CHANCE.map(c=>c.id),random),community:shuffled(COMMUNITY.map(c=>c.id),random)},bank:{houses:32,hotels:12},purchase:null,auction:null,debt:null,pendingEffects:[],mortgageTransfers:[],trades:[],recentEvents:[],winner:null,resumePhase:null};
 }
 export function applyAction(input:GameState,actor:PlayerId,action:GameAction,random:RandomSource):ActionResult {
  const state=structuredClone(input);const previousEvent=input.recentEvents.at(-1)?.id??0;
@@ -29,6 +31,15 @@ export function applyAction(input:GameState,actor:PlayerId,action:GameAction,ran
    case 'decline-property':requireRule(state.turn.playerId===actor,'NOT_AUTHORIZED');requireRule(state.phase==='awaiting-purchase'&&state.purchase!==null);startAuction(state,state.purchase);break;
    case 'bid':if(auctionAction(state,actor,action.amount))runEffects(state,random);break;
    case 'pass-auction':if(auctionAction(state,actor))runEffects(state,random);break;
+   case 'build':build(state,actor,action.spaceId);break;
+   case 'sell-building':sellBuilding(state,actor,action.spaceId);break;
+   case 'mortgage':mortgage(state,actor,action.spaceId);break;
+   case 'unmortgage':unmortgage(state,actor,action.spaceId);break;
+   case 'offer-trade':offerTrade(state,actor,action.to,action.give,action.receive);break;
+   case 'accept-trade':acceptTrade(state,actor,action.tradeId);break;
+   case 'reject-trade':rejectTrade(state,actor,action.tradeId);break;
+   case 'resolve-mortgage-transfer':resolveMortgageTransfer(state,actor,action.spaceId,action.choice);if(!state.debt)runEffects(state,random);break;
+   case 'declare-bankruptcy':declareBankruptcy(state,actor);runEffects(state,random);break;
    case 'pay-jail':
     requireRule(state.turn.playerId===actor,'NOT_AUTHORIZED');requireRule(state.phase==='jail-choice'&&player.jail);requireRule(player.cash>=50,'INSUFFICIENT_FUNDS');
     settlePayment(state,actor,'bank',50);player.jail=null;state.phase='awaiting-roll';break;
@@ -39,12 +50,11 @@ export function applyAction(input:GameState,actor:PlayerId,action:GameAction,ran
    }
    case 'end-turn':{
     requireRule(state.turn.playerId===actor,'NOT_AUTHORIZED');requireRule(state.phase==='awaiting-end-turn');
-    const index=state.players.findIndex(p=>p.id===actor);let next=index;
-    do{next=(next+1)%state.players.length;}while(state.players[next]!.bankrupt);
-    const target=state.players[next]!;state.turn={playerId:target.id,doubles:0,dice:null,extraRoll:false,number:state.turn.number+1};state.phase=target.jail?'jail-choice':'awaiting-roll';break;
+    advanceTurn(state);break;
    }
    default:requireRule(false);
   }
+  if(state.debt&&trySettleDebt(state)){finishPaidTransfer(state);if(state.mortgageTransfers.length)state.phase='mortgage-transfer';else runEffects(state,random);}
   state.revision++;return {ok:true,state,events:state.recentEvents.filter(e=>e.id>previousEvent)};
  }catch(error){if(error instanceof RuleViolation)return {ok:false,code:error.code};throw error;}
 }

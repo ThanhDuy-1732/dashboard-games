@@ -77,10 +77,10 @@ Không nhất thiết tạo file rỗng trước: mỗi task tạo đúng file n
 
 **Interfaces:** thêm nhánh `buy-property`, `decline-property`, `bid {amount}`, `pass-auction`, `declare-bankruptcy`. Internal `settlePayment(state,payer,payee,amount)` tạo debt continuation; không cho số dư âm rồi tiếp tục lượt.
 
-- [ ] **RED:** `decline_starts_auction_for_all_active_players`; `last_bidder_pays_exactly_once`; `all_pass_returns_property_to_bank`; `monopoly_doubles_base_rent`; `mortgaged_property_collects_zero`; ga 25/50/100/200, tiện ích 4×/10× tổng dice; `insufficient_cash_enters_debt_and_blocks_roll`; trả nợ đủ mới tiếp tục effect. Run: `npx vitest run packages/game-core/test/economy.test.ts`.
-- [ ] **Implement:** thu tiền thuê tự động; tính rent từ bảng board, không từ payload. Đấu giá nhận bid khi cao hơn hiện tại, đủ tiền, người còn tham gia; pass rút khỏi phiên, người từ chối mua vẫn được đấu. Mọi người phải bid/pass rõ ràng; không timer cưỡng bức. Giữ debt và continuation để A4 thanh lý hoặc phá sản.
-- [ ] **GREEN:** test trên, bộ test core; thêm fixture 2 người gửi cùng giá, lệnh sau nhận lỗi, tài sản chỉ có một chủ. Nếu nhiều người cần trả tiền bởi một thẻ, giữ hàng đợi nghĩa vụ cho tới khi tất cả được giải quyết.
-- [ ] **Checkpoint:** commit `feat: add purchases rent auctions and debt resolution`.
+- [x] **RED:** `decline_starts_auction_for_all_active_players`; `last_bidder_pays_exactly_once`; `all_pass_returns_property_to_bank`; `monopoly_doubles_base_rent`; `mortgaged_property_collects_zero`; ga 25/50/100/200, tiện ích 4×/10× tổng dice; `insufficient_cash_enters_debt_and_blocks_roll`; trả nợ đủ mới tiếp tục effect. Run: `npx vitest run packages/game-core/test/economy.test.ts`.
+- [x] **Implement:** thu tiền thuê tự động; tính rent từ bảng board, không từ payload. Đấu giá nhận bid khi cao hơn hiện tại, đủ tiền, người còn tham gia; pass rút khỏi phiên, người từ chối mua vẫn được đấu. Mọi người phải bid/pass rõ ràng; không timer cưỡng bức. Giữ debt và continuation để A4 thanh lý hoặc phá sản.
+- [x] **GREEN:** test trên, bộ test core; thêm fixture 2 người gửi cùng giá, lệnh sau nhận lỗi, tài sản chỉ có một chủ. Nếu nhiều người cần trả tiền bởi một thẻ, giữ hàng đợi nghĩa vụ cho tới khi tất cả được giải quyết.
+- [x] **Checkpoint:** commit `feat: add purchases rent auctions and debt resolution`.
 
 ### Task 4: A4 — Xây/bán, thế chấp, giao dịch, phá sản và kết quả
 
@@ -88,10 +88,10 @@ Không nhất thiết tạo file rỗng trước: mỗi task tạo đúng file n
 
 **Interfaces:** action `build/sell-building/mortgage/unmortgage {spaceId}`, trade `offer-trade {to,give,receive}` / `accept-trade {tradeId}` / `reject-trade {tradeId}`, `resolve-mortgage-transfer {spaceId,choice:'keep'|'redeem'}`. `give/receive` gồm cash, spaceIds, jail-card IDs; không chuyển công trình trực tiếp.
 
-- [ ] **RED:** `cannot_build_on_incomplete_or_mortgaged_group`; `build_and_sell_evenly`; `house_pool_never_exceeds_32`; `hotel_pool_never_exceeds_12`; `mortgage_requires_group_buildings_sold`; `trade_revalidates_both_balances_and_ownership`; `trade_transfers_atomically`; phá sản với ngân hàng và với người chơi cho kết quả tài sản khác nhau. Run: `npx vitest run packages/game-core/test/assets.test.ts packages/game-core/test/trade.test.ts`.
-- [ ] **Implement:** công trình bán nửa giá; đổi 4 nhà lấy 1 khách sạn trả nhà về ngân hàng. Ghi rõ trong rulebook cách xử lý bán khách sạn khi ngân hàng thiếu nhà và tranh mua công trình cuối; không tự tạo nguồn cung. Với tài sản thế chấp được chuyển, người nhận phải chọn trả 110% để giải chấp hoặc trả 10% ngay để giữ thế chấp; giải chấp sau đó vẫn 110%. Phát sinh nợ dùng cùng continuation A3. Người còn sống có thể quản lý tài sản/giao dịch khi phase cho phép, kể cả trong tù; không vượt qua debt/auction đang chờ.
-- [ ] **GREEN:** cùng tests + core suite; thêm `last_survivor_finishes_game_and_rejects_more_actions`, bán nhà để trả nợ rồi tiếp tục đúng event ban đầu; hoàn tất bảng phase/action và toàn bộ con số trong rulebook, không để lựa chọn luật cho task UI.
-- [ ] **Checkpoint:** commit `feat: complete asset management trades and bankruptcy`.
+- [x] **RED:** `cannot_build_on_incomplete_or_mortgaged_group`; `build_and_sell_evenly`; `house_pool_never_exceeds_32`; `hotel_pool_never_exceeds_12`; `mortgage_requires_group_buildings_sold`; `trade_revalidates_both_balances_and_ownership`; `trade_transfers_atomically`; phá sản với ngân hàng và với người chơi cho kết quả tài sản khác nhau. Run: `npx vitest run packages/game-core/test/assets.test.ts packages/game-core/test/trade.test.ts`.
+- [x] **Implement:** công trình bán nửa giá; đổi 4 nhà lấy 1 khách sạn trả nhà về ngân hàng. Ghi rõ trong rulebook cách xử lý bán khách sạn khi ngân hàng thiếu nhà và tranh mua công trình cuối; không tự tạo nguồn cung. Với tài sản thế chấp được chuyển, người nhận phải chọn trả 110% để giải chấp hoặc trả 10% ngay để giữ thế chấp; giải chấp sau đó vẫn 110%. Phát sinh nợ dùng cùng continuation A3. Người còn sống có thể quản lý tài sản/giao dịch khi phase cho phép, kể cả trong tù; không vượt qua debt/auction đang chờ.
+- [x] **GREEN:** cùng tests + core suite; thêm `last_survivor_finishes_game_and_rejects_more_actions`, bán nhà để trả nợ rồi tiếp tục đúng event ban đầu; hoàn tất bảng phase/action và toàn bộ con số trong rulebook, không để lựa chọn luật cho task UI.
+- [x] **Checkpoint:** commit `feat: complete asset management trades and bankruptcy`.
 
 ### Task 5: A5 — UI thật, offline session và bot
 
