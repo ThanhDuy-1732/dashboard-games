@@ -52,7 +52,9 @@ for (const count of [2, 6])
           ),
       );
       for (const page of pages) {
-        await page.getByRole("button", { name: "Sẵn sàng", exact: true }).click();
+        await page
+          .getByRole("button", { name: "Sẵn sàng", exact: true })
+          .click();
         await expect(
           page.getByRole("button", { name: "Hủy sẵn sàng", exact: true }),
         ).toBeEnabled();
@@ -99,6 +101,32 @@ for (const count of [2, 6])
           "aria-label",
           /^Xúc xắc [1-6] và [1-6]$/,
         );
+      }
+      if (count === 2) {
+        await expect(actor.locator(".die-face")).toHaveCount(12);
+        await expect
+          .poll(() =>
+            actor.locator(".die-cube").evaluateAll((cubes) =>
+              cubes.every((cube) => {
+                const face = cube.querySelector(
+                  `[data-face="${cube.getAttribute("data-result")}"]`,
+                )!;
+                const cubeMatrix = new DOMMatrix(
+                  getComputedStyle(cube).transform,
+                );
+                const faceMatrix = new DOMMatrix(
+                  getComputedStyle(face).transform,
+                );
+                return (
+                  cube
+                    .getAnimations()
+                    .every((animation) => animation.playState === "finished") &&
+                  cubeMatrix.multiply(faceMatrix).m33 > 0.8
+                );
+              }),
+            ),
+          )
+          .toBe(true);
       }
       const ids = await Promise.all(
         pages.map((page) =>

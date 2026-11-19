@@ -3,6 +3,7 @@ import type { PlayerView } from "@nha-choi/game-core";
 import { useRef } from "react";
 import type { CSSProperties } from "react";
 import photos from "../locations.json";
+import { Dice } from "./Dice.js";
 import { TokenArt } from "./TokenArt.js";
 export const PLAYER_COLORS = [
   "#0d6758",
@@ -52,21 +53,7 @@ export function Board({
           <span className="board-brand">nhà chơi.</span>
           <h1>Cờ tỷ phú</h1>
           <p>Mỗi nước đi, một cơ hội.</p>
-          <div
-            key={rollId}
-            className={`center-dice${animateRoll ? " dice-rolling" : ""}`}
-            aria-label={
-              view.turn.dice
-                ? `Xúc xắc ${view.turn.dice.join(" và ")}`
-                : "Chưa gieo xúc xắc"
-            }
-          >
-            {(view.turn.dice ?? [1, 1]).map((n, i) => (
-              <div className="small-die" key={i}>
-                {String.fromCodePoint(0x267f + n)}
-              </div>
-            ))}
-          </div>
+          <Dice key={rollId} result={view.turn.dice} rolling={animateRoll} />
           <span className="board-center-label">Luật truyền thống</span>
           <span className="center-turn">
             Lượt {view.turn.number} ·{" "}
