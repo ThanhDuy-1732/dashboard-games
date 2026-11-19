@@ -29,6 +29,13 @@ export function Wallet({ view, cash }: { view: PlayerView; cash: number }) {
     if (delta || salary) setChange({ delta, salary, revision: view.revision });
   }, [cash, lastId, view]);
 
+  useEffect(() => {
+    if (!change) return;
+    const timer = setTimeout(() => setChange(null), 4100);
+    return () => clearTimeout(timer);
+  }, [change]);
+
+  const tone = change && (change.delta >= 0 ? "income" : "expense");
   return (
     <div className="board-wallet">
       <span className="wallet-art" aria-hidden="true">
@@ -39,19 +46,25 @@ export function Wallet({ view, cash }: { view: PlayerView; cash: number }) {
       </span>
       <span className="wallet-effects" aria-live="polite">
         {change && (
-          <span key={change.revision} className="wallet-change">
-            {change.delta !== 0 && (
-              <b className={change.delta > 0 ? "income" : "expense"}>
-                {change.delta > 0 ? "+" : "−"}
-                {Math.abs(change.delta).toLocaleString("vi-VN")}
-              </b>
-            )}
-            {change.salary > 0 && (
-              <small>
-                Xuất phát
-                {change.salary === change.delta ? "" : ` +${change.salary}`}
-              </small>
-            )}
+          <span key={change.revision} className={`wallet-change ${tone}`}>
+            <span className="wallet-note" aria-hidden="true">
+              ₫
+            </span>
+            <span className="wallet-change-copy">
+              <span>{change.delta < 0 ? "Ví đã chi" : "Ví nhận tiền"}</span>
+              {change.delta !== 0 && (
+                <b>
+                  {change.delta > 0 ? "+" : "−"}
+                  {Math.abs(change.delta).toLocaleString("vi-VN")}
+                </b>
+              )}
+              {change.salary > 0 && (
+                <small>
+                  Xuất phát
+                  {change.salary === change.delta ? "" : ` +${change.salary}`}
+                </small>
+              )}
+            </span>
           </span>
         )}
       </span>

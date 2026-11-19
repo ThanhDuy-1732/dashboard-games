@@ -64,6 +64,12 @@ for (const count of [2, 6])
         .click();
       for (const page of pages) {
         await expect(page.locator(".board-cell")).toHaveCount(40);
+        const corner = (await page
+          .locator(".board-cell")
+          .nth(0)
+          .boundingBox())!;
+        const edge = (await page.locator(".board-cell").nth(1).boundingBox())!;
+        expect(corner.width).toBeGreaterThan(edge.width * 1.5);
         const pawns = page.locator(".cell-pawns");
         await expect(pawns).toHaveCount(1);
         await expect(pawns.locator(".board-pawn")).toHaveCount(count);
@@ -104,6 +110,16 @@ for (const count of [2, 6])
       }
       if (count === 2) {
         await expect(actor.locator(".die-face")).toHaveCount(12);
+        const timings = await actor
+          .locator(".own-pawn")
+          .evaluate((pawn) =>
+            pawn
+              .getAnimations()
+              .map((animation) => animation.effect?.getTiming()),
+          );
+        expect(timings).toContainEqual(
+          expect.objectContaining({ delay: 820, fill: "backwards" }),
+        );
         await expect
           .poll(() =>
             actor.locator(".die-cube").evaluateAll((cubes) =>

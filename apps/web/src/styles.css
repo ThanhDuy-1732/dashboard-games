@@ -1070,13 +1070,20 @@ dd {
 }
 .play-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.9fr) minmax(255px, 1fr);
+  grid-template-columns: minmax(0, 2.3fr) minmax(255px, 1fr);
   gap: 23px;
   align-items: start;
 }
+.board-wrap {
+  position: relative;
+  min-width: 0;
+}
 .board {
   display: grid;
-  grid-template: repeat(11, minmax(0, 1fr)) / repeat(11, minmax(0, 1fr));
+  --rim: minmax(0, 1.7fr);
+  grid-template:
+    var(--rim) repeat(9, minmax(0, 1fr)) var(--rim) /
+    var(--rim) repeat(9, minmax(0, 1fr)) var(--rim);
   aspect-ratio: 1;
   background: #304a3d;
   border: 9px solid #304a3d;
@@ -2060,6 +2067,9 @@ dialog > .button {
   .game-top-tags .tag {
     font-size: 8px;
   }
+  .board-wrap {
+    margin-inline: -6px;
+  }
   .board {
     border: 5px solid #304a3d;
     border-radius: 5px;
@@ -2396,7 +2406,7 @@ dialog .location-figure + .tag + h2 {
   z-index: 2;
 }
 .cell-pawns {
-  --pawn-size: clamp(33px, 4.8vw, 49px);
+  --pawn-size: clamp(43px, 5.7vw, 62px);
   position: absolute;
   inset: 50% auto auto 50%;
   transform: translate(-50%, -50%);
@@ -2406,21 +2416,21 @@ dialog .location-figure + .tag + h2 {
   pointer-events: none;
 }
 .cell-pawns.group {
-  --pawn-size: clamp(24px, 3.4vw, 33px);
+  --pawn-size: clamp(28px, 3.9vw, 39px);
   grid-template-columns: repeat(2, var(--pawn-size));
 }
 /* Keep oversized pieces inside the frame on narrow boards. */
 .cell-pawns:not(.group)[data-edge="top"] {
-  top: 63%;
+  top: 72%;
 }
 .cell-pawns:not(.group)[data-edge="bottom"] {
   top: 39%;
 }
 .cell-pawns:not(.group)[data-corner="left"] {
-  left: 62%;
+  left: 68%;
 }
 .cell-pawns:not(.group)[data-corner="right"] {
-  left: 38%;
+  left: 32%;
 }
 .cell-pawns.group[data-edge="top"] {
   transform: translate(-50%, -35%);
@@ -2464,26 +2474,46 @@ dialog .location-figure + .tag + h2 {
   --base-rim: #819b85;
   --base-wall: #465e4c;
 }
-.board-pawn::before {
-  content: "";
+.pawn-model {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  perspective: 190px;
+  transform-style: preserve-3d;
+}
+.pawn-plinth {
   position: absolute;
   inset: auto 0 0;
-  height: 46%;
-  z-index: -1;
-  border: 1px solid var(--base-rim);
+  aspect-ratio: 1;
+  transform: rotateX(64deg);
+  transform-origin: center bottom;
+  transform-style: preserve-3d;
+}
+.pawn-plinth::before,
+.pawn-plinth::after {
+  content: "";
+  position: absolute;
+  inset: 0;
   border-radius: 50%;
-  background: linear-gradient(165deg, #fff9, transparent 61%), var(--base-top);
+}
+.pawn-plinth::before {
+  transform: translateZ(-6px);
+  background: var(--base-wall);
+  box-shadow: 0 5px 8px #1f261f88;
+}
+.pawn-plinth::after {
+  border: 2px solid var(--base-rim);
+  background: linear-gradient(145deg, #fff9, transparent 55%), var(--base-top);
   box-shadow:
-    0 2px 0 var(--base-wall),
-    0 4px 4px #0f292c88;
+    0 1px 0 var(--base-wall),
+    0 3px 0 var(--base-wall),
+    0 6px 0 var(--base-wall);
 }
 .board-pawn.own-pawn {
   --base-top: #ffdb6b;
   --base-rim: #fff0a7;
   --base-wall: #684215;
-}
-.board-pawn.own-pawn::before {
-  outline: 1px solid #654514;
+  z-index: 1;
 }
 .token-art {
   display: block;
@@ -2496,7 +2526,8 @@ dialog .location-figure + .tag + h2 {
   height: 100%;
   min-width: 0;
   min-height: 0;
-  transform: translateY(-11%) scale(1.05);
+  position: relative;
+  transform: translate3d(0, -8%, 10px) scale(1.1);
   filter: drop-shadow(0 1px 0 #fffb) drop-shadow(0 2px 1px #173b3e99);
 }
 .result-token .token-art {
@@ -2988,11 +3019,8 @@ dialog {
 .board-cell.your-space:focus-visible {
   outline: 3px solid var(--focus);
 }
-.board-pawn.own-pawn {
-  z-index: 1;
-}
 .board-pawn.own-pawn .token-art {
-  transform: translateY(-20%) scale(1.23);
+  transform: translate3d(0, -18%, 14px) scale(1.36);
 }
 .own-pawn-label {
   position: absolute;
@@ -3003,7 +3031,7 @@ dialog {
   border-radius: 3px;
   white-space: nowrap;
   font:
-    800 9px/1.1 system-ui,
+    800 11px/1.1 system-ui,
     sans-serif;
   background: #ffd56f;
   color: #412d1b;
@@ -3035,9 +3063,6 @@ dialog {
   height: 34px;
   flex: none;
 }
-.board-wallet {
-  position: relative;
-}
 .wallet-art {
   display: grid;
   place-items: center;
@@ -3053,41 +3078,103 @@ dialog {
   font-weight: 800;
 }
 .wallet-effects {
-  margin-left: auto;
-  flex: none;
-  text-align: right;
+  position: absolute;
+  inset: 64% 0 auto;
+  display: grid;
+  justify-items: center;
+  z-index: 5;
+  pointer-events: none;
 }
 .wallet-change {
+  --wallet-accent: #246048;
+  --wallet-surface: #eaf0d9;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 15px 8px 10px;
+  color: var(--wallet-accent);
+  border: 1px solid var(--wallet-accent);
+  border-radius: 9px;
+  background: var(--wallet-surface);
+  box-shadow:
+    0 4px 0 #46351e36,
+    0 7px 15px #46351e44;
+  animation: wallet-arrive 4.1s ease-out both;
+}
+.wallet-change.expense {
+  --wallet-accent: #963c26;
+  --wallet-surface: #ffead6;
+}
+.wallet-change-copy {
   display: grid;
-  gap: 2px;
-  line-height: 1.2;
-  animation: wallet-arrive 430ms ease-out both;
+  gap: 1px;
+  font-weight: 700;
+  font-size: 11px;
 }
 .wallet-change b {
-  font-size: 15px;
-}
-.wallet-change .income {
-  color: #266047;
-}
-.wallet-change .expense {
-  color: #9b3927;
+  font-size: clamp(22px, 4vw, 34px);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 .wallet-change small {
-  color: var(--muted);
-  font-size: 9px;
+  font-size: 10px;
+}
+.wallet-note {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 28px;
+  transform: rotate(-9deg);
+  border: 3px double var(--wallet-surface);
+  border-radius: 4px;
+  background: var(--wallet-accent);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 800;
+  box-shadow:
+    3px 3px 0 var(--wallet-surface),
+    4px 4px 0 var(--wallet-accent);
+  animation: wallet-note-pop 480ms ease-out both;
+}
+.wallet-change.expense .wallet-note {
+  animation-direction: reverse;
+  animation-fill-mode: none;
 }
 @keyframes wallet-arrive {
   0% {
     opacity: 0;
-    transform: translateY(8px) scale(0.76);
+    transform: translateY(15px) scale(0.88);
   }
-  58% {
+  10% {
     opacity: 1;
-    transform: translateY(-4px) scale(1.08);
+    transform: translateY(-4px) scale(1.03);
   }
-  100% {
+  17%,
+  91% {
     opacity: 1;
     transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+@keyframes wallet-note-pop {
+  0% {
+    transform: translateY(9px) rotate(-32deg) scale(0.65);
+  }
+  70% {
+    transform: translateY(-6px) rotate(7deg) scale(1.1);
+  }
+  100% {
+    transform: rotate(-9deg);
+  }
+}
+@media (max-width: 720px) {
+  .wallet-effects {
+    position: fixed;
+    inset: calc(12px + env(safe-area-inset-top)) 12px auto;
+    z-index: 20;
   }
 }
 @media (max-width: 380px) {

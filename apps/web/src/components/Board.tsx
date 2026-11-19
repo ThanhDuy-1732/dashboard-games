@@ -90,16 +90,41 @@ export function Board({
       ).find((element) => element.dataset.playerId === player.id);
       if (!pawn?.animate) continue;
       const [x, y] = center(player.position);
-      pawn.animate(
-        path.map((position) => {
-          const [left, top] = center(position);
-          return { transform: `translate(${left - x}px, ${top - y}px)` };
-        }),
+      const stepDuration = 175;
+      const delay = events.some((event) => event.type === "roll") ? 820 : 0;
+      const points = path.map(center);
+      const frames: Keyframe[] = [
         {
-          duration: Math.min(740, Math.max(250, (path.length - 1) * 58)),
-          easing: "ease-out",
+          transform: `translate(${points[0]![0] - x}px, ${points[0]![1] - y}px)`,
         },
-      );
+      ];
+      for (let step = 1; step < points.length; step++) {
+        const [left, top] = points[step]!;
+        const [fromLeft, fromTop] = points[step - 1]!;
+        frames.push(
+          {
+            transform: `translate(${(left + fromLeft) / 2 - x}px, ${(top + fromTop) / 2 - y - 10}px) scale(1.08)`,
+          },
+          { transform: `translate(${left - x}px, ${top - y}px)` },
+        );
+        cells[path[step]!]?.animate?.(
+          [
+            { boxShadow: "inset 0 0 0 3px #ffcb5966" },
+            { boxShadow: "inset 0 0 0 3px #ffcb59" },
+            { boxShadow: "inset 0 0 0 3px #ffcb5900" },
+          ],
+          {
+            delay: delay + step * stepDuration,
+            duration: 470,
+            easing: "ease-out",
+          },
+        );
+      }
+      pawn.animate(frames, {
+        delay,
+        duration: (path.length - 1) * stepDuration,
+        fill: "backwards",
+      });
     }
   }, [view]);
   return (
@@ -209,7 +234,10 @@ export function Board({
                         p.id === view.viewerId ? `${p.name} (bạn)` : p.name
                       }
                     >
-                      <TokenArt token={p.token} />
+                      <span className="pawn-model">
+                        <span className="pawn-plinth" />
+                        <TokenArt token={p.token} />
+                      </span>
                       {p.id === view.viewerId && (
                         <span className="own-pawn-label">Bạn</span>
                       )}
