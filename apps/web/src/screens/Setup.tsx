@@ -1,7 +1,8 @@
+import { TOKENS } from "@nha-choi/game-core";
 import { isNative, onlineServerUrl } from "../platform.js";
 import { useState } from "react";
 import type { PlayerConfig, Token } from "@nha-choi/game-core";
-import { TOKEN_ART } from "../components/Board.js";
+import { TOKEN_NAMES, TokenArt } from "../components/TokenArt.js";
 import { Icon } from "../components/Icon.js";
 export function Setup({
   onStart,
@@ -166,16 +167,17 @@ export function Setup({
               <fieldset className="token-field">
                 <legend>Chọn quân cờ</legend>
                 <div className="token-options">
-                  {(Object.keys(TOKEN_ART) as Token[]).map((key) => (
+                  {TOKENS.map((key) => (
                     <button
                       type="button"
                       key={key}
                       className={`token-button ${token === key ? "selected" : ""}`}
-                      aria-label={`Chọn quân ${key}`}
+                      aria-label={`Chọn quân ${TOKEN_NAMES[key]}`}
                       aria-pressed={token === key}
                       onClick={() => setToken(key)}
                     >
-                      {TOKEN_ART[key]}
+                      <TokenArt token={key} />
+                      <span>{TOKEN_NAMES[key]}</span>
                     </button>
                   ))}
                 </div>

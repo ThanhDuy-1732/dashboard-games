@@ -2,7 +2,7 @@ import { useState } from "react";
 import { BOARD } from "@nha-choi/game-core";
 import type { GameAction, PlayerView, TradeBundle } from "@nha-choi/game-core";
 import { Icon } from "./Icon.js";
-import { TOKEN_ART } from "./Board.js";
+import { TokenArt } from "./TokenArt.js";
 import { LocationPhoto } from "./LocationDetails.js";
 function describe(bundle: TradeBundle) {
   return (
@@ -51,7 +51,9 @@ export function ActionPanel({
         {self.id === current.id ? "Lượt của bạn" : `Lượt của ${current.name}`}
       </div>
       <div className="turn-player">
-        <span className="player-avatar mint">{TOKEN_ART[self.token]}</span>
+        <span className="player-avatar mint">
+          <TokenArt token={self.token} />
+        </span>
         <div>
           <strong>{self.name}</strong>
           <span>

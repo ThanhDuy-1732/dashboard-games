@@ -2,14 +2,7 @@ import { BOARD } from "@nha-choi/game-core";
 import type { PlayerView } from "@nha-choi/game-core";
 import type { CSSProperties } from "react";
 import photos from "../locations.json";
-export const TOKEN_ART = {
-  car: "🚙",
-  cat: "🐈",
-  hat: "🎩",
-  ship: "⛵",
-  dog: "🐕",
-  plane: "✈️",
-};
+import { TokenArt } from "./TokenArt.js";
 export const PLAYER_COLORS = [
   "#0d6758",
   "#8372b5",
@@ -45,6 +38,7 @@ export function Board({
   view: PlayerView;
   onSelect: (spaceId: number) => void;
 }) {
+  const self = view.players.find((player) => player.id === view.viewerId);
   return (
     <div className="board-wrap">
       <div className="board" aria-label="Bàn Cờ tỷ phú, 40 ô">
@@ -86,7 +80,7 @@ export function Board({
             <button
               type="button"
               key={space.id}
-              className={`board-cell ${photo ? "has-photo" : "special"} ${visitors.some((p) => p.id === view.turn.playerId) ? "current" : ""}`}
+              className={`board-cell ${visitors.length ? "occupied" : ""} ${photo ? "has-photo" : "special"} ${visitors.some((p) => p.id === view.turn.playerId) ? "current" : ""}`}
               style={
                 {
                   gridArea: `${row}/${col}`,
@@ -118,7 +112,7 @@ export function Board({
                   ? `, ${property.buildings === 5 ? "khách sạn" : `${property.buildings} nhà`}`
                   : ""}
                 {visitors.length
-                  ? `, có ${visitors.map((p) => p.name).join(", ")}`
+                  ? `, có ${visitors.map((p) => (p.id === view.viewerId ? `${p.name} (bạn)` : p.name)).join(", ")}`
                   : ""}
               </span>
               {ownerIndex >= 0 && (
@@ -142,10 +136,31 @@ export function Board({
                 </span>
               )}
               {visitors.length > 0 && (
-                <span className="cell-pawns" aria-hidden="true">
+                <span
+                  className={`cell-pawns ${visitors.length > 1 ? "group" : ""}`}
+                  data-edge={
+                    row === 11
+                      ? "bottom"
+                      : row === 1
+                        ? "top"
+                        : col === 1
+                          ? "left"
+                          : "right"
+                  }
+                  data-corner={
+                    col === 1 ? "left" : col === 11 ? "right" : undefined
+                  }
+                  aria-hidden="true"
+                >
                   {visitors.map((p) => (
-                    <span key={p.id} title={p.name}>
-                      {TOKEN_ART[p.token]}
+                    <span
+                      key={p.id}
+                      className={`board-pawn ${p.id === view.viewerId ? "own-pawn" : ""}`}
+                      title={
+                        p.id === view.viewerId ? `${p.name} (bạn)` : p.name
+                      }
+                    >
+                      <TokenArt token={p.token} />
                     </span>
                   ))}
                 </span>
@@ -159,7 +174,11 @@ export function Board({
           <span className="status-dot" />
           Luật truyền thống · Lượt {view.turn.number}
         </span>
-        <span>Chạm ô cờ để xem ảnh và chi tiết</span>
+        {self && !self.bankrupt && (
+          <span className="your-location">
+            <TokenArt token={self.token} /> Bạn ở {BOARD[self.position]?.name}
+          </span>
+        )}
       </div>
     </div>
   );

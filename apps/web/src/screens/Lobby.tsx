@@ -1,5 +1,5 @@
 import type { LobbyView, RoomReply } from "@nha-choi/protocol";
-import { TOKEN_ART } from "../components/Board.js";
+import { TokenArt } from "../components/TokenArt.js";
 import type { OnlineSession } from "../session/online.js";
 import { roomError } from "../session/online.js";
 import { useState } from "react";
@@ -77,7 +77,9 @@ export function Lobby({
           <ul className="lobby-players">
             {room.players.map((p) => (
               <li key={p.id}>
-                <span className="lobby-token">{TOKEN_ART[p.token]}</span>
+                <span className="lobby-token">
+                  <TokenArt token={p.token} />
+                </span>
                 <span>
                   <strong>
                     {p.name}

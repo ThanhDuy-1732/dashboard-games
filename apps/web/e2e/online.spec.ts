@@ -1,12 +1,17 @@
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
-async function setup(page: Page, name: string, token: string, code?: string) {
+import { TOKEN_NAMES } from "../src/components/TokenArt.js";
+import type { Token } from "@nha-choi/game-core";
+async function setup(page: Page, name: string, token: Token, code?: string) {
   await page.goto(code ? `/?room=${code}` : "/");
   await page.getByRole("button", { name: "Chơi Cờ tỷ phú" }).click();
   await page.getByRole("button", { name: /^Chơi online/ }).click();
   await page.getByRole("textbox", { name: "Tên của bạn" }).fill(name);
   await page
-    .getByRole("button", { name: `Chọn quân ${token}`, exact: true })
+    .getByRole("button", {
+      name: `Chọn quân ${TOKEN_NAMES[token]}`,
+      exact: true,
+    })
     .click();
   if (code) {
     await page.getByLabel("Phòng chơi", { exact: true }).selectOption("join");
@@ -32,7 +37,9 @@ for (const count of [2, 6])
       const pages = await Promise.all(
         contexts.map((context) => context.newPage()),
       );
-      const tokens = ["car", "cat", "hat", "ship", "dog", "plane"];
+      if (count === 6)
+        await pages[0]!.setViewportSize({ width: 375, height: 812 });
+      const tokens = ["rocket", "bike", "hat", "ship", "dog", "plane"] as const;
       await setup(pages[0]!, "Chủ phòng", tokens[0]!);
       const code = (
         await pages[0]!.getByTestId("room-code").textContent()
@@ -52,8 +59,19 @@ for (const count of [2, 6])
       await pages[0]!
         .getByRole("button", { name: "Bắt đầu ván", exact: true })
         .click();
-      for (const page of pages)
+      for (const page of pages) {
         await expect(page.locator(".board-cell")).toHaveCount(40);
+        const pawns = page.locator(".cell-pawns");
+        await expect(pawns).toHaveCount(1);
+        await expect(pawns.locator(".board-pawn")).toHaveCount(count);
+        const ownPawn = pawns.locator(".own-pawn");
+        await expect(ownPawn).toHaveCount(1);
+        expect((await ownPawn.boundingBox())!.width).toBeGreaterThanOrEqual(20);
+        await expect(ownPawn.locator("img")).toHaveJSProperty(
+          "naturalWidth",
+          96,
+        );
+      }
       const actor = (
         await Promise.all(
           pages.map(async (page) =>

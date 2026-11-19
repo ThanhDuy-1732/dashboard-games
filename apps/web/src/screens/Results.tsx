@@ -1,6 +1,6 @@
 import type { PlayerView } from "@nha-choi/game-core";
 import { Players } from "../components/Players.js";
-import { TOKEN_ART } from "../components/Board.js";
+import { TokenArt } from "../components/TokenArt.js";
 export function Results({
   view,
   onHome,
@@ -14,7 +14,7 @@ export function Results({
   return (
     <section className="results-screen">
       <div className="result-token">
-        {winner ? TOKEN_ART[winner.token] : "🏡"}
+        {winner ? <TokenArt token={winner.token} /> : "🏡"}
       </div>
       <span className="tag green">Ván đấu kết thúc</span>
       <h1>{winner ? `${winner.name} chiến thắng!` : "Ván đấu đã kết thúc"}</h1>

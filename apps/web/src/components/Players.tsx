@@ -1,5 +1,7 @@
 import type { PlayerView } from "@nha-choi/game-core";
-import { TOKEN_ART, PLAYER_COLORS } from "./Board.js";
+import { BOARD } from "@nha-choi/game-core";
+import { PLAYER_COLORS } from "./Board.js";
+import { TokenArt } from "./TokenArt.js";
 export function Players({ view }: { view: PlayerView }) {
   return (
     <section className="players-panel">
@@ -13,7 +15,7 @@ export function Players({ view }: { view: PlayerView }) {
             className="player-avatar"
             style={{ background: `${PLAYER_COLORS[index]}20` }}
           >
-            {TOKEN_ART[player.token]}
+            <TokenArt token={player.token} />
           </span>
           <div>
             <strong>
@@ -27,6 +29,7 @@ export function Players({ view }: { view: PlayerView }) {
                   ? "Đang trong tù"
                   : `${view.board.filter((p) => p.owner === player.id).length} tài sản`}
             </small>
+            {!player.bankrupt && <small>{BOARD[player.position]?.name}</small>}
           </div>
           <b>{player.cash.toLocaleString("vi-VN")}</b>
         </div>

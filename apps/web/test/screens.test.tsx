@@ -37,7 +37,7 @@ it("opens_real_offline_setup_and_validates_player_name", () => {
   expect(
     screen.getByRole("spinbutton", { name: "Số đối thủ máy" }),
   ).toBeTruthy();
-  expect(screen.getAllByRole("button", { name: /Chọn quân/ })).toHaveLength(6);
+  expect(screen.getAllByRole("button", { name: /Chọn quân/ })).toHaveLength(12);
   const name = screen.getByRole("textbox", { name: "Tên của bạn" });
   fireEvent.change(name, { target: { value: "   " } });
   fireEvent.click(screen.getByRole("button", { name: "Bắt đầu ván" }));
@@ -46,9 +46,8 @@ it("opens_real_offline_setup_and_validates_player_name", () => {
 
 it("shows_the_location_photo_and_real_purchase_action", async () => {
   const { Game } = await import("../src/screens/Game.js");
-  const { makeState } = await import(
-    "../../../packages/game-core/test/fixtures/state-factory.js"
-  );
+  const { makeState } =
+    await import("../../../packages/game-core/test/fixtures/state-factory.js");
   const { projectGame } = await import("@nha-choi/game-core");
   const state = makeState();
   state.phase = "awaiting-purchase";
@@ -74,9 +73,8 @@ it("shows_the_location_photo_and_real_purchase_action", async () => {
 it("asks_before_replacing_an_unfinished_saved_game", async () => {
   const { createSaveStore } = await import("../src/storage/save.js");
   const { makeSavedGame } = await import("../src/storage/save-schema.js");
-  const { makeState } = await import(
-    "../../../packages/game-core/test/fixtures/state-factory.js"
-  );
+  const { makeState } =
+    await import("../../../packages/game-core/test/fixtures/state-factory.js");
   const store = createSaveStore();
   await store.claim();
   await store.replace(makeSavedGame(makeState(), "p1"));
