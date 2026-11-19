@@ -1,4 +1,4 @@
-import { BOARD } from "./board.js";
+import { BOARD, GO_BONUS } from "./board.js";
 import { CHANCE, COMMUNITY } from "./cards.js";
 import type {
   GameState,
@@ -192,7 +192,8 @@ export function runEffects(state: GameState, random: RandomSource) {
     } else if (effect.type === "move") {
       const player = playerById(state, effect.playerId);
       if (player.bankrupt) continue;
-      if (effect.salary) settlePayment(state, "bank", player.id, 200);
+      if (effect.salary)
+        settlePayment(state, "bank", player.id, GO_BONUS, "go-salary");
       player.position = effect.spaceId;
       state.pendingEffects.unshift({
         type: "land",

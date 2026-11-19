@@ -135,6 +135,7 @@ export function settlePayment(
   payer: PlayerId | "bank",
   payee: PlayerId | "bank",
   amount: number,
+  reason?: "go-salary",
 ): boolean {
   requireRule(Number.isSafeInteger(amount) && amount >= 0, "INVALID_GAME");
   if (amount === 0 || payer === payee) return true;
@@ -159,9 +160,13 @@ export function settlePayment(
   }
   recordEvent(
     state,
-    "payment",
-    `${payer === "bank" ? "Ngân hàng" : playerById(state, payer).name} trả ${amount} cho ${payee === "bank" ? "ngân hàng" : playerById(state, payee).name}.`,
-    { amount },
+    reason ?? "payment",
+    reason === "go-salary"
+      ? `${playerById(state, payee).name} nhận ${amount} tại Xuất phát.`
+      : `${payer === "bank" ? "Ngân hàng" : playerById(state, payer).name} trả ${amount} cho ${payee === "bank" ? "ngân hàng" : playerById(state, payee).name}.`,
+    reason === "go-salary"
+      ? { playerId: payee, spaceId: 0, amount }
+      : { amount },
   );
   return true;
 }

@@ -1,8 +1,9 @@
 import { BOARD } from "@nha-choi/game-core";
-import type { PlayerView } from "@nha-choi/game-core";
-import { useRef } from "react";
+import type { GameEvent, PlayerView } from "@nha-choi/game-core";
+import { useLayoutEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 import photos from "../locations.json";
+import { Wallet } from "./Wallet.js";
 import { Dice } from "./Dice.js";
 import { TokenArt } from "./TokenArt.js";
 export const PLAYER_COLORS = [
@@ -33,6 +34,17 @@ const SYMBOLS: Record<string, string> = {
   "go-to-jail": "↙",
   utility: "ϟ",
 };
+export function movementPath(start: number, end: number, events: GameEvent[]) {
+  const roll = events.find((event) => event.type === "roll")?.amount;
+  const landed = events.find((event) => event.type === "land")?.spaceId;
+  const path = [start];
+  if (roll && roll <= 12 && (start + roll) % BOARD.length === landed)
+    for (let step = 1; step <= roll; step++)
+      path.push((start + step) % BOARD.length);
+  if (path[path.length - 1] !== end) path.push(end);
+  return path;
+}
+
 export function Board({
   view,
   onSelect,
@@ -46,9 +58,53 @@ export function Board({
   const initialRoll = useRef(rollId);
   const animateRoll = Boolean(view.turn.dice && rollId !== initialRoll.current);
   const self = view.players.find((player) => player.id === view.viewerId);
+  const board = useRef<HTMLDivElement>(null);
+  const previous = useRef(view);
+  useLayoutEffect(() => {
+    const before = previous.current;
+    previous.current = view;
+    if (
+      before.gameId !== view.gameId ||
+      before.revision >= view.revision ||
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+    )
+      return;
+    const root = board.current;
+    if (!root) return;
+    const lastId = before.recentEvents[before.recentEvents.length - 1]?.id ?? 0;
+    const cells = root.querySelectorAll(".board-cell");
+    function center(position: number) {
+      const rect = cells[position]!.getBoundingClientRect();
+      return [rect.left + rect.width / 2, rect.top + rect.height / 2] as const;
+    }
+    for (const player of view.players) {
+      const old = before.players.find((value) => value.id === player.id);
+      if (!old || player.bankrupt) continue;
+      const events = view.recentEvents.filter(
+        (e) => e.id > lastId && e.playerId === player.id,
+      );
+      const path = movementPath(old.position, player.position, events);
+      if (path.length < 2) continue;
+      const pawn = Array.from(
+        root.querySelectorAll<HTMLElement>(".board-pawn"),
+      ).find((element) => element.dataset.playerId === player.id);
+      if (!pawn?.animate) continue;
+      const [x, y] = center(player.position);
+      pawn.animate(
+        path.map((position) => {
+          const [left, top] = center(position);
+          return { transform: `translate(${left - x}px, ${top - y}px)` };
+        }),
+        {
+          duration: Math.min(740, Math.max(250, (path.length - 1) * 58)),
+          easing: "ease-out",
+        },
+      );
+    }
+  }, [view]);
   return (
     <div className="board-wrap">
-      <div className="board" aria-label="Bàn Cờ tỷ phú, 40 ô">
+      <div className="board" ref={board} aria-label="Bàn Cờ tỷ phú, 40 ô">
         <div className="board-center">
           <span className="board-brand">nhà chơi.</span>
           <h1>Cờ tỷ phú</h1>
@@ -72,7 +128,7 @@ export function Board({
             <button
               type="button"
               key={space.id}
-              className={`board-cell ${visitors.length ? "occupied" : ""} ${photo ? "has-photo" : "special"} ${visitors.some((p) => p.id === view.turn.playerId) ? "current" : ""}`}
+              className={`board-cell ${self && !self.bankrupt && self.position === space.id ? "your-space" : ""} ${visitors.length ? "occupied" : ""} ${photo ? "has-photo" : "special"} ${visitors.some((p) => p.id === view.turn.playerId) ? "current" : ""}`}
               style={
                 {
                   gridArea: `${row}/${col}`,
@@ -147,12 +203,16 @@ export function Board({
                   {visitors.map((p) => (
                     <span
                       key={p.id}
+                      data-player-id={p.id}
                       className={`board-pawn ${p.id === view.viewerId ? "own-pawn" : ""}`}
                       title={
                         p.id === view.viewerId ? `${p.name} (bạn)` : p.name
                       }
                     >
                       <TokenArt token={p.token} />
+                      {p.id === view.viewerId && (
+                        <span className="own-pawn-label">Bạn</span>
+                      )}
                     </span>
                   ))}
                 </span>
@@ -162,15 +222,19 @@ export function Board({
         })}
       </div>
       <div className="board-bottom">
-        <span>
-          <span className="status-dot" />
-          Luật truyền thống · Lượt {view.turn.number}
-        </span>
         {self && !self.bankrupt && (
-          <span className="your-location">
-            <TokenArt token={self.token} /> Bạn ở {BOARD[self.position]?.name}
-          </span>
+          <button
+            type="button"
+            className="your-location"
+            onClick={() => onSelect(self.position)}
+          >
+            <TokenArt token={self.token} />
+            <span>
+              Bạn đang ở <strong>{BOARD[self.position]?.name}</strong>
+            </span>
+          </button>
         )}
+        {self && <Wallet view={view} cash={self.cash} />}
       </div>
     </div>
   );

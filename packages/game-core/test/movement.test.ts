@@ -44,6 +44,15 @@ describe("turns, cards and jail", () => {
     expect(state.revision).toBe(0);
     expect(next.revision).toBe(1);
   });
+  it("awards exactly one 200 bonus when landing on the start tile", () => {
+    const state = makeState();
+    state.players[0]!.position = 37;
+    const next = act(state, { type: "roll" }, [1, 2]);
+    expect(next.players[0]).toMatchObject({ position: 0, cash: 1700 });
+    expect(
+      next.recentEvents.filter((event) => event.type === "go-salary"),
+    ).toMatchObject([{ playerId: "p1", spaceId: 0, amount: 200 }]);
+  });
   it("third_double_goes_to_jail_without_moving", () => {
     let state = act(makeState(), { type: "roll" }, [2, 2]);
     state = act(state, { type: "roll" }, [3, 3]);

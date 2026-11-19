@@ -11,11 +11,11 @@ describe("classic-v1 data", () => {
     expect(BOARD.filter((s) => s.kind === "station")).toHaveLength(4);
     expect(BOARD.filter((s) => s.kind === "utility")).toHaveLength(2);
     expect(BOARD[6]).toMatchObject({
-      name: "Phố Hàng Buồm",
+      name: "Thái Nguyên",
       price: 100,
       rent: [6, 30, 90, 270, 400, 550],
     });
-    expect(BOARD[39]).toMatchObject({ name: "Phố Phú Mỹ", price: 400 });
+    expect(BOARD[39]).toMatchObject({ name: "TP. Hồ Chí Minh", price: 400 });
     expect(
       BOARD.filter((s) => s.kind === "street").map((s) => s.group),
     ).toEqual([

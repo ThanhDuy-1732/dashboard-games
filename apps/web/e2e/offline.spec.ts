@@ -109,7 +109,7 @@ test("restores_saved_debt_auction_jail_and_bot_turn", async ({ page }) => {
       ).toBeVisible();
     if (phase === "auction")
       await expect(
-        page.getByRole("heading", { name: /Đấu giá Phố Hàng Buồm/ }),
+        page.getByRole("heading", { name: /Đấu giá Thái Nguyên/ }),
       ).toBeVisible();
     if (phase === "jail-choice")
       await expect(

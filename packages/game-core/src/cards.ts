@@ -7,17 +7,17 @@ export const CHANCE: readonly Card[] = [
   },
   {
     id: "chance-2",
-    text: "Một cuộc hẹn ở Nguyễn Huệ. Tiến tới ô 24.",
+    text: "Thăm làng Sen ở Nghệ An. Tiến tới ô 24.",
     effect: { type: "move-to", spaceId: 24 },
   },
   {
     id: "chance-3",
-    text: "Hẹn cà phê Tràng Tiền. Tiến tới ô 11.",
+    text: "Ghé Lào Cai ngắm Fansipan. Tiến tới ô 11.",
     effect: { type: "move-to", spaceId: 11 },
   },
   {
     id: "chance-4",
-    text: "Tham quan Phú Mỹ. Tiến tới ô 39.",
+    text: "Tham quan TP. Hồ Chí Minh. Tiến tới ô 39.",
     effect: { type: "move-to", spaceId: 39 },
   },
   {

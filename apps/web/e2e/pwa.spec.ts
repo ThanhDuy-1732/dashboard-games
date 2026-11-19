@@ -24,7 +24,7 @@ async function saved(page: Page) {
       }),
   );
 }
-test("production_PWA_installs_all_photos_and_opens_a_game_after_offline_reload", async ({
+test("production_PWA_installs_all_illustrations_and_opens_a_game_after_offline_reload", async ({
   page,
   context,
 }) => {
@@ -43,7 +43,7 @@ test("production_PWA_installs_all_photos_and_opens_a_game_after_offline_reload",
   await page.getByRole("textbox", { name: "Tên của bạn" }).fill("Offline PWA");
   await page.getByRole("button", { name: "Bắt đầu ván", exact: true }).click();
   await expect(page.locator(".board-cell")).toHaveCount(40);
-  const files = readdirSync("apps/web/public/locations").filter((file) =>
+  const files = readdirSync("apps/web/public/illustrations").filter((file) =>
     file.endsWith(".jpg"),
   );
   const decoded = await page.evaluate(
@@ -55,7 +55,7 @@ test("production_PWA_installs_all_photos_and_opens_a_game_after_offline_reload",
               const image = new Image();
               image.onload = () => resolve(image.naturalWidth > 0);
               image.onerror = () => resolve(false);
-              image.src = `/locations/${file}`;
+              image.src = `/illustrations/${file}`;
             }),
         ),
       ),

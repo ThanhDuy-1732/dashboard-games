@@ -1,4 +1,4 @@
-import { BOARD } from "@nha-choi/game-core";
+import { BOARD, GO_BONUS } from "@nha-choi/game-core";
 import type { PlayerView } from "@nha-choi/game-core";
 import photos from "../locations.json";
 import { Dialog } from "./Dialog.js";
@@ -10,16 +10,7 @@ export function LocationPhoto({ spaceId }: { spaceId: number }) {
       <img className="location-photo" src={photo.src} alt={photo.caption} />
       <figcaption className="photo-credit">
         <span className="photo-caption">{photo.caption}</span>
-        <span className="photo-attribution">
-          Ảnh: {photo.author} ·{" "}
-          <a href={photo.source} target="_blank" rel="noreferrer">
-            Wikimedia Commons
-          </a>{" "}
-          ·{" "}
-          <a href={photo.licenseUrl} target="_blank" rel="noreferrer">
-            {photo.license}
-          </a>
-        </span>
+        <span className="photo-attribution">Tranh minh họa Nhà Chơi</span>
       </figcaption>
     </figure>
   );
@@ -100,7 +91,7 @@ export function LocationDetails({
           {space.kind === "tax"
             ? `Nộp thuế ${space.tax} cho ngân hàng.`
             : space.kind === "go"
-              ? "Đi qua hoặc tới đây theo chiều tiến, nhận 200."
+              ? `Đi qua hoặc dừng tại đây theo chiều tiến, nhận ${GO_BONUS}.`
               : space.kind === "parking"
                 ? "Dừng chân miễn phí, không có tiền thưởng."
                 : space.kind === "go-to-jail"

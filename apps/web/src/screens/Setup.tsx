@@ -249,6 +249,12 @@ export function Setup({
               {error}
             </p>
           )}
+          {busy && mode === "online" && (
+            <p className="info-note" role="status">
+              Đang kết nối phòng. Máy chủ có thể mất thêm thời gian khi vừa khởi
+              động.
+            </p>
+          )}
           <div className="form-footer">
             <div className="small-rule">
               <Icon name="home" />

@@ -62,13 +62,11 @@ it("shows_the_location_photo_and_real_purchase_action", async () => {
     />,
   );
   expect(
-    screen.getByRole("img", { name: "Phố Hàng Buồm, Hà Nội" }),
+    screen.getByRole("img", { name: "Đồi chè, Thái Nguyên" }),
   ).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Mua đất · 100" }));
   expect(actions).toEqual([{ type: "buy-property" }]);
-  expect(
-    screen.getAllByRole("link", { name: "Wikimedia Commons" }),
-  ).toHaveLength(1);
+  expect(screen.getAllByText("Tranh minh họa Nhà Chơi")).toHaveLength(1);
 });
 it("asks_before_replacing_an_unfinished_saved_game", async () => {
   const { createSaveStore } = await import("../src/storage/save.js");
@@ -189,7 +187,7 @@ it("reads_the_complete_bundled_rulebook_inside_the_app_without_opening_an_extern
   );
   expect(
     screen.getByRole("region", { name: "Bộ luật đầy đủ" }).textContent,
-  ).toContain("Phố Phú Mỹ");
+  ).toContain("TP. Hồ Chí Minh");
   expect(screen.queryByRole("link", { name: "Đọc bộ luật đầy đủ" })).toBeNull();
 });
 
@@ -216,4 +214,59 @@ it("keeps_the_native_back_listener_registered_across_navigation", () => {
   } finally {
     attach.mockRestore();
   }
+});
+
+it("shows a visible own piece location and wallet credit after crossing start", async () => {
+  const { Game } = await import("../src/screens/Game.js");
+  const { applyAction } = await import("@nha-choi/game-core");
+  const { randomTape } =
+    await import("../../../packages/game-core/test/fixtures/random-tape.js");
+  const state = makeState();
+  state.players[0]!.position = 37;
+  const screenFor = (s: typeof state) => (
+    <Game
+      view={projectGame(s, "p1")}
+      pending={false}
+      onAction={() => {}}
+      onLeave={() => {}}
+    />
+  );
+  const game = render(screenFor(state));
+  expect(
+    screen.getByRole("button", { name: /Bạn đang ở Lâm Đồng/ }),
+  ).toBeTruthy();
+  const result = applyAction(state, "p1", { type: "roll" }, randomTape([1, 2]));
+  if (!result.ok) throw new Error(result.code);
+  game.rerender(screenFor(result.state));
+  expect(
+    screen.getByRole("button", { name: /Bạn đang ở Xuất phát/ }),
+  ).toBeTruthy();
+  expect(screen.getByText("+200")).toBeTruthy();
+  const second = projectGame(result.state, "p1");
+  second.players[0]!.cash = 1600;
+  game.rerender(
+    <Game
+      view={{ ...second, revision: second.revision + 1 }}
+      pending={false}
+      onAction={() => {}}
+      onLeave={() => {}}
+    />,
+  );
+  expect(screen.getByText("−100")).toBeTruthy();
+});
+
+it("moves along consecutive tiles across the start and keeps card jumps separate", async () => {
+  const { movementPath } = await import("../src/components/Board.js");
+  expect(
+    movementPath(38, 1, [
+      { id: 1, type: "roll", text: "", amount: 3 },
+      { id: 2, type: "land", text: "", spaceId: 1 },
+    ]),
+  ).toEqual([38, 39, 0, 1]);
+  expect(
+    movementPath(4, 10, [
+      { id: 1, type: "roll", text: "", amount: 6 },
+      { id: 2, type: "jail", text: "", spaceId: 10 },
+    ]),
+  ).toEqual([4, 10]);
 });

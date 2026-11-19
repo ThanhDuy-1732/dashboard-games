@@ -117,23 +117,40 @@ export class NeonRoomStore implements RoomStore {
       performance.now() - this.lastWrite < 10000
     )
       return;
-    await this.transaction(async (client) => {
-      const lease = await client.query(
-        `UPDATE nha_choi_backend_leases SET expires_at=clock_timestamp()+interval '45 seconds' WHERE scope=$1 AND owner=$2 AND expires_at>clock_timestamp() RETURNING scope`,
-        [this.scope, this.owner],
-      );
-      if (!lease.rowCount) throw new RoomStoreError("WRITER_LEASE_LOST");
-      for (const room of changed)
-        await client.query(
-          `INSERT INTO nha_choi_room_checkpoints(scope,id,code,document) VALUES($1,$2,$3,$4::jsonb) ON CONFLICT(scope,id) DO UPDATE SET code=EXCLUDED.code,document=EXCLUDED.document,updated_at=clock_timestamp()`,
-          [this.scope, room.id, room.code, current.get(room.id)],
-        );
-      for (const id of removed)
-        await client.query(
-          "DELETE FROM nha_choi_room_checkpoints WHERE scope=$1 AND id=$2",
-          [this.scope, id],
-        );
-    });
+    // One atomic statement fences the writer and persists its changed rooms.
+    const lease = await this.pool.query(
+      `WITH lease AS (
+         UPDATE nha_choi_backend_leases
+         SET expires_at = clock_timestamp() + interval '45 seconds'
+         WHERE scope = $1 AND owner = $2 AND expires_at > clock_timestamp()
+         RETURNING scope
+       ), saved AS (
+         INSERT INTO nha_choi_room_checkpoints(scope,id,code,document)
+         SELECT lease.scope, room.id, room.code, room.document
+         FROM lease CROSS JOIN jsonb_to_recordset($3::jsonb)
+           AS room(id uuid, code text, document jsonb)
+         ON CONFLICT(scope,id) DO UPDATE SET
+           code = EXCLUDED.code, document = EXCLUDED.document,
+           updated_at = clock_timestamp()
+       ), removed AS (
+         DELETE FROM nha_choi_room_checkpoints AS room USING lease
+         WHERE room.scope = lease.scope AND room.id = ANY($4::uuid[])
+       )
+       SELECT scope FROM lease`,
+      [
+        this.scope,
+        this.owner,
+        JSON.stringify(
+          changed.map((room) => ({
+            id: room.id,
+            code: room.code,
+            document: room,
+          })),
+        ),
+        removed,
+      ],
+    );
+    if (!lease.rowCount) throw new RoomStoreError("WRITER_LEASE_LOST");
     this.previous = current;
     this.lastWrite = performance.now();
   }

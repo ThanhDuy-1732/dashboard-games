@@ -24,6 +24,7 @@ export default defineConfig({
         globPatterns: [
           "**/*.{html,js,css,jpg,jpeg,png,svg,json,webp,woff2,txt,webmanifest}",
         ],
+        globIgnores: ["locations/**"],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
       manifest: {

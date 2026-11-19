@@ -1,9 +1,10 @@
 import type { Space } from "./types.js";
+export const GO_BONUS = 200;
 export const BOARD: readonly Space[] = [
   { id: 0, name: "Xuất phát", kind: "go" },
   {
     id: 1,
-    name: "Phố Hàng Đào",
+    name: "Cao Bằng",
     kind: "street",
     price: 60,
     mortgage: 30,
@@ -15,7 +16,7 @@ export const BOARD: readonly Space[] = [
   { id: 2, name: "Khí vận", kind: "community" },
   {
     id: 3,
-    name: "Phố Hàng Bạc",
+    name: "Lạng Sơn",
     kind: "street",
     price: 60,
     mortgage: 30,
@@ -28,7 +29,7 @@ export const BOARD: readonly Space[] = [
   { id: 5, name: "Ga Hà Nội", kind: "station", price: 200, mortgage: 100 },
   {
     id: 6,
-    name: "Phố Hàng Buồm",
+    name: "Thái Nguyên",
     kind: "street",
     price: 100,
     mortgage: 50,
@@ -40,7 +41,7 @@ export const BOARD: readonly Space[] = [
   { id: 7, name: "Cơ hội", kind: "chance" },
   {
     id: 8,
-    name: "Phố Hàng Mã",
+    name: "Tuyên Quang",
     kind: "street",
     price: 100,
     mortgage: 50,
@@ -51,7 +52,7 @@ export const BOARD: readonly Space[] = [
   },
   {
     id: 9,
-    name: "Phố Hàng Gai",
+    name: "Phú Thọ",
     kind: "street",
     price: 120,
     mortgage: 60,
@@ -63,7 +64,7 @@ export const BOARD: readonly Space[] = [
   { id: 10, name: "Nhà tù", kind: "jail" },
   {
     id: 11,
-    name: "Phố Tràng Tiền",
+    name: "Lào Cai",
     kind: "street",
     price: 140,
     mortgage: 70,
@@ -75,7 +76,7 @@ export const BOARD: readonly Space[] = [
   { id: 12, name: "Điện lực", kind: "utility", price: 150, mortgage: 75 },
   {
     id: 13,
-    name: "Phố Đinh Lễ",
+    name: "Sơn La",
     kind: "street",
     price: 140,
     mortgage: 70,
@@ -86,7 +87,7 @@ export const BOARD: readonly Space[] = [
   },
   {
     id: 14,
-    name: "Phố Ngô Quyền",
+    name: "Điện Biên",
     kind: "street",
     price: 160,
     mortgage: 80,
@@ -98,7 +99,7 @@ export const BOARD: readonly Space[] = [
   { id: 15, name: "Ga Huế", kind: "station", price: 200, mortgage: 100 },
   {
     id: 16,
-    name: "Phố Bạch Đằng",
+    name: "Quảng Ninh",
     kind: "street",
     price: 180,
     mortgage: 90,
@@ -110,7 +111,7 @@ export const BOARD: readonly Space[] = [
   { id: 17, name: "Khí vận", kind: "community" },
   {
     id: 18,
-    name: "Phố Trần Phú",
+    name: "Hải Phòng",
     kind: "street",
     price: 180,
     mortgage: 90,
@@ -121,7 +122,7 @@ export const BOARD: readonly Space[] = [
   },
   {
     id: 19,
-    name: "Phố Chùa Cầu",
+    name: "Hưng Yên",
     kind: "street",
     price: 200,
     mortgage: 100,
@@ -133,7 +134,7 @@ export const BOARD: readonly Space[] = [
   { id: 20, name: "Đỗ xe miễn phí", kind: "parking" },
   {
     id: 21,
-    name: "Phố Lê Lợi",
+    name: "Ninh Bình",
     kind: "street",
     price: 220,
     mortgage: 110,
@@ -145,7 +146,7 @@ export const BOARD: readonly Space[] = [
   { id: 22, name: "Cơ hội", kind: "chance" },
   {
     id: 23,
-    name: "Phố Hai Bà Trưng",
+    name: "Thanh Hóa",
     kind: "street",
     price: 220,
     mortgage: 110,
@@ -156,7 +157,7 @@ export const BOARD: readonly Space[] = [
   },
   {
     id: 24,
-    name: "Phố Nguyễn Huệ",
+    name: "Nghệ An",
     kind: "street",
     price: 240,
     mortgage: 120,
@@ -168,7 +169,7 @@ export const BOARD: readonly Space[] = [
   { id: 25, name: "Ga Đà Nẵng", kind: "station", price: 200, mortgage: 100 },
   {
     id: 26,
-    name: "Phố Đồng Khởi",
+    name: "Hà Tĩnh",
     kind: "street",
     price: 260,
     mortgage: 130,
@@ -179,7 +180,7 @@ export const BOARD: readonly Space[] = [
   },
   {
     id: 27,
-    name: "Phố Lê Duẩn",
+    name: "Quảng Trị",
     kind: "street",
     price: 260,
     mortgage: 130,
@@ -191,7 +192,7 @@ export const BOARD: readonly Space[] = [
   { id: 28, name: "Cấp nước", kind: "utility", price: 150, mortgage: 75 },
   {
     id: 29,
-    name: "Phố Nam Kỳ",
+    name: "Huế",
     kind: "street",
     price: 280,
     mortgage: 140,
@@ -203,7 +204,7 @@ export const BOARD: readonly Space[] = [
   { id: 30, name: "Vào tù", kind: "go-to-jail" },
   {
     id: 31,
-    name: "Phố Hồ Tây",
+    name: "Đà Nẵng",
     kind: "street",
     price: 300,
     mortgage: 150,
@@ -214,7 +215,7 @@ export const BOARD: readonly Space[] = [
   },
   {
     id: 32,
-    name: "Phố Thanh Niên",
+    name: "Quảng Ngãi",
     kind: "street",
     price: 300,
     mortgage: 150,
@@ -226,7 +227,7 @@ export const BOARD: readonly Space[] = [
   { id: 33, name: "Khí vận", kind: "community" },
   {
     id: 34,
-    name: "Phố Quảng An",
+    name: "Khánh Hòa",
     kind: "street",
     price: 320,
     mortgage: 160,
@@ -239,7 +240,7 @@ export const BOARD: readonly Space[] = [
   { id: 36, name: "Cơ hội", kind: "chance" },
   {
     id: 37,
-    name: "Phố Thảo Điền",
+    name: "Lâm Đồng",
     kind: "street",
     price: 350,
     mortgage: 175,
@@ -251,7 +252,7 @@ export const BOARD: readonly Space[] = [
   { id: 38, name: "Thuế tài sản", kind: "tax", tax: 100 },
   {
     id: 39,
-    name: "Phố Phú Mỹ",
+    name: "TP. Hồ Chí Minh",
     kind: "street",
     price: 400,
     mortgage: 200,

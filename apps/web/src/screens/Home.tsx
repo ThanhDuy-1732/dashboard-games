@@ -57,10 +57,10 @@ export function Home({
             <Icon name="spark" />
             Cờ tỷ phú
           </span>
-          <h2>Đi một vòng phố Việt</h2>
+          <h2>Đi một vòng Việt Nam</h2>
           <p>
-            Từ phố Hàng Mã đến phố Đồng Khởi, khám phá các địa danh Việt Nam qua
-            từng lượt gieo xúc xắc.
+            Từ thác Bản Giốc đến chợ Bến Thành, khám phá các tỉnh thành Việt Nam
+            qua từng lượt gieo xúc xắc.
           </p>
           <button className="button primary" onClick={onPlay}>
             Chơi Cờ tỷ phú <Icon name="arrow" />
@@ -77,7 +77,7 @@ export function Home({
           </div>
         </div>
         <div className="hero-location">
-          <LocationPhoto spaceId={8} />
+          <LocationPhoto spaceId={1} />
         </div>
       </section>
       <div className="section-title">

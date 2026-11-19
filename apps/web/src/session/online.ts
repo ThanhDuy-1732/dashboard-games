@@ -101,6 +101,8 @@ async function connect(
   }
   const socket = io(serverUrl, {
     autoConnect: false,
+    transports: ["websocket", "polling"],
+    tryAllTransports: true,
     auth: { protocolVersion: 1, rulesVersion: "classic-v1" },
     reconnectionDelay: 500,
     reconnectionDelayMax: 3000,
@@ -147,14 +149,19 @@ async function connect(
     resolveInitial = resolve;
     rejectInitial = reject;
   });
-  const initialTimeout = setTimeout(() => {
-    if (!selfId) {
-      void session.close();
-      rejectInitial(
-        new Error("Không kết nối được máy chủ. Hãy kiểm tra mạng và thử lại."),
-      );
-    }
-  }, 20000);
+  const initialTimeout = setTimeout(
+    () => {
+      if (!selfId) {
+        void session.close();
+        rejectInitial(
+          new Error("Máy chủ chưa phản hồi. Hãy thử lại sau ít giây."),
+        );
+      }
+    },
+    /^https:\/\/[^/]+\.onrender\.com(?:[:/]|$)/i.test(serverUrl)
+      ? 70000
+      : 20000,
+  );
   const session: OnlineSession = {
     async setActive(foreground) {
       if (!active || update.connection === "closed") return;

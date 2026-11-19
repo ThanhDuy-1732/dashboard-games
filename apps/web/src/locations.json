@@ -1,236 +1,106 @@
 {
   "1": {
-    "src": "/locations/1.jpg",
-    "caption": "Phố Hàng Đào, Hà Nội",
-    "author": "Larry Camera location21° 02′ 03.76″ N, 105° 50′ 53.08″ E View this and other nearby images on: OpenStreetMap 21.034379; 105.848079",
-    "license": "CC BY-SA 2.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
-    "source": "https://commons.wikimedia.org/wiki/File:H%C3%A0ng_%C4%90%C3%A0o.jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/a/af/H%C3%A0ng_%C4%90%C3%A0o.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/1.jpg",
+    "caption": "Thác Bản Giốc, Cao Bằng"
   },
   "3": {
-    "src": "/locations/3.jpg",
-    "caption": "Phố Hàng Bạc, Hà Nội",
-    "author": "Benjamin Smith",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "source": "https://commons.wikimedia.org/wiki/File:Hanoi_-_H%C3%A0ng_B%E1%BA%A1c_Street_-_1.jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/8/81/Hanoi_-_H%C3%A0ng_B%E1%BA%A1c_Street_-_1.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/3.jpg",
+    "caption": "Thung lũng núi đá vôi, Lạng Sơn"
   },
   "5": {
-    "src": "/locations/5.jpg",
-    "caption": "Ga Hà Nội",
-    "author": "NKSTTSSHNVN",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "source": "https://commons.wikimedia.org/wiki/File:Ga_H%C3%A0_N%E1%BB%99i_-_NKS.jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/1/1b/Ga_H%C3%A0_N%E1%BB%99i_-_NKS.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/5.jpg",
+    "caption": "Ga Hà Nội"
   },
   "6": {
-    "src": "/locations/6.jpg",
-    "caption": "Phố Hàng Buồm, Hà Nội",
-    "author": "Zack Knowles",
-    "license": "CC BY-SA 3.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
-    "source": "https://commons.wikimedia.org/wiki/File:H%C3%A0ng_Bu%E1%BB%93m,_Ho%C3%A0n_Ki%E1%BA%BFm,_H%C3%A0_N%E1%BB%99i,_Vietnam_-_panoramio.jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/e/e1/H%C3%A0ng_Bu%E1%BB%93m%2C_Ho%C3%A0n_Ki%E1%BA%BFm%2C_H%C3%A0_N%E1%BB%99i%2C_Vietnam_-_panoramio.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/6.jpg",
+    "caption": "Đồi chè, Thái Nguyên"
   },
   "8": {
-    "src": "/locations/8.jpg",
-    "caption": "Phố Hàng Mã, Hà Nội",
-    "author": "Christophe95",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "source": "https://commons.wikimedia.org/wiki/File:H%C3%A0ng_M%C3%A3_Street,_Hanoi.jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/2/2e/H%C3%A0ng_M%C3%A3_Street%2C_Hanoi.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/8.jpg",
+    "caption": "Hồ Na Hang, Tuyên Quang"
   },
   "9": {
-    "src": "/locations/9.jpg",
-    "caption": "Phố Hàng Gai, Hà Nội",
-    "author": "Martin Fisch",
-    "license": "CC BY-SA 2.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
-    "source": "https://commons.wikimedia.org/wiki/File:H%C3%A0ng_Gai.jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/e/e1/H%C3%A0ng_Gai.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/9.jpg",
+    "caption": "Đền Hùng, Phú Thọ"
   },
   "11": {
-    "src": "/locations/11.jpg",
-    "caption": "Phố Tràng Tiền, Hà Nội",
-    "author": "The Hanoian",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "source": "https://commons.wikimedia.org/wiki/File:Ph%E1%BB%91_Tr%C3%A0ng_Ti%E1%BB%81n_-_2022-09-02_02.jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/6/6d/Ph%E1%BB%91_Tr%C3%A0ng_Ti%E1%BB%81n_-_2022-09-02_02.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/11.jpg",
+    "caption": "Đỉnh Fansipan, Lào Cai"
   },
   "13": {
-    "src": "/locations/13.jpg",
-    "caption": "Bưu điện Đinh Lễ, Hà Nội",
-    "author": "Nguyenmy2302",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "source": "https://commons.wikimedia.org/wiki/File:T%C3%B2a_nh%C3%A0_B%C6%B0u_%C4%91i%E1%BB%87n_%C4%90inh_L%E1%BB%85,_H%C3%A0_N%E1%BB%99i_(1).jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/e/e6/T%C3%B2a_nh%C3%A0_B%C6%B0u_%C4%91i%E1%BB%87n_%C4%90inh_L%E1%BB%85%2C_H%C3%A0_N%E1%BB%99i_%281%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/13.jpg",
+    "caption": "Đường đèo Tây Bắc, Sơn La"
   },
   "14": {
-    "src": "/locations/14.jpg",
-    "caption": "Phố Ngô Quyền, Hà Nội",
-    "author": "Ltn12345",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "source": "https://commons.wikimedia.org/wiki/File:Ng%C3%B4_Quy%E1%BB%81n_Street,_Hanoi_03.jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/d/d8/Ng%C3%B4_Quy%E1%BB%81n_Street%2C_Hanoi_03.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/14.jpg",
+    "caption": "Cánh đồng Mường Thanh, Điện Biên"
   },
   "15": {
-    "src": "/locations/15.jpg",
-    "caption": "Ga Huế",
-    "author": "CEphoto, Uwe Aranas",
-    "license": "CC BY-SA 3.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
-    "source": "https://commons.wikimedia.org/wiki/File:Hue_Vietnam_Hue-Railway-Station-01.jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Hue_Vietnam_Hue-Railway-Station-01.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/15.jpg",
+    "caption": "Ga Huế"
   },
   "16": {
-    "src": "/locations/16.jpg",
-    "caption": "Nhìn từ phố Bạch Đằng, Hội An",
-    "author": "Vuong Tri Binh",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "source": "https://commons.wikimedia.org/wiki/File:Hoi_An_Ancient_Town_bridge_as_seen_from_Bach_Dang_street_in_2015.jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/6/67/Hoi_An_Ancient_Town_bridge_as_seen_from_Bach_Dang_street_in_2015.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/16.jpg",
+    "caption": "Vịnh Hạ Long, Quảng Ninh"
   },
   "18": {
-    "src": "/locations/18.jpg",
-    "caption": "Phố Trần Phú, Hội An",
-    "author": "Vuong Tri Binh",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "source": "https://commons.wikimedia.org/wiki/File:Tran_Phu_street_of_Hoi_An_in_2015_2.jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/9/92/Tran_Phu_street_of_Hoi_An_in_2015_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/18.jpg",
+    "caption": "Nhà hát thành phố, Hải Phòng"
   },
   "19": {
-    "src": "/locations/19.jpg",
-    "caption": "Chùa Cầu, Hội An",
-    "author": "Chainwit.",
-    "license": "CC BY 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by/4.0",
-    "source": "https://commons.wikimedia.org/wiki/File:2024_H%E1%BB%99i_An_-_Japanese_Covered_Bridge_(Ch%C3%B9a_C%E1%BA%A7u)_after_renovation_-_img_11.jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/b/b8/2024_H%E1%BB%99i_An_-_Japanese_Covered_Bridge_%28Ch%C3%B9a_C%E1%BA%A7u%29_after_renovation_-_img_11.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/19.jpg",
+    "caption": "Phố Hiến, Hưng Yên"
   },
   "21": {
-    "src": "/locations/21.jpg",
-    "caption": "Đường Lê Lợi, TP. Hồ Chí Minh",
-    "author": "Kevin Rutherford",
-    "license": "CC BY-SA 2.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
-    "source": "https://commons.wikimedia.org/wiki/File:Le_Loi_Boulevard_(52681162249).jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/c/c0/Le_Loi_Boulevard_%2852681162249%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/21.jpg",
+    "caption": "Tam Cốc, Ninh Bình"
   },
   "23": {
-    "src": "/locations/23.jpg",
-    "caption": "Đường Hai Bà Trưng, TP. Hồ Chí Minh",
-    "author": "Ken Marshall",
-    "license": "CC BY 2.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by/2.0",
-    "source": "https://commons.wikimedia.org/wiki/File:Hai_Ba_Trung_Street,_Saigon_(5873369408).jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/f/f9/Hai_Ba_Trung_Street%2C_Saigon_%285873369408%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/23.jpg",
+    "caption": "Thành nhà Hồ, Thanh Hóa"
   },
   "24": {
-    "src": "/locations/24.jpg",
-    "caption": "Đường Nguyễn Huệ, TP. Hồ Chí Minh",
-    "author": "Timback",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "source": "https://commons.wikimedia.org/wiki/File:Nguyen_Hue_Street_2020.jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/7/75/Nguyen_Hue_Street_2020.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/24.jpg",
+    "caption": "Làng Sen, Nghệ An"
   },
   "25": {
-    "src": "/locations/25.jpg",
-    "caption": "Ga Đà Nẵng",
-    "author": "Dragfyre",
-    "license": "CC BY-SA 3.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
-    "source": "https://commons.wikimedia.org/wiki/File:Da_Nang_Train_Stn_Front.JPG",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/c/c0/Da_Nang_Train_Stn_Front.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/25.jpg",
+    "caption": "Ga Đà Nẵng"
   },
   "26": {
-    "src": "/locations/26.jpg",
-    "caption": "Đường Đồng Khởi, TP. Hồ Chí Minh",
-    "author": "TomW712",
-    "license": "CC BY-SA 3.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0",
-    "source": "https://commons.wikimedia.org/wiki/File:Dong_Khoi_Street,_Ho_Chi_Minh_City_2013.jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/1/1e/Dong_Khoi_Street%2C_Ho_Chi_Minh_City_2013.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/26.jpg",
+    "caption": "Hồ Kẻ Gỗ, Hà Tĩnh"
   },
   "27": {
-    "src": "/locations/27.jpg",
-    "caption": "Đường Lê Duẩn, TP. Hồ Chí Minh",
-    "author": "Kevin Rutherford from United States",
-    "license": "CC BY-SA 2.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0",
-    "source": "https://commons.wikimedia.org/wiki/File:Le_Duan_Boulevard_(52681526438).jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/d/d6/Le_Duan_Boulevard_%2852681526438%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/27.jpg",
+    "caption": "Dải cồn cát ven biển, Quảng Trị"
   },
   "29": {
-    "src": "/locations/29.jpg",
-    "caption": "Đường Nam Kỳ Khởi Nghĩa, TP. Hồ Chí Minh",
-    "author": "trungydang",
-    "license": "CC BY 3.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
-    "source": "https://commons.wikimedia.org/wiki/File:Nam_ky_khoi_nghia,_phuong_Nguyen_Th%C3%A1i_B%C3%ACnh,_Qu%E1%BA%ADn_1,_TPHCM,_Vi%E1%BB%87t_Nam_-_panoramio.jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/8/8c/Nam_ky_khoi_nghia%2C_phuong_Nguyen_Th%C3%A1i_B%C3%ACnh%2C_Qu%E1%BA%ADn_1%2C_TPHCM%2C_Vi%E1%BB%87t_Nam_-_panoramio.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/29.jpg",
+    "caption": "Ngọ Môn, Huế"
   },
   "31": {
-    "src": "/locations/31.jpg",
-    "caption": "Hồ Tây, Hà Nội",
-    "author": "NKSTTSSHNVN",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "source": "https://commons.wikimedia.org/wiki/File:H%E1%BB%93_T%C3%A2y_ho%C3%A0ng_h%C3%B4n_-_NKS.jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/4/4a/H%E1%BB%93_T%C3%A2y_ho%C3%A0ng_h%C3%B4n_-_NKS.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/31.jpg",
+    "caption": "Cầu Rồng, Đà Nẵng"
   },
   "32": {
-    "src": "/locations/32.jpg",
-    "caption": "Đường Cổ Ngư (nay là Thanh Niên), Hà Nội · Ảnh tư liệu",
-    "author": "Recorded by TS. Đào Thị Diến of the Trung tâm Lưu trữ quốc gia I, Hanoi.",
-    "license": "Public domain",
-    "licenseUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
-    "source": "https://commons.wikimedia.org/wiki/File:%C4%90%C6%B0%E1%BB%9Dng_C%E1%BB%95_Ng%C6%B0_(nay_l%C3%A0_%C4%91%C6%B0%E1%BB%9Dng_Thanh_Ni%C3%AAn)_ven_H%E1%BB%93_T%C3%A2y_cu%E1%BB%91i_th%E1%BA%BF_k%E1%BB%B7_19,_%C4%91%E1%BA%A7u_th%E1%BA%BF_k%E1%BB%B7_20._S%C6%B0u_t%E1%BA%ADp_c%E1%BB%A7a_Dieulefils.jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/6/60/%C4%90%C6%B0%E1%BB%9Dng_C%E1%BB%95_Ng%C6%B0_%28nay_l%C3%A0_%C4%91%C6%B0%E1%BB%9Dng_Thanh_Ni%C3%AAn%29_ven_H%E1%BB%93_T%C3%A2y_cu%E1%BB%91i_th%E1%BA%BF_k%E1%BB%B7_19%2C_%C4%91%E1%BA%A7u_th%E1%BA%BF_k%E1%BB%B7_20._S%C6%B0u_t%E1%BA%ADp_c%E1%BB%A7a_Dieulefils.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/32.jpg",
+    "caption": "Bờ đá Lý Sơn, Quảng Ngãi"
   },
   "34": {
-    "src": "/locations/34.jpg",
-    "caption": "Chợ hoa Quảng An, Hà Nội",
-    "author": "Viethavvh at vi.wikipedia",
-    "license": "Public domain",
-    "licenseUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
-    "source": "https://commons.wikimedia.org/wiki/File:Cho_hoa_dem_Quang_An.JPG",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/a/aa/Cho_hoa_dem_Quang_An.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/34.jpg",
+    "caption": "Vịnh Nha Trang, Khánh Hòa"
   },
   "35": {
-    "src": "/locations/35.jpg",
-    "caption": "Ga Sài Gòn",
-    "author": "Bùi Thụy Đào Nguyên",
-    "license": "Public domain",
-    "licenseUrl": "https://creativecommons.org/publicdomain/mark/1.0/",
-    "source": "https://commons.wikimedia.org/wiki/File:Ga_S%C3%A0i_G%C3%B2n.jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/3/3e/Ga_S%C3%A0i_G%C3%B2n.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/35.jpg",
+    "caption": "Ga Sài Gòn"
   },
   "37": {
-    "src": "/locations/37.jpg",
-    "caption": "Khu vực Thảo Điền, TP. Hồ Chí Minh",
-    "author": "Xuanphuocle",
-    "license": "CC BY-SA 4.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0",
-    "source": "https://commons.wikimedia.org/wiki/File:Th%E1%BA%A3o_%C4%90i%E1%BB%81n_Pearl,_th%E1%BA%A3o_%C4%91i%E1%BB%81n,_th%E1%BB%A7_%C4%91%E1%BB%A9c,_th%C3%A0nh_ph%E1%BB%91_h%E1%BB%93_ch%C3%AD_minh.jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/9/9c/Th%E1%BA%A3o_%C4%90i%E1%BB%81n_Pearl%2C_th%E1%BA%A3o_%C4%91i%E1%BB%81n%2C_th%E1%BB%A7_%C4%91%E1%BB%A9c%2C_th%C3%A0nh_ph%E1%BB%91_h%E1%BB%93_ch%C3%AD_minh.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/37.jpg",
+    "caption": "Đồi Đà Lạt, Lâm Đồng"
   },
   "39": {
-    "src": "/locations/39.jpg",
-    "caption": "Khu đô thị Phú Mỹ Hưng, TP. Hồ Chí Minh",
-    "author": "trungydang",
-    "license": "CC BY 3.0",
-    "licenseUrl": "https://creativecommons.org/licenses/by/3.0",
-    "source": "https://commons.wikimedia.org/wiki/File:Khu_Do_thi_Phu_My_Hung.T%C3%A2n_Phong,_Qu%E1%BA%ADn_7,_TPHCM,_Vi%E1%BB%87t_Nam_-_panoramio.jpg",
-    "original": "https://upload.wikimedia.org/wikipedia/commons/3/3c/Khu_Do_thi_Phu_My_Hung.T%C3%A2n_Phong%2C_Qu%E1%BA%ADn_7%2C_TPHCM%2C_Vi%E1%BB%87t_Nam_-_panoramio.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original"
+    "src": "/illustrations/39.jpg",
+    "caption": "Chợ Bến Thành, TP. Hồ Chí Minh"
   }
 }
