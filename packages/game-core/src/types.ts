@@ -1,5 +1,19 @@
 export type PlayerId = string;
-export type Token = "car" | "cat" | "hat" | "ship" | "dog" | "plane";
+export const TOKENS = [
+  "car",
+  "cat",
+  "hat",
+  "ship",
+  "dog",
+  "plane",
+  "rocket",
+  "bike",
+  "robot",
+  "butterfly",
+  "camera",
+  "guitar",
+] as const;
+export type Token = (typeof TOKENS)[number];
 export interface PlayerConfig {
   id: PlayerId;
   name: string;
@@ -203,10 +217,7 @@ export interface RandomSource {
   int(minInclusive: number, maxInclusive: number): number;
 }
 export type RuleErrorCode =
-  | "NOT_AUTHORIZED"
-  | "INVALID_ACTION"
-  | "INSUFFICIENT_FUNDS"
-  | "INVALID_GAME";
+  "NOT_AUTHORIZED" | "INVALID_ACTION" | "INSUFFICIENT_FUNDS" | "INVALID_GAME";
 export type ActionResult =
   | { ok: true; state: GameState; events: GameEvent[] }
   | { ok: false; code: RuleErrorCode };

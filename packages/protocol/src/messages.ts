@@ -1,11 +1,12 @@
 import { z } from "zod";
+import { TOKENS } from "@nha-choi/game-core";
 import type { GameAction, PlayerConfig } from "@nha-choi/game-core";
 const wireTextSchema = z.string().regex(/^[^\u0000\uD800-\uDFFF]*$/u);
 export const moneySchema = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
 export const playerConfigSchema = z.strictObject({
   id: wireTextSchema.min(1).max(64),
   name: wireTextSchema.trim().min(1).max(20),
-  token: z.enum(["car", "cat", "hat", "ship", "dog", "plane"]),
+  token: z.enum(TOKENS),
   kind: z.enum(["human", "bot"]),
 }) satisfies z.ZodType<PlayerConfig>;
 const spaceId = z.number().int().min(0).max(39);
