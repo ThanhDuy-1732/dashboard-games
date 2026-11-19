@@ -23,6 +23,7 @@ export function useOfflineSave(session: OfflineSession | null) {
   const [store] = useState(() => createSaveStore("nha-choi", isNative()));
   const [saved, setSaved] = useState<SavedGame | null>(null);
   const savedRef = useRef<SavedGame | null>(null);
+  const discarded = useRef<OfflineSession | null>(null);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   useEffect(() => {
@@ -46,13 +47,15 @@ export function useOfflineSave(session: OfflineSession | null) {
     };
   }, [store]);
   async function write(active: OfflineSession, replace = false) {
+    if (discarded.current === active) return;
     const state = active.snapshot();
     const human = state.players.find((p) => p.kind === "human")!;
     const value = makeSavedGame(state, human.id);
     await (replace ? store.replace(value) : store.save(value));
     if (
-      savedRef.current?.gameId !== value.gameId ||
-      savedRef.current.revision <= value.revision
+      discarded.current !== active &&
+      (savedRef.current?.gameId !== value.gameId ||
+        savedRef.current.revision <= value.revision)
     ) {
       savedRef.current = value;
       setSaved(value);
@@ -113,8 +116,20 @@ export function useOfflineSave(session: OfflineSession | null) {
       void store.release().catch(() => {});
     };
   }, [session, store]);
+  async function discard(active: OfflineSession) {
+    discarded.current = active;
+    try {
+      await store.remove();
+      savedRef.current = null;
+      setSaved(null);
+      setError("");
+    } catch (reason) {
+      discarded.current = null;
+      throw reason;
+    }
+  }
   async function retry() {
-    if (!session) return;
+    if (!session || discarded.current === session) return;
     try {
       if (!(await store.claim())) throw new SaveError("LEASE_LOST");
       await write(session);
@@ -129,6 +144,7 @@ export function useOfflineSave(session: OfflineSession | null) {
     store,
     saved,
     write,
+    discard,
     retry,
     notice,
     dismissNotice: () => setNotice(""),

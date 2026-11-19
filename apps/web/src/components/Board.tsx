@@ -1,5 +1,6 @@
 import { BOARD } from "@nha-choi/game-core";
 import type { PlayerView } from "@nha-choi/game-core";
+import { useRef } from "react";
 import type { CSSProperties } from "react";
 import photos from "../locations.json";
 import { TokenArt } from "./TokenArt.js";
@@ -38,6 +39,11 @@ export function Board({
   view: PlayerView;
   onSelect: (spaceId: number) => void;
 }) {
+  const rollId = [...view.recentEvents]
+    .reverse()
+    .find((event) => event.type === "roll")?.id;
+  const initialRoll = useRef(rollId);
+  const animateRoll = Boolean(view.turn.dice && rollId !== initialRoll.current);
   const self = view.players.find((player) => player.id === view.viewerId);
   return (
     <div className="board-wrap">
@@ -47,7 +53,8 @@ export function Board({
           <h1>Cờ tỷ phú</h1>
           <p>Mỗi nước đi, một cơ hội.</p>
           <div
-            className="center-dice"
+            key={rollId}
+            className={`center-dice${animateRoll ? " dice-rolling" : ""}`}
             aria-label={
               view.turn.dice
                 ? `Xúc xắc ${view.turn.dice.join(" và ")}`

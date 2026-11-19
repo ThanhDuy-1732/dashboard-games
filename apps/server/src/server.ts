@@ -6,6 +6,7 @@ import {
   createRoomSchema,
   joinRoomSchema,
   readySchema,
+  leaveRoomSchema,
   emptyRoomSchema,
   resumeRoomSchema,
 } from "@nha-choi/protocol";
@@ -182,7 +183,9 @@ export async function createGameServer({
       rooms.ready(socket.id, input.ready),
     );
     roomRequest("room:start", emptyRoomSchema, () => rooms.start(socket.id));
-    roomRequest("room:leave", emptyRoomSchema, () => rooms.leave(socket.id));
+    roomRequest("room:leave", leaveRoomSchema, (input) =>
+      rooms.leave(socket.id, input.discard),
+    );
     roomRequest("game:end-interrupted", emptyRoomSchema, () =>
       rooms.endInterrupted(socket.id),
     );

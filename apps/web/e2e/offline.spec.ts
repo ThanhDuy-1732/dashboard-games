@@ -144,3 +144,24 @@ test("another_tab_cannot_open_the_same_save_as_a_second_writer", async ({
   await expect(other.locator(".board")).toHaveCount(0);
   await expect(page.locator(".board")).toBeVisible();
 });
+
+test("discards_an_offline_game_and_cannot_resume_it_after_reload", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Chơi Cờ tỷ phú" }).click();
+  await page.getByRole("textbox", { name: "Tên của bạn" }).fill("Bạn chơi");
+  await page.getByRole("button", { name: "Bắt đầu ván", exact: true }).click();
+  await expect(page.locator(".save-indicator")).toHaveText("Đã lưu");
+  expect(await readSave(page)).toBeTruthy();
+  await page.getByRole("button", { name: "Rời bàn chơi" }).click();
+  await page
+    .getByRole("button", { name: "Thoát không lưu", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Chơi Cờ tỷ phú" }).waitFor();
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Tiếp tục ván", exact: true }),
+  ).toHaveCount(0);
+  expect(await readSave(page)).toBeUndefined();
+});

@@ -19,6 +19,7 @@ interface Member {
   name: string;
   token: Token;
   ready: boolean;
+  discardOnLeave?: true;
   socketId: string | null;
   disconnectedAt: number | null;
   tokenHash: string;
@@ -221,6 +222,7 @@ export class Rooms {
     const previous = member.socketId;
     member.socketId = socketId;
     member.disconnectedAt = null;
+    delete member.discardOnLeave;
     room.lastActivity = this.now();
     this.bindings.set(socketId, { roomId: room.id, playerId: member.id });
     if (previous && previous !== socketId) {
@@ -469,11 +471,19 @@ export class Rooms {
     room.lastActivity = this.now();
     this.publish(room);
   }
-  leave(socketId: string): RoomReply {
+  leave(socketId: string, discard = false): RoomReply {
     const target = this.bound(socketId);
     if (!target) return { ok: false, code: "NOT_AUTHORIZED" };
     const { room, member } = target;
     if (room.authority) {
+      if (discard) {
+        member.discardOnLeave = true;
+        if (room.members.every((p) => p.discardOnLeave)) {
+          const reply = this.reply(room, member);
+          this.remove(room);
+          return reply;
+        }
+      }
       this.disconnect(socketId);
       return this.reply(room, member);
     }

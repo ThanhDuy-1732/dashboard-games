@@ -136,12 +136,8 @@ export function App() {
   }, [page]);
   const navigate = (next: "home" | "setup") => {
     if (operation.current) return;
-    if (session && update?.view?.phase !== "finished") {
-      setLeave(next);
-      return;
-    }
     if (session) {
-      void exit(next);
+      setLeave(next);
       return;
     }
     setPage(next);
@@ -218,22 +214,27 @@ export function App() {
       setError(saveErrorMessage(reason));
     }
   }
-  async function exit(next: "home" | "setup") {
+  async function exit(next: "home" | "setup", discard = false) {
     if (!session || operation.current) return;
     operation.current = true;
     setPending(true);
+    setError("");
     try {
       if (offline) {
-        offline.pause("Đang lưu ván trước khi rời.");
-        await persistence.write(offline);
+        offline.pause(
+          discard ? "Đang xóa bản lưu." : "Đang lưu ván trước khi rời.",
+        );
+        if (discard) await persistence.discard(offline);
+        else await persistence.write(offline);
       }
-      if (online) await online.leaveRoom();
+      if (online) await online.leaveRoom(discard);
       await session.close();
       setSession(null);
       setPage(next);
       setLeave(null);
       if (offline) await persistence.store.release();
     } catch (reason) {
+      if (offline && discard) offline.resume();
       setError(
         online && reason instanceof Error
           ? reason.message
@@ -569,18 +570,36 @@ export function App() {
           <p className="dialog-lead">
             {online
               ? lobby?.started
-                ? "Rời phòng sẽ tạm dừng ván cho mọi người. Bạn có thể kết nối lại bằng tab này. Sau 120 giây, người còn lại được quyền kết thúc ván không người thắng."
+                ? `${lobby.closed ? "" : "Rời phòng sẽ tạm dừng ván. "}Nếu chọn không lưu, bạn sẽ mất lối quay lại từ tab này. Ván chỉ bị xóa ngay khi tất cả người chơi chọn không lưu.`
                 : "Bạn sẽ rời ghế trong phòng chờ."
-              : "Ván sẽ được lưu trên thiết bị này. Bạn có thể tiếp tục từ trang chủ."}
+              : "Bạn có thể lưu để chơi tiếp. Thoát không lưu sẽ xóa ván này khỏi thiết bị."}
           </p>
           <button
             className="button primary full"
             disabled={pending}
             onClick={() => void exit(leave)}
           >
-            {online ? "Rời phòng" : "Lưu và rời ván"}
+            {online && !lobby?.started ? "Rời phòng" : "Lưu và rời ván"}
           </button>
-          <button className="text-button full" onClick={() => setLeave(null)}>
+          {error && (
+            <p className="dialog-lead" role="alert">
+              {error}
+            </p>
+          )}
+          {(offline || lobby?.started) && (
+            <button
+              className="button secondary full"
+              disabled={pending}
+              onClick={() => void exit(leave, true)}
+            >
+              Thoát không lưu
+            </button>
+          )}
+          <button
+            className="text-button full"
+            disabled={pending}
+            onClick={() => setLeave(null)}
+          >
             Tiếp tục chơi
           </button>
         </Dialog>

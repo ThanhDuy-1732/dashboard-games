@@ -47,7 +47,7 @@ function stored() {
 export const hasOnlineRoom = () => stored() !== null;
 export interface OnlineSession extends RoomSession {
   readonly selfId: string;
-  leaveRoom(): Promise<void>;
+  leaveRoom(discard?: boolean): Promise<void>;
 }
 export async function resumeOnlineRoom(): Promise<OnlineSession> {
   const saved = stored();
@@ -220,15 +220,18 @@ async function connect(
     endInterrupted() {
       return request("game:end-interrupted", {});
     },
-    async leaveRoom() {
+    async leaveRoom(discard = false) {
       if (socket.connected && authenticated) {
-        const reply = await request<RoomReply>("room:leave", {});
+        const reply = await request<RoomReply>(
+          "room:leave",
+          discard ? { discard } : {},
+        );
         if (!reply.ok) throw new Error(roomError(reply.code));
-      } else if (!lobby?.started && !lobby?.closed)
+      } else if (discard || (!lobby?.started && !lobby?.closed))
         throw new Error(
           "Chưa xác nhận rời phòng. Hãy kết nối lại rồi thử tiếp.",
         );
-      if (!lobby?.started || lobby.closed) forget();
+      if (discard || !lobby?.started || lobby.closed) forget();
       await session.close();
     },
     async close() {

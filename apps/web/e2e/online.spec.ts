@@ -51,11 +51,12 @@ for (const count of [2, 6])
             setup(page, `Bạn ${index + 1}`, tokens[index + 1]!, code),
           ),
       );
-      await Promise.all(
-        pages.map((page) =>
-          page.getByRole("button", { name: "Sẵn sàng", exact: true }).click(),
-        ),
-      );
+      for (const page of pages) {
+        await page.getByRole("button", { name: "Sẵn sàng", exact: true }).click();
+        await expect(
+          page.getByRole("button", { name: "Hủy sẵn sàng", exact: true }),
+        ).toBeEnabled();
+      }
       await pages[0]!
         .getByRole("button", { name: "Bắt đầu ván", exact: true })
         .click();
@@ -92,6 +93,13 @@ for (const count of [2, 6])
           "data-revision",
           String(before + 1),
         );
+      for (const page of pages) {
+        await expect(page.locator(".dice-rolling")).toHaveCount(1);
+        await expect(page.locator(".dice-rolling")).toHaveAttribute(
+          "aria-label",
+          /^Xúc xắc [1-6] và [1-6]$/,
+        );
+      }
       const ids = await Promise.all(
         pages.map((page) =>
           page.locator("[data-viewer-id]").getAttribute("data-viewer-id"),

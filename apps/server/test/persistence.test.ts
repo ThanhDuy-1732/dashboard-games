@@ -281,3 +281,36 @@ it("reports_only_committed_revisions_while_a_move_is_waiting_for_storage", async
   await result;
   expect(observed).toBe(0);
 });
+
+it("removes the checkpoint only when every player chooses to discard on exit", async () => {
+  const store = new MemoryStore();
+  const { host, guest, close, a, b } = await pair(store);
+  expect(await ack(host, "room:leave", { discard: true })).toMatchObject({
+    ok: true,
+  });
+  expect(await ack(guest, "room:leave", {})).toMatchObject({ ok: true });
+  expect(store.records).toHaveLength(1);
+  await close();
+
+  const next = await createGameServer({ port: 0, store });
+  cleanup.push(next.close);
+  const returning = await connect(next.url);
+  expect(
+    await ack(returning, "room:resume", { resumeToken: b.resumeToken }),
+  ).toMatchObject({ ok: true, selfId: b.selfId });
+
+  store.fail = "before";
+  expect(await ack(returning, "room:leave", { discard: true })).toMatchObject({
+    ok: false,
+    code: "STORAGE_UNAVAILABLE",
+  });
+  expect(store.records).toHaveLength(1);
+  expect(await ack(returning, "room:leave", { discard: true })).toMatchObject({
+    ok: true,
+  });
+  expect(store.records).toHaveLength(0);
+  const hostAgain = await connect(next.url);
+  expect(
+    await ack(hostAgain, "room:resume", { resumeToken: a.resumeToken }),
+  ).toEqual({ ok: false, code: "INVALID_ROOM" });
+});

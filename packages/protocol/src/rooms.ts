@@ -12,6 +12,9 @@ export const joinRoomSchema = createRoomSchema.extend({
     .regex(/^[A-Z0-9]{6}$/),
 });
 export const readySchema = z.strictObject({ ready: z.boolean() });
+export const leaveRoomSchema = z.strictObject({
+  discard: z.boolean().optional(),
+});
 export const emptyRoomSchema = z.strictObject({});
 export const resumeRoomSchema = z.strictObject({
   resumeToken: resumeTokenSchema,

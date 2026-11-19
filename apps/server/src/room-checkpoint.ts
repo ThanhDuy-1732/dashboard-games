@@ -17,6 +17,7 @@ export const roomCheckpointSchema = z
           name: playerConfigSchema.shape.name,
           token: playerConfigSchema.shape.token,
           ready: z.boolean(),
+          discardOnLeave: z.literal(true).optional(),
           socketId: z.string().min(1).max(128).nullable(),
           disconnectedAt: timestamp.nullable(),
           tokenHash: z.string().regex(/^[a-f0-9]{64}$/),

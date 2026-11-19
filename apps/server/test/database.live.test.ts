@@ -135,6 +135,21 @@ it.runIf(process.env.NEON_INTEGRATION === "1")(
         ),
       ).toEqual(original);
       expect(second.rooms.checkpoint()[0]!.authority!.state).toEqual(previous);
+      const countRoomRows = async () =>
+        (
+          await inspection.query(
+            "SELECT id FROM nha_choi_room_checkpoints WHERE scope=$1",
+            [scope],
+          )
+        ).rowCount;
+      expect(
+        await ack(resumedHost, "room:leave", { discard: true }),
+      ).toMatchObject({ ok: true });
+      expect(await countRoomRows()).toBe(1);
+      expect(
+        await ack(resumedGuest, "room:leave", { discard: true }),
+      ).toMatchObject({ ok: true });
+      expect(await countRoomRows()).toBe(0);
     } finally {
       for (const socket of sockets) socket.close();
       await first?.close();

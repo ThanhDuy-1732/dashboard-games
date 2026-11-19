@@ -3200,3 +3200,19 @@ dialog + .backdrop {
   background: var(--paper);
   border-radius: 12px;
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .dice-rolling .small-die {
+    animation: dice-tumble 560ms ease-out;
+  }
+  .dice-rolling .small-die:last-child {
+    animation-delay: 60ms;
+  }
+}
+@keyframes dice-tumble {
+  0% { transform: perspective(240px) translateY(-4px) rotate(-30deg); }
+  38% { transform: perspective(240px) translateY(-21px) rotateX(125deg) rotateY(105deg); }
+  75% { transform: perspective(240px) translateY(1px) rotateX(350deg) rotateY(375deg); }
+  88% { transform: translateY(-5px) rotate(8deg); }
+  100% { transform: none; }
+}
