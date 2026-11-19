@@ -45,7 +45,7 @@ export function Lobby({
         </button>
       </div>
       <div className="lobby-layout">
-        <div className="setup-panel">
+        <div className="setup-panel lobby-invite">
           <p className="field-label">Mã phòng</p>
           <h2 className="room-code" data-testid="room-code">
             {room.code}

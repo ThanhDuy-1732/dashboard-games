@@ -52,9 +52,7 @@ export function Board({
         <div className="board-center">
           <span className="board-brand">nhà chơi.</span>
           <h1>Cờ tỷ phú</h1>
-          <p>Mỗi nước đi, một cơ hội.</p>
           <Dice key={rollId} result={view.turn.dice} rolling={animateRoll} />
-          <span className="board-center-label">Luật truyền thống</span>
           <span className="center-turn">
             Lượt {view.turn.number} ·{" "}
             {view.players.find((p) => p.id === view.turn.playerId)?.name}

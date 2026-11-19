@@ -1,5 +1,5 @@
 import { Icon } from "../components/Icon.js";
-import { boardPosition } from "../components/Board.js";
+import { LocationPhoto } from "../components/LocationDetails.js";
 import type { SavedGame } from "../storage/save-schema.js";
 export function Home({
   onPlay,
@@ -23,9 +23,6 @@ export function Home({
             Niềm vui ở ngay đây<span>.</span>
           </h1>
         </div>
-        <span className="quiet-tag">
-          <span className="status-dot" /> Cứ vào chơi thôi
-        </span>
       </div>
       {saved && (
         <section className="resume-card">
@@ -58,17 +55,12 @@ export function Home({
         <div className="hero-copy">
           <span className="game-label">
             <Icon name="spark" />
-            Mời bạn vào bàn
+            Cờ tỷ phú
           </span>
-          <h2>
-            Một bàn cờ.
-            <br />
-            Nhiều cuộc vui.
-          </h2>
+          <h2>Đi một vòng phố Việt</h2>
           <p>
-            Mua con phố bạn thích, xây ngôi nhà đầu tiên.
-            <br />
-            Và cùng nhau làm nên một ván đáng nhớ.
+            Từ phố Hàng Mã đến phố Đồng Khởi, khám phá các địa danh Việt Nam qua
+            từng lượt gieo xúc xắc.
           </p>
           <button className="button primary" onClick={onPlay}>
             Chơi Cờ tỷ phú <Icon name="arrow" />
@@ -84,55 +76,16 @@ export function Home({
             </span>
           </div>
         </div>
-        <div
-          className="hero-art"
-          role="img"
-          aria-label="Bàn cờ và những ngôi nhà"
-        >
-          <div className="art-orbit orbit-one" />
-          <div className="art-orbit orbit-two" />
-          <div className="art-board">
-            <div className="art-center">
-              <span>nhà chơi.</span>
-              <b>CỜ TỶ PHÚ</b>
-              <div className="art-city">
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <i key={n} className={`building b${n}`} />
-                ))}
-              </div>
-            </div>
-            {Array.from({ length: 32 }, (_, i) => {
-              const [row, col] = boardPosition(i, 9);
-              return (
-                <div
-                  key={i}
-                  className="art-cell"
-                  style={{ gridArea: `${row}/${col}` }}
-                />
-              );
-            })}
-          </div>
-          <div className="floating-die die-one">
-            {[1, 2, 3, 4].map((n) => (
-              <span key={n}>●</span>
-            ))}
-          </div>
-          <div className="art-pawn pawn-gold" />
-          <div className="art-pawn pawn-purple" />
-          <div className="art-caption">Đi một vòng, thêm một câu chuyện.</div>
+        <div className="hero-location">
+          <LocationPhoto spaceId={8} />
         </div>
       </section>
       <div className="section-title">
         <h2>Ghé bàn chơi</h2>
-        <span>Game đầu tiên của Nhà Chơi</span>
       </div>
       <article className="game-card">
-        <div className="game-cover">
-          <div className="cover-grid" />
-          <span className="cover-house house-a" />
-          <span className="cover-house house-b" />
-          <span className="cover-coin">₫</span>
-          <span className="cover-label">Cờ tỷ phú</span>
+        <div className="game-cover" aria-hidden="true">
+          <Icon name="dice" />
         </div>
         <div className="game-description">
           <div className="tags">
