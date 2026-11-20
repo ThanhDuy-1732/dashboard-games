@@ -88,9 +88,23 @@ for (const count of [2, 6])
         await expect(pawns).toHaveCount(1);
         await expectPawnsCentered(pawns);
         await expect(pawns.locator(".board-pawn")).toHaveCount(count);
+        expect(
+          await pawns.locator(".board-pawn, img, .own-pawn-label").evaluateAll(
+            (pieces) =>
+              pieces.every((piece) => {
+                const pawn = piece.getBoundingClientRect();
+                const cell = piece.closest(".board-cell")!.getBoundingClientRect();
+                return (
+                  pawn.left >= cell.left &&
+                  pawn.right <= cell.right &&
+                  pawn.top >= cell.top &&
+                  pawn.bottom <= cell.bottom
+                );
+              }),
+          ),
+        ).toBe(true);
         const ownPawn = pawns.locator(".own-pawn");
         await expect(ownPawn).toHaveCount(1);
-        expect((await ownPawn.boundingBox())!.width).toBeGreaterThanOrEqual(20);
         await expect(ownPawn.locator("img")).toHaveJSProperty(
           "naturalWidth",
           96,

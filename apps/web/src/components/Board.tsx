@@ -60,22 +60,68 @@ export function Board({
   const self = view.players.find((player) => player.id === view.viewerId);
   const board = useRef<HTMLDivElement>(null);
   const previous = useRef(view);
+  const previousSlots = useRef(new Map<string, readonly [number, number]>());
+  useLayoutEffect(() => {
+    const root = board.current!;
+    const cells = root.querySelectorAll(".board-cell");
+    const measure = () => {
+      const corner = cells[0]!.getBoundingClientRect();
+      const edge = cells[1]!.getBoundingClientRect();
+      if (corner.width && edge.width) {
+        root.style.setProperty(
+          "--corner-side",
+          `${Math.min(corner.width, corner.height)}px`,
+        );
+        root.style.setProperty(
+          "--edge-side",
+          `${Math.min(edge.width, edge.height)}px`,
+        );
+      }
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, []);
   useLayoutEffect(() => {
     const before = previous.current;
     previous.current = view;
+    const root = board.current!;
+    const cells = root.querySelectorAll(".board-cell");
+    const pawns = new Map<string, HTMLElement>();
+    const slots = new Map<string, readonly [number, number]>();
+    for (const pawn of root.querySelectorAll<HTMLElement>(".board-pawn")) {
+      const id = pawn.dataset.playerId!;
+      const cell = pawn.closest(".board-cell")!.getBoundingClientRect();
+      const layer = pawn.parentElement!.getBoundingClientRect();
+      pawns.set(id, pawn);
+      if (cell.width && cell.height)
+        slots.set(id, [
+          (layer.left + pawn.offsetLeft + pawn.offsetWidth / 2 - cell.left) /
+            cell.width,
+          (layer.top + pawn.offsetTop + pawn.offsetHeight / 2 - cell.top) /
+            cell.height,
+        ]);
+    }
+    const oldSlots = previousSlots.current;
+    previousSlots.current = slots;
     if (
       before.gameId !== view.gameId ||
       before.revision >= view.revision ||
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
     )
       return;
-    const root = board.current;
-    if (!root) return;
     const lastId = before.recentEvents[before.recentEvents.length - 1]?.id ?? 0;
-    const cells = root.querySelectorAll(".board-cell");
-    function center(position: number) {
+    function point(
+      position: number,
+      slot: readonly [number, number] = [0.5, 0.5],
+    ) {
       const rect = cells[position]!.getBoundingClientRect();
-      return [rect.left + rect.width / 2, rect.top + rect.height / 2] as const;
+      return [
+        rect.left + rect.width * slot[0],
+        rect.top + rect.height * slot[1],
+      ] as const;
     }
     for (const player of view.players) {
       const old = before.players.find((value) => value.id === player.id);
@@ -85,14 +131,17 @@ export function Board({
       );
       const path = movementPath(old.position, player.position, events);
       if (path.length < 2) continue;
-      const pawn = Array.from(
-        root.querySelectorAll<HTMLElement>(".board-pawn"),
-      ).find((element) => element.dataset.playerId === player.id);
+      const pawn = pawns.get(player.id);
       if (!pawn?.animate) continue;
-      const [x, y] = center(player.position);
+      const destination = point(player.position, slots.get(player.id));
+      const [x, y] = destination;
       const stepDuration = 175;
       const delay = events.some((event) => event.type === "roll") ? 820 : 0;
-      const points = path.map(center);
+      const points = [
+        point(old.position, oldSlots.get(player.id)),
+        ...path.slice(1, -1).map((position) => point(position)),
+        destination,
+      ];
       const frames: Keyframe[] = [
         {
           transform: `translate(${points[0]![0] - x}px, ${points[0]![1] - y}px)`,
@@ -153,6 +202,7 @@ export function Board({
             <button
               type="button"
               key={space.id}
+              data-corner={space.id % 10 === 0 ? "" : undefined}
               className={`board-cell ${self && !self.bankrupt && self.position === space.id ? "your-space" : ""} ${visitors.length ? "occupied" : ""} ${photo ? "has-photo" : "special"} ${visitors.some((p) => p.id === view.turn.playerId) ? "current" : ""}`}
               style={
                 {
@@ -211,7 +261,9 @@ export function Board({
               {visitors.length > 0 && (
                 <span
                   className={`cell-pawns ${visitors.length > 1 ? "group" : ""}`}
-                  data-columns={visitors.length > 4 ? 3 : undefined}
+                  data-columns={
+                    visitors.length > 4 ? 3 : visitors.length > 1 ? 2 : 1
+                  }
                   aria-hidden="true"
                 >
                   {visitors.map((p) => (
