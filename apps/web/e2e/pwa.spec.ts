@@ -70,6 +70,7 @@ test("update_waits_until_the_game_is_saved_and_does_not_force_reload_when_declin
   page,
 }) => {
   test.setTimeout(60000);
+  await page.clock.install();
   await page.goto(url);
   await expect(
     page.getByText("Đã sẵn sàng chơi với máy khi offline.", { exact: false }),
@@ -84,12 +85,13 @@ test("update_waits_until_the_game_is_saved_and_does_not_force_reload_when_declin
     cwd: process.cwd(),
     stdio: "pipe",
   });
-  await page.evaluate(async () => {
-    await (await navigator.serviceWorker.getRegistration())?.update();
+  const updateNotice = page.getByText("Rời và lưu ván trước khi cập nhật.", {
+    exact: false,
   });
-  await expect(
-    page.getByText("Rời và lưu ván trước khi cập nhật.", { exact: false }),
-  ).toBeVisible();
+  await expect(async () => {
+    await page.clock.fastForward(60_000);
+    await expect(updateNotice).toBeVisible({ timeout: 1500 });
+  }).toPass({ timeout: 8000 });
   await expect(page.locator(".board")).toBeVisible();
   await expect(page.getByRole("button", { name: "Cập nhật ngay" })).toHaveCount(
     0,

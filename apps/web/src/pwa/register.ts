@@ -8,6 +8,7 @@ interface Options {
 export async function registerPwa(options: Options) {
   let registration: ServiceWorkerRegistration | undefined,
     accepted = false;
+  let updateTimer: ReturnType<typeof setInterval> | undefined;
   const controllerChange = () => {
     if (accepted) location.reload();
   };
@@ -28,6 +29,7 @@ export async function registerPwa(options: Options) {
       return true;
     },
     dispose() {
+      clearInterval(updateTimer);
       globalThis.document?.removeEventListener("visibilitychange", checkForUpdate);
       navigator.serviceWorker?.removeEventListener(
         "controllerchange",
@@ -59,7 +61,11 @@ export async function registerPwa(options: Options) {
     };
     watch();
     registration.addEventListener("updatefound", watch);
-    globalThis.document?.addEventListener("visibilitychange", checkForUpdate);
+    if (globalThis.document) {
+      document.addEventListener("visibilitychange", checkForUpdate);
+      updateTimer = setInterval(checkForUpdate, 60_000);
+      checkForUpdate();
+    }
   } catch (error) {
     options.onError?.(error);
   }
