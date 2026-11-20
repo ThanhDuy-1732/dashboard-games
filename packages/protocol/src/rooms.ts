@@ -1,10 +1,15 @@
 import { z } from "zod";
+import { BOARD_SIZES } from "@nha-choi/game-core";
 import { playerConfigSchema } from "./messages.js";
 export const resumeTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
+export const boardSizeSchema = z.literal(BOARD_SIZES);
 export const createRoomSchema = playerConfigSchema
   .pick({ name: true, token: true })
-  .extend({ resumeToken: resumeTokenSchema.optional() });
-export const joinRoomSchema = createRoomSchema.extend({
+  .extend({
+    resumeToken: resumeTokenSchema.optional(),
+    boardSize: boardSizeSchema.optional(),
+  });
+export const joinRoomSchema = createRoomSchema.omit({ boardSize: true }).extend({
   code: z
     .string()
     .trim()

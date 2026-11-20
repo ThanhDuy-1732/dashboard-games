@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomInt, randomUUID } from "node:crypto";
 import { createGame } from "@nha-choi/game-core";
-import type { RandomSource, Token } from "@nha-choi/game-core";
+import type { BoardSize, RandomSource, Token } from "@nha-choi/game-core";
 import { createAuthority, commandSchema } from "@nha-choi/protocol";
 import type {
   GameAuthority,
@@ -28,6 +28,7 @@ interface Room {
   id: string;
   code: string;
   hostId: string;
+  boardSize: BoardSize;
   members: Member[];
   authority: GameAuthority | null;
   lastActivity: number;
@@ -56,6 +57,11 @@ export class Rooms {
   private effect(work: () => void) {
     if (this.effects) this.effects.push(work);
     else work();
+  }
+  private supportsCompactBoard(socketId: string) {
+    return (
+      this.io.sockets.sockets.get(socketId)?.handshake.auth.compactBoard === true
+    );
   }
   checkpoint(): RoomCheckpoint[] {
     return [...this.rooms.values()].map((room) => ({
@@ -193,6 +199,7 @@ export class Rooms {
       code: room.code,
       hostId: room.hostId,
       capacity: 6,
+      boardSize: room.boardSize,
       started: room.authority !== null,
       closed: room.closedAt !== null,
       players: room.members.map((p) => ({
@@ -255,6 +262,8 @@ export class Rooms {
   }
   create(socketId: string, input: CreateRoomInput): RoomReply {
     if (this.draining) return { ok: false, code: "SERVER_CLOSING" };
+    if (input.boardSize === 24 && !this.supportsCompactBoard(socketId))
+      return { ok: false, code: "UNSUPPORTED_BOARD" };
     if (input.resumeToken && this.secrets.has(hash(input.resumeToken)))
       return this.resume(socketId, input.resumeToken);
     if (this.bindings.has(socketId)) return { ok: false, code: "INVALID_ROOM" };
@@ -269,6 +278,7 @@ export class Rooms {
       id: randomUUID(),
       code,
       hostId: "",
+      boardSize: input.boardSize ?? 40,
       members: [],
       authority: null,
       lastActivity: this.now(),
@@ -286,6 +296,8 @@ export class Rooms {
     const room = roomId ? this.rooms.get(roomId) : undefined;
     if (!room || room.closedAt !== null)
       return { ok: false, code: "INVALID_ROOM" };
+    if (room.boardSize === 24 && !this.supportsCompactBoard(socketId))
+      return { ok: false, code: "UNSUPPORTED_BOARD" };
     if (input.resumeToken) {
       const previous = this.secrets.get(hash(input.resumeToken));
       if (previous)
@@ -306,6 +318,8 @@ export class Rooms {
     const room = proof ? this.rooms.get(proof.roomId) : undefined;
     const member = room?.members.find((p) => p.id === proof?.playerId);
     if (!room || !member) return { ok: false, code: "INVALID_ROOM" };
+    if (room.boardSize === 24 && !this.supportsCompactBoard(socketId))
+      return { ok: false, code: "UNSUPPORTED_BOARD" };
     const old = this.bound(socketId);
     if (old && (old.room.id !== room.id || old.member.id !== member.id))
       return { ok: false, code: "NOT_AUTHORIZED" };
@@ -340,6 +354,7 @@ export class Rooms {
       createGame(
         {
           gameId: room.id,
+          boardSize: room.boardSize,
           players: room.members.map((p) => ({
             id: p.id,
             name: p.name,

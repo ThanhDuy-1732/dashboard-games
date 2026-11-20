@@ -1,7 +1,7 @@
 import { isNative, onlineServerUrl } from "../platform.js";
 import { io } from "socket.io-client";
 import { VIETNAMESE_TOKENS } from "@nha-choi/game-core";
-import type { Token } from "@nha-choi/game-core";
+import type { BoardSize, Token } from "@nha-choi/game-core";
 import type {
   CommandEnvelope,
   CommandReply,
@@ -23,6 +23,7 @@ export const roomError = (code: string) =>
     NOT_HOST: "Chỉ chủ phòng mới có thể bắt đầu.",
     NOT_READY: "Cần 2–6 người kết nối và tất cả sẵn sàng.",
     GAME_STARTED: "Ván đã bắt đầu, không thể thêm người mới.",
+    UNSUPPORTED_BOARD: "Hãy cập nhật Nhà Chơi để vào phòng 24 ô.",
     RATE_LIMITED: "Bạn thao tác quá nhanh. Hãy đợi một chút.",
     PROTOCOL_MISMATCH:
       "Phiên bản ứng dụng không phù hợp. Hãy cập nhật rồi mở lại.",
@@ -51,7 +52,7 @@ function createSocket(serverUrl: string) {
     autoConnect: false,
     transports: ["websocket", "polling"],
     tryAllTransports: true,
-    auth: { protocolVersion: 1, rulesVersion: "classic-v1" },
+    auth: { protocolVersion: 1, rulesVersion: "classic-v1", compactBoard: true },
     reconnectionDelay: 500,
     reconnectionDelayMax: 3000,
   });
@@ -86,6 +87,7 @@ export function connectOnlineRoom(input: {
   name: string;
   token: Token;
   code?: string;
+  boardSize?: BoardSize;
 }): Promise<OnlineSession> {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   const resumeToken = btoa(String.fromCharCode(...bytes))
@@ -98,6 +100,7 @@ export function connectOnlineRoom(input: {
       name: input.name,
       token: input.token,
       ...(input.code ? { code: input.code } : {}),
+      ...(!input.code && input.boardSize === 24 ? { boardSize: 24 } : {}),
       resumeToken,
     },
     false,
@@ -105,7 +108,13 @@ export function connectOnlineRoom(input: {
 }
 async function connect(
   serverUrl: string,
-  input: { resumeToken: string; name?: string; token?: Token; code?: string },
+  input: {
+    resumeToken: string;
+    name?: string;
+    token?: Token;
+    code?: string;
+    boardSize?: BoardSize;
+  },
   resuming: boolean,
 ): Promise<OnlineSession> {
   if (isNative() && !onlineServerUrl(serverUrl))
@@ -330,6 +339,14 @@ async function connect(
             reason,
           });
           rejectInitial(new Error(reason));
+          await session.close();
+          return;
+        }
+        if (!resuming && input.boardSize === 24 && reply.room.boardSize !== 24) {
+          await request<RoomReply>("room:leave", {}).catch(() => {});
+          rejectInitial(new Error(
+            "Máy chủ online chưa hỗ trợ bàn 24 ô. Bạn có thể tạo phòng 40 ô hoặc chơi bàn 24 ô với máy.",
+          ));
           await session.close();
           return;
         }

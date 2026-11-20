@@ -1,6 +1,7 @@
-import { BOARD } from "./board.js";
+import { boardFor } from "./board.js";
 import type { PlayerView, GameAction, TradeBundle } from "./types.js";
 export function chooseBotAction(view: PlayerView): GameAction {
+  const board = boardFor(view.board.length);
   const self = view.players.find((p) => p.id === view.viewerId)!;
   const hint = (type: GameAction["type"]) =>
     view.allowedActions.find((a) => a.type === type);
@@ -10,7 +11,7 @@ export function chooseBotAction(view: PlayerView): GameAction {
   if (incoming) {
     const value = (bundle: TradeBundle) =>
       bundle.cash +
-      bundle.spaceIds.reduce((n, id) => n + (BOARD[id]!.price ?? 0), 0) +
+      bundle.spaceIds.reduce((n, id) => n + (board[id]!.price ?? 0), 0) +
       bundle.jailCards.length * 50;
     const valid =
       incoming.give.spaceIds.every(
@@ -22,7 +23,7 @@ export function chooseBotAction(view: PlayerView): GameAction {
     const fee = incoming.give.spaceIds.reduce(
       (n, id) =>
         n +
-        (view.board[id]!.mortgaged ? Math.ceil(BOARD[id]!.mortgage! / 10) : 0),
+        (view.board[id]!.mortgaged ? Math.ceil(board[id]!.mortgage! / 10) : 0),
       0,
     );
     const accept =
@@ -42,8 +43,8 @@ export function chooseBotAction(view: PlayerView): GameAction {
     const ceiling = Math.min(
       self.cash - 150,
       view.auction!.kind === "property"
-        ? BOARD[view.auction!.spaceId]!.price!
-        : BOARD[view.auction!.targets![self.id]!]!.buildCost!,
+        ? board[view.auction!.spaceId]!.price!
+        : board[view.auction!.targets![self.id]!]!.buildCost!,
     );
     return bid && bid.minimum! <= ceiling
       ? { type: "bid", amount: bid.minimum! }
@@ -53,14 +54,14 @@ export function chooseBotAction(view: PlayerView): GameAction {
     const sell = hint("sell-building")?.spaceIds?.[0];
     if (sell !== undefined) return { type: "sell-building", spaceId: sell };
     const mortgage = hint("mortgage")?.spaceIds?.slice().sort(
-      (a, b) => BOARD[b]!.mortgage! - BOARD[a]!.mortgage!,
+      (a, b) => board[b]!.mortgage! - board[a]!.mortgage!,
     )[0];
     if (mortgage !== undefined) return { type: "mortgage", spaceId: mortgage };
     if (hint("declare-bankruptcy")) return { type: "declare-bankruptcy" };
   }
   const transfer = hint("resolve-mortgage-transfer")?.spaceIds?.[0];
   if (transfer !== undefined) {
-    const value = BOARD[transfer]!.mortgage!;
+    const value = board[transfer]!.mortgage!;
     return {
       type: "resolve-mortgage-transfer",
       spaceId: transfer,
@@ -74,16 +75,16 @@ export function chooseBotAction(view: PlayerView): GameAction {
       cardId: hint("use-jail-card")!.cardIds![0]!,
     };
   if (hint("pay-jail") && self.cash >= 200) return { type: "pay-jail" };
-  if (hint("buy-property") && self.cash - BOARD[view.purchase!]!.price! >= 150)
+  if (hint("buy-property") && self.cash - board[view.purchase!]!.price! >= 150)
     return { type: "buy-property" };
   if (hint("decline-property")) return { type: "decline-property" };
   const building = hint("build")?.spaceIds?.find(
-    (id) => self.cash - BOARD[id]!.buildCost! >= 150,
+    (id) => self.cash - board[id]!.buildCost! >= 150,
   );
   if (building !== undefined) return { type: "build", spaceId: building };
   const redeem = hint("unmortgage")?.spaceIds?.find(
     (id) =>
-      self.cash - BOARD[id]!.mortgage! - Math.ceil(BOARD[id]!.mortgage! / 10) >=
+      self.cash - board[id]!.mortgage! - Math.ceil(board[id]!.mortgage! / 10) >=
       150,
   );
   if (redeem !== undefined) return { type: "unmortgage", spaceId: redeem };

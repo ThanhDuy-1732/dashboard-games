@@ -1,19 +1,20 @@
 import type { GameState, PlayerId } from "./types.js";
 import { playerById, recordEvent, requireRule } from "./rules.js";
 import { buildableSpaces } from "./assets.js";
-import { BOARD } from "./board.js";
+import { boardFor } from "./board.js";
 export function getRent(
   state: GameState,
   spaceId: number,
   total: number,
   override: { stationMultiplier?: number; utilityMultiplier?: number } = {},
 ): number {
-  const space = BOARD[spaceId];
+  const board = boardFor(state.board.length);
+  const space = board[spaceId];
   const property = state.board[spaceId];
   requireRule(space && property, "INVALID_GAME");
   if (property.owner === null || property.mortgaged) return 0;
   if (space.kind === "street") {
-    const monopoly = BOARD.filter(
+    const monopoly = board.filter(
       (s) => s.kind === "street" && s.group === space.group,
     ).every((s) => state.board[s.id]!.owner === property.owner);
     return (
@@ -21,7 +22,7 @@ export function getRent(
       (property.buildings === 0 && monopoly ? 2 : 1)
     );
   }
-  const owned = BOARD.filter(
+  const owned = board.filter(
     (s) => s.kind === space.kind && state.board[s.id]!.owner === property.owner,
   ).length;
   if (space.kind === "station")
@@ -33,7 +34,7 @@ export function getRent(
 export function buyProperty(state: GameState, actor: PlayerId) {
   requireRule(state.turn.playerId === actor, "NOT_AUTHORIZED");
   requireRule(state.phase === "awaiting-purchase" && state.purchase !== null);
-  const space = BOARD[state.purchase]!;
+  const space = boardFor(state.board.length)[state.purchase]!;
   const property = state.board[space.id]!;
   const player = playerById(state, actor);
   requireRule(property.owner === null && space.price !== undefined);
@@ -97,7 +98,7 @@ export function auctionAction(
       recordEvent(
         state,
         "auction",
-        `${playerById(state, auction.bidder).name} thắng đấu giá ${auction.kind === "property" ? BOARD[auction.spaceId]!.name : "công trình"}.`,
+        `${playerById(state, auction.bidder).name} thắng đấu giá ${auction.kind === "property" ? boardFor(state.board.length)[auction.spaceId]!.name : "công trình"}.`,
         {
           spaceId: auction.targets?.[auction.bidder] ?? auction.spaceId,
           amount: auction.bid,

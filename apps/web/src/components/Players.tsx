@@ -1,8 +1,9 @@
 import type { PlayerView } from "@nha-choi/game-core";
-import { BOARD } from "@nha-choi/game-core";
+import { boardFor } from "@nha-choi/game-core";
 import { PLAYER_COLORS } from "./Board.js";
 import { TokenArt } from "./TokenArt.js";
 export function Players({ view }: { view: PlayerView }) {
+  const board = boardFor(view.board.length);
   return (
     <section className="players-panel">
       <div className="subsection-heading">
@@ -29,7 +30,7 @@ export function Players({ view }: { view: PlayerView }) {
                   ? "Đang trong tù"
                   : `${view.board.filter((p) => p.owner === player.id).length} tài sản`}
             </small>
-            {!player.bankrupt && <small>{BOARD[player.position]?.name}</small>}
+            {!player.bankrupt && <small>{board[player.position]?.name}</small>}
           </div>
           <b>{player.cash.toLocaleString("vi-VN")}</b>
         </div>

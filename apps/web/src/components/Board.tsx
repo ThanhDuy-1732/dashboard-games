@@ -1,4 +1,4 @@
-import { BOARD } from "@nha-choi/game-core";
+import { boardFor, classicSpaceId } from "@nha-choi/game-core";
 import type { GameEvent, PlayerView } from "@nha-choi/game-core";
 import { useLayoutEffect, useRef } from "react";
 import type { CSSProperties } from "react";
@@ -34,13 +34,18 @@ const SYMBOLS: Record<string, string> = {
   "go-to-jail": "↙",
   utility: "ϟ",
 };
-export function movementPath(start: number, end: number, events: GameEvent[]) {
+export function movementPath(
+  start: number,
+  end: number,
+  events: GameEvent[],
+  size = 40,
+) {
   const roll = events.find((event) => event.type === "roll")?.amount;
   const landed = events.find((event) => event.type === "land")?.spaceId;
   const path = [start];
-  if (roll && roll <= 12 && (start + roll) % BOARD.length === landed)
+  if (roll && roll <= 12 && (start + roll) % size === landed)
     for (let step = 1; step <= roll; step++)
-      path.push((start + step) % BOARD.length);
+      path.push((start + step) % size);
   if (path[path.length - 1] !== end) path.push(end);
   return path;
 }
@@ -52,6 +57,8 @@ export function Board({
   view: PlayerView;
   onSelect: (spaceId: number) => void;
 }) {
+  const spaces = boardFor(view.board.length);
+  const tracks = spaces.length / 4 + 1;
   const rollId = [...view.recentEvents]
     .reverse()
     .find((event) => event.type === "roll")?.id;
@@ -120,7 +127,12 @@ export function Board({
       const events = view.recentEvents.filter(
         (e) => e.id > lastId && e.playerId === player.id,
       );
-      const path = movementPath(old.position, player.position, events);
+      const path = movementPath(
+        old.position,
+        player.position,
+        events,
+        view.board.length,
+      );
       if (path.length < 2) continue;
       const pawn = pawns.get(player.id);
       if (!pawn?.animate) continue;
@@ -169,7 +181,12 @@ export function Board({
   }, [view]);
   return (
     <div className="board-wrap">
-      <div className="board" ref={board} aria-label="Bàn Cờ tỷ phú, 40 ô">
+      <div
+        className="board"
+        ref={board}
+        style={{ "--board-tracks": tracks } as CSSProperties}
+        aria-label={`Bàn Cờ tỷ phú, ${spaces.length} ô`}
+      >
         <div className="board-center">
           <span className="board-brand">nhà chơi.</span>
           <h1>Cờ tỷ phú</h1>
@@ -179,9 +196,11 @@ export function Board({
             {view.players.find((p) => p.id === view.turn.playerId)?.name}
           </span>
         </div>
-        {BOARD.map((space) => {
-          const [row, col] = boardPosition(space.id, 11);
-          const photo = photos[String(space.id) as keyof typeof photos];
+        {spaces.map((space) => {
+          const [row, col] = boardPosition(space.id, tracks);
+          const photo = photos[
+            String(classicSpaceId(spaces.length, space.id)) as keyof typeof photos
+          ];
           const property = view.board[space.id]!;
           const ownerIndex = view.players.findIndex(
             (p) => p.id === property.owner,
@@ -289,7 +308,7 @@ export function Board({
           >
             <TokenArt token={self.token} />
             <span>
-              Bạn đang ở <strong>{BOARD[self.position]?.name}</strong>
+              Bạn đang ở <strong>{spaces[self.position]?.name}</strong>
             </span>
           </button>
         )}

@@ -1,4 +1,5 @@
-import { BOARD } from "./board.js";
+import { boardFor } from "./board.js";
+import type { BoardSize } from "./board.js";
 import { CHANCE, COMMUNITY } from "./cards.js";
 import type {
   GameState,
@@ -45,7 +46,7 @@ function shuffled(ids: string[], random: RandomSource) {
   return ids;
 }
 export function createGame(
-  config: { gameId: string; players: PlayerConfig[] },
+  config: { gameId: string; players: PlayerConfig[]; boardSize?: BoardSize },
   random: RandomSource,
 ): GameState {
   const { players, gameId } = config;
@@ -90,7 +91,11 @@ export function createGame(
       jail: null,
       jailCards: [],
     })),
-    board: BOARD.map(() => ({ owner: null, buildings: 0, mortgaged: false })),
+    board: boardFor(config.boardSize ?? 40).map(() => ({
+      owner: null,
+      buildings: 0,
+      mortgaged: false,
+    })),
     turn: {
       playerId: candidates[0]!,
       doubles: 0,

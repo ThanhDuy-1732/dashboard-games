@@ -1,4 +1,4 @@
-import { BOARD } from "./board.js";
+import { boardFor } from "./board.js";
 import type { GameState, PlayerId, TradeBundle } from "./types.js";
 import { playerById, recordEvent, requireRule } from "./rules.js";
 import { groupSpaces, requireManagement } from "./assets.js";
@@ -20,10 +20,10 @@ function checkBundle(state: GameState, owner: PlayerId, bundle: TradeBundle) {
   for (const id of bundle.spaceIds) {
     requireRule(
       Number.isInteger(id) &&
-        BOARD[id]?.mortgage !== undefined &&
+        boardFor(state.board.length)[id]?.mortgage !== undefined &&
         state.board[id]!.owner === owner,
     );
-    requireRule(groupSpaces(id).every((i) => state.board[i]!.buildings === 0));
+    requireRule(groupSpaces(state, id).every((i) => state.board[i]!.buildings === 0));
     requireRule(!state.mortgageTransfers.some((t) => t.spaceId === id));
   }
   requireRule(
@@ -128,7 +128,7 @@ export function resolveMortgageTransfer(
   );
   requireRule(choice === "keep" || choice === "redeem");
   pending.choice = choice;
-  const value = BOARD[spaceId]!.mortgage!;
+  const value = boardFor(state.board.length)[spaceId]!.mortgage!;
   const cost = Math.ceil(value / 10) + (choice === "redeem" ? value : 0);
   if (settlePayment(state, actor, "bank", cost)) finishPaidTransfer(state);
 }

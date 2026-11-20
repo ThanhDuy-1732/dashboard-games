@@ -1,5 +1,6 @@
 export * from "./types.js";
-export { BOARD, GO_BONUS } from "./board.js";
+export { BOARD, BOARD_SIZES, GO_BONUS, boardFor, classicSpaceId, boardSpaceId } from "./board.js";
+export type { BoardSize } from "./board.js";
 export { CHANCE, COMMUNITY } from "./cards.js";
 export { projectGame } from "./view.js";
 export { createGame, applyAction } from "./engine.js";

@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 import { TOKEN_NAMES } from "../src/components/TokenArt.js";
 import type { Token } from "@nha-choi/game-core";
-async function setup(page: Page, name: string, token: Token, code?: string) {
+async function setup(page: Page, name: string, token: Token, code?: string, size = 40) {
   await page.goto(code ? `/?room=${code}` : "/");
   const onlineConnection = page.waitForEvent("websocket", {
     predicate: (socket) => socket.url().includes("/socket.io/"),
@@ -22,6 +22,8 @@ async function setup(page: Page, name: string, token: Token, code?: string) {
   if (code) {
     await page.getByLabel("Phòng chơi", { exact: true }).selectOption("join");
     await page.getByRole("textbox", { name: "Mã phòng" }).fill(code);
+  } else if (size === 24) {
+    await page.getByLabel("Số ô trên bàn cờ").selectOption("24");
   }
   await page
     .getByRole("button", {
@@ -31,8 +33,12 @@ async function setup(page: Page, name: string, token: Token, code?: string) {
     .click();
   await page.getByTestId("room-code").waitFor();
 }
-for (const count of [2, 6])
-  test(`online_${count}_players_share_board_and_resume_after_reload`, async ({
+for (const { count, size } of [
+  { count: 2, size: 40 },
+  { count: 6, size: 40 },
+  { count: 2, size: 24 },
+])
+  test(`online_${count}_players_share_${size}_tile_board_and_resume_after_reload`, async ({
     browser,
   }) => {
     test.setTimeout(count === 6 ? 60000 : 30000);
@@ -47,7 +53,7 @@ for (const count of [2, 6])
         await pages[0]!.setViewportSize({ width: 375, height: 812 });
       else await pages[1]!.setViewportSize({ width: 320, height: 800 });
       const tokens = ["lotus", "cyclo", "hat", "ship", "dog", "plane"] as const;
-      await setup(pages[0]!, "Chủ phòng", tokens[0]!);
+      await setup(pages[0]!, "Chủ phòng", tokens[0]!, undefined, size);
       const code = (
         await pages[0]!.getByTestId("room-code").textContent()
       ).trim();
@@ -76,7 +82,7 @@ for (const count of [2, 6])
         .getByRole("button", { name: "Bắt đầu ván", exact: true })
         .click();
       for (const page of pages) {
-        await expect(page.locator(".board-cell")).toHaveCount(40);
+        await expect(page.locator(".board-cell")).toHaveCount(size);
         await expectNoHorizontalOverflow(page);
         const sizes = await page.locator(".board-cell").evaluateAll((cells) =>
           cells.flatMap((cell) => {
@@ -190,7 +196,7 @@ for (const count of [2, 6])
       await pages[1]!
         .getByRole("button", { name: "Kết nối lại phòng trước" })
         .click();
-      await expect(pages[1]!.locator(".board-cell")).toHaveCount(40);
+      await expect(pages[1]!.locator(".board-cell")).toHaveCount(size);
       await expect(pages[1]!.locator(".activity-panel ol")).toHaveText(
         await pages[0]!.locator(".activity-panel ol").textContent(),
       );

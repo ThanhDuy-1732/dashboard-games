@@ -1,5 +1,5 @@
 import { chooseBotAction, createGame, TOKENS } from "@nha-choi/game-core";
-import type { PlayerConfig, GameState } from "@nha-choi/game-core";
+import type { BoardSize, PlayerConfig, GameState } from "@nha-choi/game-core";
 import { createAuthority } from "@nha-choi/protocol";
 import type {
   GameSession,
@@ -18,9 +18,11 @@ export function createOfflineSession(
   {
     human,
     botCount,
+    boardSize,
   }: {
     human: PlayerConfig;
     botCount: number;
+    boardSize?: BoardSize;
   },
   saved?: SavedGame,
 ): OfflineSession {
@@ -43,6 +45,7 @@ export function createOfflineSession(
         {
           gameId: crypto.randomUUID(),
           players: [{ ...human, kind: "human" }, ...bots],
+          boardSize,
         },
         cryptoRandom,
       ),

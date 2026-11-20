@@ -10,7 +10,7 @@ import {
 } from "./session/online.js";
 import type { OnlineSession } from "./session/online.js";
 import { Lobby } from "./screens/Lobby.js";
-import type { GameAction, PlayerConfig, Token } from "@nha-choi/game-core";
+import type { BoardSize, GameAction, PlayerConfig, Token } from "@nha-choi/game-core";
 import {
   attachPlatformLifecycle,
   attachAndroidBack,
@@ -66,6 +66,7 @@ export function App() {
     name: string;
     token: Token;
     code?: string;
+    boardSize?: BoardSize;
   }) {
     if (operation.current) return;
     operation.current = true;
@@ -94,6 +95,7 @@ export function App() {
   const [newGame, setNewGame] = useState<{
     human: PlayerConfig;
     botCount: number;
+    boardSize: BoardSize;
   } | null>(null);
   const [rules, setRules] = useState(false);
   const [fullRules, setFullRules] = useState(false);
@@ -168,6 +170,7 @@ export function App() {
   async function start(
     human: PlayerConfig,
     botCount: number,
+    boardSize: BoardSize = 40,
     saved?: SavedGame,
     replace = false,
   ) {
@@ -180,7 +183,7 @@ export function App() {
         try {
           const previous = await persistence.store.load();
           if (previous.save?.state.phase !== "finished" && previous.save) {
-            setNewGame({ human, botCount });
+            setNewGame({ human, botCount, boardSize });
             return;
           }
           replace = Boolean(previous.save);
@@ -189,7 +192,7 @@ export function App() {
             reason instanceof SaveError &&
             ["INCOMPATIBLE", "CORRUPT"].includes(reason.code)
           ) {
-            setNewGame({ human, botCount });
+            setNewGame({ human, botCount, boardSize });
             setError(saveErrorMessage(reason));
             return;
           }
@@ -197,7 +200,7 @@ export function App() {
         }
       }
       if (!(await persistence.store.claim())) throw new SaveError("LEASE_LOST");
-      created = createOfflineSession({ human, botCount }, saved);
+      created = createOfflineSession({ human, botCount, boardSize }, saved);
       created.pause("Đang chuẩn bị bản lưu.");
       await persistence.write(created, replace);
       created.resume();
@@ -229,6 +232,7 @@ export function App() {
       await start(
         save.state.players.find((p) => p.id === save.humanId)!,
         save.state.players.length - 1,
+        undefined,
         save,
       );
     } catch (reason) {
@@ -673,7 +677,7 @@ export function App() {
             className="button primary full"
             disabled={pending}
             onClick={() =>
-              void start(newGame.human, newGame.botCount, undefined, true)
+              void start(newGame.human, newGame.botCount, newGame.boardSize, undefined, true)
             }
           >
             Bắt đầu ván mới

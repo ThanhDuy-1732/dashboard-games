@@ -1,4 +1,4 @@
-import { BOARD, GO_BONUS } from "@nha-choi/game-core";
+import { boardFor, classicSpaceId, GO_BONUS } from "@nha-choi/game-core";
 import type { PlayerView } from "@nha-choi/game-core";
 import photos from "../locations.json";
 import { Dialog } from "./Dialog.js";
@@ -24,12 +24,13 @@ export function LocationDetails({
   view: PlayerView;
   onClose: () => void;
 }) {
-  const space = BOARD[spaceId]!;
+  const board = boardFor(view.board.length);
+  const space = board[spaceId]!;
   const property = view.board[spaceId]!;
   const owner = view.players.find((p) => p.id === property.owner);
   return (
     <Dialog title={space.name} onClose={onClose}>
-      <LocationPhoto spaceId={spaceId} />
+      <LocationPhoto spaceId={classicSpaceId(board.length, spaceId)} />
       <span className="tag green">
         {owner
           ? `Tài sản của ${owner.name}`

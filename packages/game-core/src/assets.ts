@@ -1,12 +1,12 @@
-import { BOARD } from "./board.js";
+import { boardFor } from "./board.js";
 import type { GameState, PlayerId } from "./types.js";
 import { playerById, recordEvent, requireRule } from "./rules.js";
 import { placeBuilding, settlePayment } from "./economy.js";
 
-export function groupSpaces(spaceId: number): number[] {
-  const space = BOARD[spaceId];
+export function groupSpaces(state: GameState, spaceId: number): number[] {
+  const space = boardFor(state.board.length)[spaceId];
   return space?.kind === "street"
-    ? BOARD.filter((s) => s.kind === "street" && s.group === space.group).map(
+    ? boardFor(state.board.length).filter((s) => s.kind === "street" && s.group === space.group).map(
         (s) => s.id,
       )
     : [spaceId];
@@ -41,7 +41,7 @@ export function buildableSpaces(
   actor: PlayerId,
   kind?: "house" | "hotel",
 ): number[] {
-  return BOARD.filter((space) => {
+  return boardFor(state.board.length).filter((space) => {
     const property = state.board[space.id]!;
     if (
       space.kind !== "street" ||
@@ -51,7 +51,7 @@ export function buildableSpaces(
         (property.buildings === 4 ? "hotel" : "house") !== kind)
     )
       return false;
-    const group = groupSpaces(space.id);
+    const group = groupSpaces(state, space.id);
     return (
       group.every(
         (id) => state.board[id]!.owner === actor && !state.board[id]!.mortgaged,
@@ -65,22 +65,22 @@ export function mortgageableSpaces(
   state: GameState,
   actor: PlayerId,
 ): number[] {
-  return BOARD.filter(
+  return boardFor(state.board.length).filter(
     (space) =>
       space.mortgage !== undefined &&
       state.board[space.id]!.owner === actor &&
       !state.board[space.id]!.mortgaged &&
-      groupSpaces(space.id).every((id) => state.board[id]!.buildings === 0),
+      groupSpaces(state, space.id).every((id) => state.board[id]!.buildings === 0),
   ).map((s) => s.id);
 }
 export function sellableSpaces(state: GameState, actor: PlayerId): number[] {
-  return BOARD.filter(
+  return boardFor(state.board.length).filter(
     (space) =>
       state.board[space.id]!.owner === actor &&
       state.board[space.id]!.buildings > 0 &&
       state.board[space.id]!.buildings ===
         Math.max(
-          ...groupSpaces(space.id).map((id) => state.board[id]!.buildings),
+          ...groupSpaces(state, space.id).map((id) => state.board[id]!.buildings),
         ),
   ).map((s) => s.id);
 }
@@ -88,7 +88,7 @@ export function build(state: GameState, actor: PlayerId, spaceId: number) {
   requireManagement(state, actor);
   requireRule(buildableSpaces(state, actor).includes(spaceId));
   const property = state.board[spaceId]!;
-  const space = BOARD[spaceId]!;
+  const space = boardFor(state.board.length)[spaceId]!;
   const kind = property.buildings === 4 ? "hotel" : "house";
   const available = kind === "house" ? state.bank.houses : state.bank.hotels;
   requireRule(available > 0);
@@ -138,10 +138,10 @@ export function sellBuilding(
   requireManagement(state, actor, true);
   requireRule(sellableSpaces(state, actor).includes(spaceId));
   const property = state.board[spaceId]!;
-  const cost = BOARD[spaceId]!.buildCost!;
+  const cost = boardFor(state.board.length)[spaceId]!.buildCost!;
   if (property.buildings === 5 && state.bank.houses < 4) {
     // A hotel cannot turn into houses that the bank does not have: liquidate the whole color group.
-    for (const id of groupSpaces(spaceId)) liquidateBuildings(state, actor, id);
+    for (const id of groupSpaces(state, spaceId)) liquidateBuildings(state, actor, id);
   } else {
     if (property.buildings === 5) {
       state.bank.hotels++;
@@ -153,7 +153,7 @@ export function sellBuilding(
   recordEvent(
     state,
     "sell-building",
-    `${playerById(state, actor).name} bán công trình tại ${BOARD[spaceId]!.name}.`,
+    `${playerById(state, actor).name} bán công trình tại ${boardFor(state.board.length)[spaceId]!.name}.`,
     { playerId: actor, spaceId },
   );
 }
@@ -168,24 +168,24 @@ function liquidateBuildings(
   if (count === 5) state.bank.hotels++;
   else state.bank.houses += count;
   property.buildings = 0;
-  settlePayment(state, "bank", actor, (count * BOARD[spaceId]!.buildCost!) / 2);
+  settlePayment(state, "bank", actor, (count * boardFor(state.board.length)[spaceId]!.buildCost!) / 2);
 }
 export function mortgage(state: GameState, actor: PlayerId, spaceId: number) {
   requireManagement(state, actor, true);
   requireRule(mortgageableSpaces(state, actor).includes(spaceId));
   state.board[spaceId]!.mortgaged = true;
-  settlePayment(state, "bank", actor, BOARD[spaceId]!.mortgage!);
+  settlePayment(state, "bank", actor, boardFor(state.board.length)[spaceId]!.mortgage!);
   recordEvent(
     state,
     "mortgage",
-    `${playerById(state, actor).name} thế chấp ${BOARD[spaceId]!.name}.`,
+    `${playerById(state, actor).name} thế chấp ${boardFor(state.board.length)[spaceId]!.name}.`,
     { playerId: actor, spaceId },
   );
 }
 export function unmortgage(state: GameState, actor: PlayerId, spaceId: number) {
   requireManagement(state, actor);
   const property = state.board[spaceId];
-  const space = BOARD[spaceId];
+  const space = boardFor(state.board.length)[spaceId];
   requireRule(
     property && space && property.owner === actor && property.mortgaged,
   );
@@ -203,7 +203,7 @@ export function unmortgage(state: GameState, actor: PlayerId, spaceId: number) {
 export function liquidationValue(state: GameState, actor: PlayerId) {
   return (
     playerById(state, actor).cash +
-    BOARD.reduce((sum, space) => {
+    boardFor(state.board.length).reduce((sum, space) => {
       const property = state.board[space.id]!;
       return (
         sum +
@@ -221,12 +221,12 @@ export function declareBankruptcy(state: GameState, actor: PlayerId) {
   requireRule(liquidationValue(state, actor) < debt.amount);
   const player = playerById(state, actor);
   const creditor = debt.payee;
-  for (const space of BOARD)
+  for (const space of boardFor(state.board.length))
     if (state.board[space.id]!.owner === actor)
       liquidateBuildings(state, actor, space.id);
   settlePayment(state, actor, creditor, player.cash);
   const auctions: number[] = [];
-  for (const space of BOARD) {
+  for (const space of boardFor(state.board.length)) {
     const property = state.board[space.id]!;
     if (property.owner !== actor) continue;
     if (creditor === "bank") {

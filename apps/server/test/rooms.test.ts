@@ -8,11 +8,12 @@ const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
 });
-export async function connect(url: string) {
+export async function connect(url: string, compactBoard = false) {
   const socket = io(url, {
     transports: ["websocket"],
     reconnection: false,
     forceNew: true,
+    auth: { compactBoard },
   });
   cleanups.push(async () => {
     socket.disconnect();
@@ -23,6 +24,45 @@ export async function connect(url: string) {
   });
   return socket;
 }
+it("keeps the host board size and rejects legacy clients for compact rooms", async () => {
+  const app = await createGameServer({ port: 0 });
+  cleanups.push(app.close);
+  const host = await connect(app.url, true);
+  const created = await ack(host, "room:create", {
+    name: "Chủ phòng",
+    token: "car",
+    boardSize: 24,
+  });
+  if (!created.ok) throw new Error(created.code);
+  expect(created.room.boardSize).toBe(24);
+  const invite = { code: created.room.code, name: "Bạn", token: "cat" };
+  const legacy = await connect(app.url);
+  expect(await ack(legacy, "room:join", invite)).toEqual({
+    ok: false,
+    code: "UNSUPPORTED_BOARD",
+  });
+  expect(
+    await ack(legacy, "room:resume", { resumeToken: created.resumeToken }),
+  ).toEqual({ ok: false, code: "UNSUPPORTED_BOARD" });
+  const guest = await connect(app.url, true);
+  expect(await ack(guest, "room:join", invite)).toMatchObject({
+    ok: true,
+    room: { boardSize: 24 },
+  });
+  for (const player of [host, guest])
+    await ack(player, "room:ready", { ready: true });
+  expect(await ack(host, "room:start", {})).toMatchObject({ ok: true });
+  const restarted = await createGameServer({ port: 0 });
+  cleanups.push(restarted.close);
+  restarted.rooms.restore(app.rooms.checkpoint());
+  const returning = await connect(restarted.url, true);
+  expect(
+    await ack(returning, "room:resume", { resumeToken: created.resumeToken }),
+  ).toMatchObject({ ok: true, room: { boardSize: 24, started: true } });
+  expect(restarted.rooms.checkpoint()[0]?.authority?.state.board).toHaveLength(
+    24,
+  );
+});
 export function ack<T = RoomReply>(
   socket: Socket,
   event: string,

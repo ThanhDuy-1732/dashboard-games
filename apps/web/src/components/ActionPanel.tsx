@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { BOARD } from "@nha-choi/game-core";
-import type { GameAction, PlayerView, TradeBundle } from "@nha-choi/game-core";
+import { boardFor, classicSpaceId } from "@nha-choi/game-core";
+import type { GameAction, PlayerView, Space, TradeBundle } from "@nha-choi/game-core";
 import { Icon } from "./Icon.js";
 import { TokenArt } from "./TokenArt.js";
 import { LocationPhoto } from "./LocationDetails.js";
-function describe(bundle: TradeBundle) {
+function describe(board: readonly Space[], bundle: TradeBundle) {
   return (
     [
       bundle.cash ? `${bundle.cash} tiền` : "",
-      ...bundle.spaceIds.map((id) => BOARD[id]!.name),
+      ...bundle.spaceIds.map((id) => board[id]!.name),
       ...bundle.jailCards.map(() => "thẻ ra tù"),
     ]
       .filter(Boolean)
@@ -28,6 +28,7 @@ export function ActionPanel({
   onAssets: () => void;
   onTrade: () => void;
 }) {
+  const board = boardFor(view.board.length);
   const [bidTarget, setBidTarget] = useState<number | null>(null);
   const [bid, setBid] = useState(0);
   const self = view.players.find((p) => p.id === view.viewerId)!;
@@ -43,7 +44,7 @@ export function ActionPanel({
     (t) => t.to === self.id && can("accept-trade")?.tradeIds?.includes(t.id),
   );
   const transfer = view.mortgageTransfers[0];
-  const mortgageValue = transfer ? BOARD[transfer.spaceId]!.mortgage! : 0;
+  const mortgageValue = transfer ? board[transfer.spaceId]!.mortgage! : 0;
   return (
     <section className="turn-panel">
       <div className="turn-label">
@@ -74,8 +75,8 @@ export function ActionPanel({
           <strong>
             {view.players.find((p) => p.id === t.from)?.name} đề nghị
           </strong>
-          <p>Bạn nhận: {describe(t.give)}</p>
-          <p>Bạn đưa: {describe(t.receive)}</p>
+          <p>Bạn nhận: {describe(board, t.give)}</p>
+          <p>Bạn đưa: {describe(board, t.receive)}</p>
           <div className="action-row">
             <button
               className="button primary"
@@ -96,16 +97,18 @@ export function ActionPanel({
       ))}
       {view.phase === "awaiting-purchase" && view.turn.playerId === self.id && (
         <div className="decision-box">
-          <LocationPhoto spaceId={view.purchase!} />
+          <LocationPhoto
+            spaceId={classicSpaceId(board.length, view.purchase!)}
+          />
           <span className="tag green">Đất chưa có chủ</span>
-          <h3>{BOARD[view.purchase!]!.name}</h3>
-          <p>Giá mua {BOARD[view.purchase!]!.price}.</p>
+          <h3>{board[view.purchase!]!.name}</h3>
+          <p>Giá mua {board[view.purchase!]!.price}.</p>
           <button
             className="button primary full"
             disabled={pending || !can("buy-property")}
             onClick={() => onAction({ type: "buy-property" })}
           >
-            Mua đất · {BOARD[view.purchase!]!.price}
+            Mua đất · {board[view.purchase!]!.price}
           </button>
           <button
             className="text-button full"
@@ -118,11 +121,13 @@ export function ActionPanel({
       )}
       {view.phase === "auction" && (
         <div className="decision-box">
-          <LocationPhoto spaceId={target ?? view.auction!.spaceId} />
+          <LocationPhoto
+            spaceId={classicSpaceId(board.length, target ?? view.auction!.spaceId)}
+          />
           <h3>
             Đấu giá{" "}
             {view.auction!.kind === "property"
-              ? BOARD[view.auction!.spaceId]!.name
+              ? board[view.auction!.spaceId]!.name
               : view.auction!.kind === "house"
                 ? "nhà cuối cùng"
                 : "khách sạn cuối cùng"}
@@ -158,7 +163,7 @@ export function ActionPanel({
                   >
                     {bidSpaces.map((id) => (
                       <option value={id} key={id}>
-                        {BOARD[id]!.name}
+                        {board[id]!.name}
                       </option>
                     ))}
                   </select>
@@ -217,7 +222,7 @@ export function ActionPanel({
       )}
       {can("resolve-mortgage-transfer") && transfer && (
         <div className="decision-box">
-          <h3>Nhận {BOARD[transfer.spaceId]!.name}</h3>
+          <h3>Nhận {board[transfer.spaceId]!.name}</h3>
           <p>Tài sản đang thế chấp. Chọn cách thanh toán cho ngân hàng.</p>
           <button
             className="button primary full"

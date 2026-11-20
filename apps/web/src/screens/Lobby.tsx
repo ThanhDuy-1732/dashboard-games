@@ -79,7 +79,7 @@ export function Lobby({
             {copied ? "Đã sao chép" : "Sao chép lời mời"}
           </button>
           <p className="info-note">
-            2–6 người · Luật truyền thống · Không cần tài khoản
+            {room.boardSize ?? 40} ô · 2–6 người · Không cần tài khoản
           </p>
         </div>
         <div className="setup-panel">

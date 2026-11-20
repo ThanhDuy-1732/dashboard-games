@@ -1,4 +1,4 @@
-import type { PlayerView, PlayerId, Token } from "@nha-choi/game-core";
+import type { PlayerView, PlayerId, Token, BoardSize } from "@nha-choi/game-core";
 import type { CommandEnvelope, CommandReply } from "./messages.js";
 export interface SessionUpdate {
   canEndInterrupted?: boolean;
@@ -19,6 +19,7 @@ export interface LobbyView {
   code?: string;
   hostId: PlayerId;
   capacity: 6;
+  boardSize?: BoardSize;
   players: {
     id: PlayerId;
     name: string;
@@ -38,6 +39,7 @@ export type RoomErrorCode =
   | "NOT_HOST"
   | "NOT_READY"
   | "GAME_STARTED"
+  | "UNSUPPORTED_BOARD"
   | "NOT_AUTHORIZED"
   | "RATE_LIMITED";
 export type RoomReply =

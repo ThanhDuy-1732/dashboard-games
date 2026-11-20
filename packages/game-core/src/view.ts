@@ -1,5 +1,5 @@
 import type { ActionHint, GameState, PlayerId, PlayerView } from "./types.js";
-import { BOARD } from "./board.js";
+import { boardFor } from "./board.js";
 import {
   buildableSpaces,
   liquidationValue,
@@ -10,6 +10,7 @@ export function allowedActions(
   state: GameState,
   viewer: PlayerId,
 ): ActionHint[] {
+  const board = boardFor(state.board.length);
   const player = state.players.find((p) => p.id === viewer);
   if (!player || player.bankrupt || state.phase === "finished") return [];
   const actions: ActionHint[] = [];
@@ -59,7 +60,7 @@ export function allowedActions(
     }
     if (state.phase === "awaiting-end-turn") actions.push({ type: "end-turn" });
     if (state.phase === "awaiting-purchase") {
-      if (player.cash >= BOARD[state.purchase!]!.price!)
+      if (player.cash >= board[state.purchase!]!.price!)
         actions.push({ type: "buy-property" });
       actions.push({ type: "decline-property" });
     }
@@ -76,13 +77,13 @@ export function allowedActions(
   if (!raising) {
     const build = buildableSpaces(state, viewer).filter(
       (id) =>
-        player.cash >= BOARD[id]!.buildCost! &&
+        player.cash >= board[id]!.buildCost! &&
         (state.board[id]!.buildings === 4
           ? state.bank.hotels
           : state.bank.houses) > 0,
     );
     if (build.length) actions.push({ type: "build", spaceIds: build });
-    const redeem = BOARD.filter((space) => {
+    const redeem = board.filter((space) => {
       const p = state.board[space.id]!;
       return (
         p.owner === viewer &&

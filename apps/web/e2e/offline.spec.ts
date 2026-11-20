@@ -51,6 +51,22 @@ test("saves_a_real_game_leaves_and_resumes_it_after_reload", async ({
   expect(after.revision).toBe(before.revision);
   expect(after.state.players).toEqual(before.state.players);
 });
+test("compact_board_keeps_larger_tiles_and_resumes_offline", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 800 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Chơi Cờ tỷ phú" }).click();
+  await page.getByRole("textbox", { name: "Tên của bạn" }).fill("Bạn chơi");
+  await page.getByLabel("Số ô trên bàn cờ").selectOption("24");
+  await page.getByRole("button", { name: "Bắt đầu ván", exact: true }).click();
+  const tiles = page.locator(".board-cell");
+  await expect(tiles).toHaveCount(24);
+  expect((await tiles.first().boundingBox())!.width).toBeGreaterThan(36);
+  await page.getByRole("button", { name: "Rời bàn chơi" }).click();
+  await page.getByRole("button", { name: "Lưu và rời ván" }).click();
+  await page.reload();
+  await page.getByRole("button", { name: "Tiếp tục ván", exact: true }).click();
+  await expect(tiles).toHaveCount(24);
+});
 test("restores_saved_debt_auction_jail_and_bot_turn", async ({ page }) => {
   for (const phase of [
     "debt",

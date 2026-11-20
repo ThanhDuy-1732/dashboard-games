@@ -1,7 +1,7 @@
-import { TOKENS } from "@nha-choi/game-core";
+import { BOARD_SIZES, TOKENS } from "@nha-choi/game-core";
 import { isNative, onlineServerUrl } from "../platform.js";
 import { useEffect, useState } from "react";
-import type { PlayerConfig, Token } from "@nha-choi/game-core";
+import type { BoardSize, PlayerConfig, Token } from "@nha-choi/game-core";
 import { TOKEN_NAMES, TokenArt } from "../components/TokenArt.js";
 import { Icon } from "../components/Icon.js";
 import { prepareOnlineConnection } from "../session/online.js";
@@ -12,9 +12,14 @@ export function Setup({
   onResumeOnline,
   busy = false,
 }: {
-  onStart: (human: PlayerConfig, botCount: number) => void;
+  onStart: (human: PlayerConfig, botCount: number, boardSize: BoardSize) => void;
   onBack: () => void;
-  onOnline?: (input: { name: string; token: Token; code?: string }) => void;
+  onOnline?: (input: {
+    name: string;
+    token: Token;
+    code?: string;
+    boardSize?: BoardSize;
+  }) => void;
   onResumeOnline?: () => void;
   busy?: boolean;
 }) {
@@ -30,6 +35,7 @@ export function Setup({
   const [name, setName] = useState("");
   const [token, setToken] = useState<Token>("car");
   const [bots, setBots] = useState(3);
+  const [boardSize, setBoardSize] = useState<BoardSize>(40);
   const [roomCode, setRoomCode] = useState(
     new URLSearchParams(location.search).get("room") ?? "",
   );
@@ -121,7 +127,9 @@ export function Setup({
               onOnline?.({
                 name: name.trim(),
                 token,
-                ...(joining ? { code: roomCode.trim().toUpperCase() } : {}),
+                ...(joining
+                  ? { code: roomCode.trim().toUpperCase() }
+                  : { boardSize }),
               });
               return;
             }
@@ -133,6 +141,7 @@ export function Setup({
             onStart(
               { id: "human", name: name.trim(), token, kind: "human" },
               bots,
+              boardSize,
             );
           }}
         >
@@ -194,6 +203,28 @@ export function Setup({
                   ))}
                 </div>
               </fieldset>
+              {(mode === "offline" || !joining) && (
+                <div className="board-size-field">
+                  <label className="field-label" htmlFor="board-size">
+                    Số ô trên bàn cờ
+                  </label>
+                  <select
+                    id="board-size"
+                    value={boardSize}
+                    onChange={(event) =>
+                      setBoardSize(event.target.value === "24" ? 24 : 40)
+                    }
+                  >
+                    {BOARD_SIZES.map((size) => (
+                      <option key={size} value={size}>
+                        {size === 24
+                          ? "24 ô · Gọn cho điện thoại"
+                          : "40 ô · Truyền thống"}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               {mode === "offline" ? (
                 <>
                   <label className="field-label" htmlFor="bot-count">

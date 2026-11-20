@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BOARD } from "@nha-choi/game-core";
+import { boardFor } from "@nha-choi/game-core";
 import type { GameAction, PlayerView } from "@nha-choi/game-core";
 import { Dialog } from "./Dialog.js";
 export function AssetsDialog({
@@ -13,18 +13,19 @@ export function AssetsDialog({
   onClose: () => void;
   pending: boolean;
 }) {
+  const board = boardFor(view.board.length);
   const [confirm, setConfirm] = useState<number | null>(null);
   const group =
     confirm === null
       ? []
-      : BOARD.filter(
-          (s) => s.group === BOARD[confirm]!.group && s.kind === "street",
+      : board.filter(
+          (s) => s.group === board[confirm]!.group && s.kind === "street",
         );
   const proceeds = group.reduce(
     (sum, s) => sum + (view.board[s.id]!.buildings * s.buildCost!) / 2,
     0,
   );
-  const owned = BOARD.filter(
+  const owned = board.filter(
     (space) => view.board[space.id]!.owner === view.viewerId,
   );
   const names = {

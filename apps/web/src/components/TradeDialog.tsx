@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BOARD } from "@nha-choi/game-core";
+import { boardFor } from "@nha-choi/game-core";
 import type { GameAction, PlayerView } from "@nha-choi/game-core";
 import { Dialog } from "./Dialog.js";
 export function TradeDialog({
@@ -13,6 +13,7 @@ export function TradeDialog({
   onClose: () => void;
   pending: boolean;
 }) {
+  const board = boardFor(view.board.length);
   const others = view.players.filter(
     (p) => p.id !== view.viewerId && !p.bankrupt,
   );
@@ -26,12 +27,12 @@ export function TradeDialog({
   const self = view.players.find((p) => p.id === view.viewerId)!;
   const target = view.players.find((p) => p.id === to);
   const assets = (owner: string) =>
-    BOARD.filter(
+    board.filter(
       (space) =>
         view.board[space.id]!.owner === owner &&
         !view.mortgageTransfers.some((t) => t.spaceId === space.id) &&
         (space.kind !== "street" ||
-          BOARD.filter(
+          board.filter(
             (s) => s.group === space.group && s.kind === "street",
           ).every((s) => view.board[s.id]!.buildings === 0)),
     );

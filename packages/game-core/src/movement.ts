@@ -1,4 +1,4 @@
-import { BOARD, GO_BONUS } from "./board.js";
+import { boardFor, boardSpaceId, GO_BONUS } from "./board.js";
 import { CHANCE, COMMUNITY } from "./cards.js";
 import type {
   GameState,
@@ -20,13 +20,14 @@ export function dice(random: RandomSource): [number, number] {
 }
 export function sendToJail(state: GameState, id: PlayerId) {
   const player = playerById(state, id);
-  player.position = 10;
+  const jail = boardSpaceId(state.board.length, 10);
+  player.position = jail;
   player.jail = { turns: 0 };
   state.turn.extraRoll = false;
   state.turn.doubles = 0;
   recordEvent(state, "jail", `${player.name} vào tù.`, {
     playerId: id,
-    spaceId: 10,
+    spaceId: jail,
   });
 }
 function applyCard(
@@ -37,16 +38,20 @@ function applyCard(
 ) {
   const player = playerById(state, id);
   switch (effect.type) {
-    case "move-to":
+    case "move-to": {
+      const target = boardSpaceId(state.board.length, effect.spaceId);
+      requireRule(target >= 0, "INVALID_GAME");
       state.pendingEffects.unshift({
         type: "move",
         playerId: id,
-        spaceId: effect.spaceId,
-        salary: effect.spaceId <= player.position,
+        spaceId: target,
+        salary: target <= player.position,
       });
       break;
+    }
     case "move-relative": {
-      const target = (player.position + effect.steps + 40) % 40;
+      const size = state.board.length;
+      const target = (player.position + effect.steps + size) % size;
       state.pendingEffects.unshift({
         type: "move",
         playerId: id,
@@ -56,7 +61,7 @@ function applyCard(
       break;
     }
     case "nearest": {
-      const options = BOARD.filter((s) => s.kind === effect.kind);
+      const options = boardFor(state.board.length).filter((s) => s.kind === effect.kind);
       const target = options.find((s) => s.id > player.position) ?? options[0]!;
       state.pendingEffects.unshift({
         type: "move",
@@ -131,7 +136,7 @@ function land(
   random: RandomSource,
 ) {
   const player = playerById(state, effect.playerId);
-  const space = BOARD[player.position]!;
+  const space = boardFor(state.board.length)[player.position]!;
   recordEvent(state, "land", `${player.name} đến ${space.name}.`, {
     playerId: player.id,
     spaceId: space.id,
@@ -269,8 +274,8 @@ export function roll(state: GameState, actor: PlayerId, random: RandomSource) {
   state.pendingEffects.push({
     type: "move",
     playerId: actor,
-    spaceId: (player.position + sum) % 40,
-    salary: player.position + sum >= 40,
+    spaceId: (player.position + sum) % state.board.length,
+    salary: player.position + sum >= state.board.length,
   });
   // Resolve from a neutral phase so a previously pending purchase cannot stop a new effect chain.
   state.phase = "awaiting-end-turn";

@@ -36,7 +36,7 @@ export function Game({
           <span className="tag green">
             {view.players.some((p) => p.kind === "bot") ? "Đấu máy" : "Online"}
           </span>
-          <span className="tag">Luật truyền thống</span>
+          <span className="tag">{view.board.length} ô</span>
         </div>
       </div>
       <div className="play-layout">

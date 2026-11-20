@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { GameState } from "@nha-choi/game-core";
-import { BOARD, CHANCE, COMMUNITY, buildableSpaces } from "@nha-choi/game-core";
+import { BOARD_SIZES, boardFor, CHANCE, COMMUNITY, buildableSpaces } from "@nha-choi/game-core";
 import {
   moneySchema,
   playerConfigSchema,
@@ -54,7 +54,7 @@ export const gameStateSchema: z.ZodType<GameState> = z
           mortgaged: z.boolean(),
         }),
       )
-      .length(40),
+      .max(40),
     turn: z.strictObject({
       playerId: id,
       doubles: z.number().int().min(0).max(3),
@@ -144,8 +144,27 @@ export const gameStateSchema: z.ZodType<GameState> = z
     winner: id.nullable(),
   })
   .superRefine((state, ctx) => {
-    if (state.board.length !== 40) return;
     const fail = (message: string) => ctx.addIssue({ code: "custom", message });
+    const size = state.board.length;
+    if (!BOARD_SIZES.some((supported) => supported === size)) {
+      fail("Unsupported board size");
+      return;
+    }
+    const references = [
+      ...state.players.map((p) => p.position),
+      state.purchase,
+      state.auction?.spaceId,
+      ...Object.values(state.auction?.targets ?? {}),
+      ...state.pendingEffects.flatMap((e) => "spaceId" in e ? [e.spaceId] : []),
+      ...state.mortgageTransfers.map((t) => t.spaceId),
+      ...state.trades.flatMap((t) => [...t.give.spaceIds, ...t.receive.spaceIds]),
+      ...state.recentEvents.map((e) => e.spaceId),
+    ];
+    if (references.some((id) => id != null && id >= size)) {
+      fail("Space is outside the selected board");
+      return;
+    }
+    const board = boardFor(size);
     const ids = new Set(state.players.map((p) => p.id));
     if (
       ids.size !== state.players.length ||
@@ -156,7 +175,7 @@ export const gameStateSchema: z.ZodType<GameState> = z
     if (!ids.has(state.turn.playerId)) fail("Unknown current player");
     let houses = state.bank.houses;
     let hotels = state.bank.hotels;
-    for (const space of BOARD) {
+    for (const space of board) {
       const property = state.board[space.id]!;
       if (
         property.owner !== null &&
@@ -174,7 +193,7 @@ export const gameStateSchema: z.ZodType<GameState> = z
       if (property.buildings) {
         if (space.kind !== "street" || property.mortgaged)
           fail("Invalid building");
-        const group = BOARD.filter(
+        const group = board.filter(
           (s) => s.kind === "street" && s.group === space.group,
         );
         if (
