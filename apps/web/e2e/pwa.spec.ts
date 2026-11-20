@@ -66,7 +66,7 @@ test("production_PWA_installs_all_illustrations_and_opens_a_game_after_offline_r
   await page.getByRole("button", { name: /^Gieo/ }).click();
   await expect(page.locator(".save-indicator")).toHaveText("Đã lưu");
 });
-test("update_waits_until_the_game_is_saved_and_does_not_force_reload_when_declined", async ({
+test("update_preserves_the_game_and_applies_when_the_app_reopens", async ({
   page,
 }) => {
   test.setTimeout(60000);
@@ -103,14 +103,20 @@ test("update_waits_until_the_game_is_saved_and_does_not_force_reload_when_declin
   await expect(
     page.getByRole("button", { name: "Tiếp tục ván", exact: true }),
   ).toBeVisible();
+  expect(
+    await page.evaluate(async () =>
+      (await navigator.serviceWorker.getRegistration())?.waiting?.state,
+    ),
+  ).toBe("installed");
+  let navigations = 0;
+  page.on("framenavigated", (frame) => {
+    if (frame === page.mainFrame()) navigations++;
+  });
   await page.reload();
-  await page.getByRole("button", { name: "Cập nhật ngay" }).waitFor();
-  const navigation = page.waitForEvent(
-    "framenavigated",
-    (frame) => frame === page.mainFrame(),
+  await expect.poll(() => navigations).toBe(2);
+  await expect(page.getByRole("button", { name: "Cập nhật ngay" })).toHaveCount(
+    0,
   );
-  await page.getByRole("button", { name: "Cập nhật ngay" }).click();
-  await navigation;
   await page
     .getByRole("button", { name: "Tiếp tục ván", exact: true })
     .waitFor();

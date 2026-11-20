@@ -7,22 +7,23 @@ interface Options {
 }
 export async function registerPwa(options: Options) {
   let registration: ServiceWorkerRegistration | undefined,
-    accepted = false;
+    accepted = false,
+    opening = true;
   let updateTimer: ReturnType<typeof setInterval> | undefined;
   const controllerChange = () => {
     if (accepted) location.reload();
   };
   const checkForUpdate = () => {
     if (
-      document.visibilityState === "visible" &&
+      globalThis.document?.visibilityState === "visible" &&
       registration?.active &&
       !registration.waiting &&
       !registration.installing
     )
-      void registration.update().catch(() => {});
+      return registration.update().catch(() => {});
   };
   const result = {
-    async update() {
+    update() {
       if (options.inGame() || !registration?.waiting) return false;
       accepted = true;
       registration.waiting.postMessage({ type: "SKIP_WAITING" });
@@ -38,6 +39,14 @@ export async function registerPwa(options: Options) {
     },
   };
   if (options.isNative || !("serviceWorker" in navigator)) return result;
+  const updateReady = () => {
+    const apply =
+      opening &&
+      globalThis.document?.visibilityState === "visible" &&
+      navigator.serviceWorker.controller;
+    opening = false;
+    if (!apply || !result.update()) options.onUpdateReady();
+  };
   try {
     navigator.serviceWorker.addEventListener(
       "controllerchange",
@@ -46,17 +55,19 @@ export async function registerPwa(options: Options) {
     registration = await navigator.serviceWorker.register("/sw.js", {
       updateViaCache: "none",
     });
-    if (registration.waiting) options.onUpdateReady();
+    if (registration.waiting) updateReady();
     if (registration.active?.state === "activated") options.onOfflineReady();
     const watch = () => {
       const worker = registration?.installing;
       if (!worker) return;
       worker.addEventListener("statechange", () => {
         if (worker.state === "installed" && registration?.active)
-          options.onUpdateReady();
+          updateReady();
         if (worker.state === "activated") options.onOfflineReady();
-        if (worker.state === "redundant")
+        if (worker.state === "redundant") {
+          opening = false;
           options.onError?.(new Error("Chưa tải đủ dữ liệu để chơi offline."));
+        }
       });
     };
     watch();
@@ -64,7 +75,12 @@ export async function registerPwa(options: Options) {
     if (globalThis.document) {
       document.addEventListener("visibilitychange", checkForUpdate);
       updateTimer = setInterval(checkForUpdate, 60_000);
-      checkForUpdate();
+      if (!registration.active || document.visibilityState !== "visible") {
+        opening = false;
+      }
+      void checkForUpdate()?.finally(() => {
+        if (!registration?.installing && !registration?.waiting) opening = false;
+      });
     }
   } catch (error) {
     options.onError?.(error);
