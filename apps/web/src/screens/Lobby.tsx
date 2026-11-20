@@ -14,12 +14,12 @@ export function Lobby({
   connected: boolean;
   onLeave: () => void;
 }) {
-  const [busy, setBusy] = useState(false),
+  const [pending, setPending] = useState<"ready" | "start" | null>(null),
     [error, setError] = useState(""),
     [copied, setCopied] = useState(false);
   const self = room.players.find((p) => p.id === session.selfId);
-  async function act(action: () => Promise<RoomReply>) {
-    setBusy(true);
+  async function act(kind: "ready" | "start", action: () => Promise<RoomReply>) {
+    setPending(kind);
     setError("");
     try {
       const result = await action();
@@ -27,7 +27,7 @@ export function Lobby({
     } catch {
       setError("Chưa gửi được. Hãy đợi kết nối rồi thử lại.");
     } finally {
-      setBusy(false);
+      setPending(null);
     }
   }
   const canStart =
@@ -40,7 +40,11 @@ export function Lobby({
           <p className="welcome">Cờ tỷ phú · Online</p>
           <h1>Đợi bạn, đủ vui.</h1>
         </div>
-        <button className="button secondary" onClick={onLeave}>
+        <button
+          className="button secondary"
+          disabled={pending === "start"}
+          onClick={onLeave}
+        >
           Rời phòng
         </button>
       </div>
@@ -104,24 +108,28 @@ export function Lobby({
           )}
           <button
             className="button secondary full"
-            disabled={busy || !connected}
-            onClick={() => void act(() => session.setReady(!self?.ready))}
+            disabled={pending !== null || !connected}
+            onClick={() =>
+              void act("ready", () => session.setReady(!self?.ready))
+            }
           >
             {self?.ready ? "Hủy sẵn sàng" : "Sẵn sàng"}
           </button>
           {room.hostId === session.selfId && (
             <button
               className="button primary full"
-              disabled={busy || !connected || !canStart}
-              onClick={() => void act(() => session.startGame())}
+              disabled={pending !== null || !connected || !canStart}
+              onClick={() => void act("start", () => session.startGame())}
             >
-              Bắt đầu ván
+              {pending === "start" ? "Đang mở bàn…" : "Bắt đầu ván"}
             </button>
           )}
-          <p className="muted">
-            {canStart
-              ? "Mọi người đã sẵn sàng. Chủ phòng có thể bắt đầu."
-              : "Chờ ít nhất 2 người kết nối và tất cả sẵn sàng."}
+          <p className="muted lobby-status" role="status">
+            {pending === "start"
+              ? "Đang chuẩn bị bàn chơi cho mọi người."
+              : canStart
+                ? "Mọi người đã sẵn sàng. Chủ phòng có thể bắt đầu."
+                : "Chờ ít nhất 2 người kết nối và tất cả sẵn sàng."}
           </p>
         </div>
       </div>

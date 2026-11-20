@@ -1,9 +1,10 @@
 import { TOKENS } from "@nha-choi/game-core";
 import { isNative, onlineServerUrl } from "../platform.js";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { PlayerConfig, Token } from "@nha-choi/game-core";
 import { TOKEN_NAMES, TokenArt } from "../components/TokenArt.js";
 import { Icon } from "../components/Icon.js";
+import { prepareOnlineConnection } from "../session/online.js";
 export function Setup({
   onStart,
   onBack,
@@ -17,10 +18,15 @@ export function Setup({
   onResumeOnline?: () => void;
   busy?: boolean;
 }) {
-  const onlineConfigured = Boolean(onlineServerUrl());
+  const onlineUrl = onlineServerUrl();
+  const onlineConfigured = Boolean(onlineUrl);
   const [mode, setMode] = useState<"offline" | "online" | "bluetooth">(
     new URLSearchParams(location.search).has("room") ? "online" : "offline",
   );
+  useEffect(() => {
+    if (mode === "online" && onlineUrl)
+      return prepareOnlineConnection(onlineUrl);
+  }, [mode, onlineUrl]);
   const [name, setName] = useState("");
   const [token, setToken] = useState<Token>("car");
   const [bots, setBots] = useState(3);
@@ -136,7 +142,13 @@ export function Setup({
             </span>
             <div>
               <h2>Chuẩn bị ván của bạn</h2>
-              <p>Chọn quân cờ, rồi để máy vào bàn cùng bạn.</p>
+              <p>
+                {mode === "online"
+                  ? "Chọn quân cờ để tạo phòng hoặc vào phòng của bạn bè."
+                  : mode === "offline"
+                    ? "Chọn quân cờ và số đối thủ máy."
+                    : "Chơi cùng bạn bè ở gần."}
+              </p>
             </div>
           </div>
           {mode === "online" && !onlineConfigured && (

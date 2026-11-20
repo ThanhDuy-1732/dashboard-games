@@ -45,6 +45,31 @@ function stored() {
   }
 }
 export const hasOnlineRoom = () => stored() !== null;
+function createSocket(serverUrl: string) {
+  return io(serverUrl, {
+    autoConnect: false,
+    transports: ["websocket", "polling"],
+    tryAllTransports: true,
+    auth: { protocolVersion: 1, rulesVersion: "classic-v1" },
+    reconnectionDelay: 500,
+    reconnectionDelayMax: 3000,
+  });
+}
+let prepared: {
+  serverUrl: string;
+  socket: ReturnType<typeof createSocket>;
+} | null = null;
+export function prepareOnlineConnection(serverUrl: string) {
+  const socket = createSocket(serverUrl);
+  prepared = { serverUrl, socket };
+  socket.connect();
+  return () => {
+    // A submitted form transfers this socket to the room session.
+    if (prepared?.socket !== socket) return;
+    prepared = null;
+    socket.disconnect();
+  };
+}
 export interface OnlineSession extends RoomSession {
   readonly selfId: string;
   leaveRoom(discard?: boolean): Promise<void>;
@@ -99,14 +124,11 @@ async function connect(
       "Trình duyệt không cho lưu phiên. Hãy cho phép lưu dữ liệu để giữ ghế khi kết nối lại.",
     );
   }
-  const socket = io(serverUrl, {
-    autoConnect: false,
-    transports: ["websocket", "polling"],
-    tryAllTransports: true,
-    auth: { protocolVersion: 1, rulesVersion: "classic-v1" },
-    reconnectionDelay: 500,
-    reconnectionDelayMax: 3000,
-  });
+  const socket =
+    prepared?.serverUrl === serverUrl
+      ? prepared.socket
+      : createSocket(serverUrl);
+  if (prepared?.socket === socket) prepared = null;
   let active = true,
     authenticated = false,
     selfId = "",
@@ -268,7 +290,7 @@ async function connect(
             },
       );
   });
-  socket.on("connect", () => {
+  const enterRoom = () => {
     serverUpdate = null;
     void (async () => {
       try {
@@ -318,7 +340,8 @@ async function connect(
         if (active) socket.io.engine?.close();
       }
     })();
-  });
+  };
+  socket.on("connect", enterRoom);
   socket.on("disconnect", (reason: string) => {
     authenticated = false;
     if (!active) return;
@@ -347,6 +370,7 @@ async function connect(
       rejectInitial(new Error(roomError(error.message)));
     }
   });
-  socket.connect();
+  if (socket.connected) enterRoom();
+  else socket.connect();
   return initial;
 }

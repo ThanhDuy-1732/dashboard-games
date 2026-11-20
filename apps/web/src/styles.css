@@ -2055,7 +2055,7 @@ dialog > .button {
     margin: 18px 0;
   }
   .play-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 22px;
   }
   .game-topline {
@@ -2113,7 +2113,7 @@ dialog > .button {
     margin-top: 12px;
   }
   .game-side {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 15px;
   }
   .turn-panel,
@@ -2835,7 +2835,8 @@ dialog .location-figure + .tag + h2 {
 }
 .lobby-layout {
   display: grid;
-  grid-template-columns: 1fr 1.3fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  align-items: start;
   gap: 24px;
   max-width: 1000px;
 }
@@ -2855,12 +2856,26 @@ dialog .location-figure + .tag + h2 {
   padding: 14px 0;
   border-bottom: 1px solid #ddcfb2;
 }
+.lobby-players li > span:last-child,
+.activity-panel li > p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .lobby-players small {
   display: block;
   margin-top: 5px;
 }
 .lobby-token {
-  font-size: 28px;
+  flex: none;
+}
+.lobby-status {
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.lobby-invite h2 + p {
+  margin: 6px 0 14px;
+  line-height: 1.5;
 }
 select {
   width: 100%;
@@ -2873,9 +2888,9 @@ select {
 .setup-panel > .button + .button {
   margin-top: 12px;
 }
-@media (max-width: 700px) {
+@media (max-width: 720px) {
   .lobby-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 .pwa-status {
@@ -2988,6 +3003,10 @@ dialog {
 }
 .center-turn {
   position: relative;
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .mobile-nav {
   background: var(--paper);

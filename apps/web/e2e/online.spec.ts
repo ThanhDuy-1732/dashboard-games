@@ -4,8 +4,14 @@ import { TOKEN_NAMES } from "../src/components/TokenArt.js";
 import type { Token } from "@nha-choi/game-core";
 async function setup(page: Page, name: string, token: Token, code?: string) {
   await page.goto(code ? `/?room=${code}` : "/");
+  const onlineConnection = page.waitForEvent("websocket", {
+    predicate: (socket) => socket.url().includes("/socket.io/"),
+    timeout: 5000,
+  });
   await page.getByRole("button", { name: "Chơi Cờ tỷ phú" }).click();
   await page.getByRole("button", { name: /^Chơi online/ }).click();
+  await expectNoHorizontalOverflow(page);
+  await onlineConnection;
   await page.getByRole("textbox", { name: "Tên của bạn" }).fill(name);
   await page
     .getByRole("button", {
@@ -39,6 +45,7 @@ for (const count of [2, 6])
       );
       if (count === 6)
         await pages[0]!.setViewportSize({ width: 375, height: 812 });
+      else await pages[1]!.setViewportSize({ width: 320, height: 800 });
       const tokens = ["rocket", "bike", "hat", "ship", "dog", "plane"] as const;
       await setup(pages[0]!, "Chủ phòng", tokens[0]!);
       const code = (
@@ -48,9 +55,15 @@ for (const count of [2, 6])
         pages
           .slice(1)
           .map((page, index) =>
-            setup(page, `Bạn ${index + 1}`, tokens[index + 1]!, code),
+            setup(
+              page,
+              count === 2 ? "W".repeat(20) : `Bạn ${index + 1}`,
+              tokens[index + 1]!,
+              code,
+            ),
           ),
       );
+      if (count === 2) await expectNoHorizontalOverflow(pages[1]!);
       for (const page of pages) {
         await page
           .getByRole("button", { name: "Sẵn sàng", exact: true })
@@ -64,6 +77,7 @@ for (const count of [2, 6])
         .click();
       for (const page of pages) {
         await expect(page.locator(".board-cell")).toHaveCount(40);
+        await expectNoHorizontalOverflow(page);
         const corner = (await page
           .locator(".board-cell")
           .nth(0)
@@ -168,3 +182,13 @@ for (const count of [2, 6])
       await Promise.all(contexts.map((context) => context.close()));
     }
   });
+
+async function expectNoHorizontalOverflow(page: Page) {
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth - window.innerWidth,
+      ),
+    )
+    .toBeLessThanOrEqual(1);
+}
