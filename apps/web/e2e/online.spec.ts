@@ -83,7 +83,11 @@ for (const count of [2, 6])
           .nth(0)
           .boundingBox())!;
         const edge = (await page.locator(".board-cell").nth(1).boundingBox())!;
-        expect(corner.width).toBeGreaterThan(edge.width * 1.5);
+        const board = (await page.locator(".board").boundingBox())!;
+        const center = (await page.locator(".board-center").boundingBox())!;
+        expect(corner.width).toBeGreaterThan(edge.width * 2.5);
+        expect(center.width / board.width).toBeLessThan(0.65);
+        expect(center.height / board.height).toBeLessThan(0.65);
         const pawns = page.locator(".cell-pawns");
         await expect(pawns).toHaveCount(1);
         await expectPawnsCentered(pawns);

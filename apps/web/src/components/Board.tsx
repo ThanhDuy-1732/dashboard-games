@@ -81,7 +81,8 @@ export function Board({
     measure();
     if (typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(measure);
-    observer.observe(root);
+    observer.observe(cells[0]!);
+    observer.observe(cells[1]!);
     return () => observer.disconnect();
   }, []);
   useLayoutEffect(() => {

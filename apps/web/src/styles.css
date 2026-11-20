@@ -1080,7 +1080,7 @@ dd {
 }
 .board {
   display: grid;
-  --rim: minmax(0, 1.7fr);
+  --rim: minmax(0, 2.7fr);
   grid-template:
     var(--rim) repeat(9, minmax(0, 1fr)) var(--rim) /
     var(--rim) repeat(9, minmax(0, 1fr)) var(--rim);
@@ -2413,8 +2413,8 @@ dialog .location-figure + .tag + h2 {
     calc((var(--cell-side) - (var(--columns) + 1) * var(--pawn-gap)) / var(--columns))
   );
   position: absolute;
-  inset: 50% auto auto 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
+  margin: auto;
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -2422,6 +2422,7 @@ dialog .location-figure + .tag + h2 {
   width: calc(
     var(--columns) * var(--pawn-size) + (var(--columns) - 1) * var(--pawn-gap)
   );
+  height: max-content;
   z-index: 4;
   pointer-events: none;
 }
