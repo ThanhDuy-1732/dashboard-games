@@ -6,3 +6,4 @@ export { createGame, applyAction } from "./engine.js";
 export { chooseBotAction } from "./bot.js";
 
 export { buildableSpaces } from "./assets.js";
+export * from "./caro.js";

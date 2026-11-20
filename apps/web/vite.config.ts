@@ -28,10 +28,10 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
       manifest: {
-        name: "Nhà Chơi — Cờ tỷ phú",
+        name: "Nhà Chơi",
         short_name: "Nhà Chơi",
         description:
-          "Góc nhỏ, cuộc vui lớn. Chơi Cờ tỷ phú cùng bạn bè hoặc với máy.",
+          "Góc nhỏ, cuộc vui lớn. Chơi Cờ tỷ phú và Cờ Caro cùng bạn bè hoặc với máy.",
         lang: "vi",
         start_url: "/",
         scope: "/",

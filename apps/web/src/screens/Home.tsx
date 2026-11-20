@@ -3,12 +3,16 @@ import { LocationPhoto } from "../components/LocationDetails.js";
 import type { SavedGame } from "../storage/save-schema.js";
 export function Home({
   onPlay,
+  onCaro,
+  onResumeCaro,
   onRules,
   saved = null,
   onResume,
   busy = false,
 }: {
   onPlay: () => void;
+  onCaro: () => void;
+  onResumeCaro?: () => void;
   onRules: () => void;
   saved?: SavedGame | null;
   onResume?: () => void;
@@ -112,6 +116,41 @@ export function Home({
         <button className="button secondary" onClick={onPlay}>
           Vào chơi <Icon name="arrow" />
         </button>
+      </article>
+      <article className="game-card caro-home-card">
+        <div className="game-cover caro-cover" aria-hidden="true">
+          <div data-mark="X">X</div>
+          <div />
+          <div data-mark="O">O</div>
+          <div />
+          <div data-mark="X">X</div>
+          <div data-mark="O">O</div>
+          <div />
+          <div />
+          <div data-mark="X">X</div>
+        </div>
+        <div className="game-description">
+          <h3>Cờ Caro</h3>
+          <p>Xếp đúng năm quân liên tiếp trên bàn 15 × 15.</p>
+          <div className="game-modes">
+            <span>
+              <Icon name="users" /> Hai người
+            </span>
+            <span>
+              <Icon name="bot" /> Có thể đấu máy
+            </span>
+          </div>
+        </div>
+        <div className="caro-home-actions">
+          <button className="button secondary" onClick={onCaro}>
+            Chơi Cờ Caro <Icon name="arrow" />
+          </button>
+          {onResumeCaro && (
+            <button className="text-button" onClick={onResumeCaro}>
+              Mở ván Caro đã lưu
+            </button>
+          )}
+        </div>
       </article>
       <div className="home-bottom">
         <div className="start-tip">

@@ -1,0 +1,119 @@
+import { test, expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
+
+const caro = (page: Page) => page.locator(".caro-screen");
+
+async function mark(page: Page, coordinate: string) {
+  await caro(page)
+    .getByRole("button", { name: `${coordinate} trống`, exact: true })
+    .click();
+  await caro(page)
+    .getByRole("button", { name: `Đánh ô ${coordinate}`, exact: true })
+    .click();
+}
+
+test("Caro local shows the winning line, resumes after reload and swaps first player", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Chơi Cờ Caro" }).click();
+  await caro(page)
+    .getByRole("button", { name: /Hai người cùng máy/ })
+    .click();
+  await expect(page.locator(".caro-cell")).toHaveCount(225);
+  const first = caro(page).getByRole("button", {
+    name: "A1 trống",
+    exact: true,
+  });
+  await first.click();
+  await expect(first).toHaveAttribute("aria-pressed", "true");
+  await caro(page)
+    .getByRole("button", { name: "Đánh ô A1", exact: true })
+    .click();
+  for (const [o, x] of [
+    ["A3", "B1"],
+    ["B3", "C1"],
+    ["C3", "D1"],
+    ["D3", "E1"],
+  ]) {
+    await mark(page, o!);
+    await mark(page, x!);
+  }
+  await expect(
+    caro(page).getByRole("heading", { name: "Người chơi 1 thắng!" }),
+  ).toBeVisible();
+  await expect(page.locator(".caro-cell.won")).toHaveCount(5);
+  await page.reload();
+  await page.getByRole("button", { name: "Mở ván Caro đã lưu" }).click();
+  await expect(page.locator(".caro-cell.won")).toHaveCount(5);
+  await caro(page).getByRole("button", { name: "Chơi lại" }).click();
+  await expect(
+    caro(page).getByRole("heading", { name: "Lượt X · Người chơi 2" }),
+  ).toBeVisible();
+});
+
+test("Caro plays with a bot in installed offline assets on a small screen", async ({
+  page,
+  context,
+}) => {
+  await page.setViewportSize({ width: 375, height: 740 });
+  await page.goto("/");
+  await expect(
+    page.getByText("Đã sẵn sàng chơi với máy khi offline.", { exact: false }),
+  ).toBeVisible();
+  await page.reload();
+  await context.setOffline(true);
+  await page.reload();
+  await page.getByRole("button", { name: "Chơi Cờ Caro" }).click();
+  await caro(page)
+    .getByRole("button", { name: "Bắt đầu", exact: true })
+    .click();
+  await mark(page, "H8");
+  await expect(page.locator('.caro-cell[data-mark="O"]')).toHaveCount(1);
+  await caro(page).getByRole("button", { name: "Phóng to bàn" }).click();
+  await expect(
+    caro(page).getByRole("button", { name: "Vừa màn hình" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollWidth))
+    .toBe(375);
+});
+
+test("Caro online shares an invite and resumes the same board after reloading", async ({
+  page,
+  browser,
+}) => {
+  const guest = await browser.newPage();
+  try {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Chơi Cờ Caro" }).click();
+    await caro(page).getByRole("button", { name: "Chọn phòng" }).click();
+    await caro(page).getByLabel("Tên hiển thị").fill("Duy");
+    await caro(page).getByRole("button", { name: "Tạo phòng" }).click();
+    await expect(
+      caro(page).getByText("Đang chờ người thứ hai vào phòng."),
+    ).toBeVisible();
+    const code = await page.locator(".caro-room strong").innerText();
+    await guest.goto(new URL(`/?caro=${code}`, page.url()).href);
+    await expect(caro(guest).getByLabel("Mã phòng")).toHaveValue(code);
+    await caro(guest).getByLabel("Tên hiển thị").fill("Bạn chơi");
+    await caro(guest).getByRole("button", { name: "Vào phòng" }).click();
+    await mark(page, "H8");
+    await expect(
+      caro(guest).getByRole("heading", { name: "Lượt O · Bạn chơi" }),
+    ).toBeVisible();
+    await guest.reload();
+    await expect(
+      caro(page).getByRole("heading", { name: "Đang chờ kết nối" }),
+    ).toBeVisible();
+    await caro(guest)
+      .getByRole("button", { name: "Tiếp tục phòng Caro" })
+      .click();
+    await mark(guest, "H9");
+    await expect(
+      caro(page).getByRole("button", { name: "H9 O, nước vừa đánh" }),
+    ).toBeVisible();
+  } finally {
+    await guest.close();
+  }
+});

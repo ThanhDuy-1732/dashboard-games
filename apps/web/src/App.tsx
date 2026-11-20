@@ -17,6 +17,8 @@ import {
 } from "./platform-lifecycle.js";
 import { getPlatform } from "./platform.js";
 import { PwaStatus } from "./components/PwaStatus.js";
+import { CaroRules, CaroScreen, caroInviteCode } from "./caro/Screen.js";
+import { readCaroSave } from "./caro/save.js";
 import { Home } from "./screens/Home.js";
 import { Setup } from "./screens/Setup.js";
 import { Game } from "./screens/Game.js";
@@ -40,8 +42,14 @@ const ERROR_TEXT: Record<string, string> = {
     "Hành động không còn hợp lệ. Hãy kiểm tra tiền, tài sản và lượt hiện tại.",
   PAUSED: "Ván đang tạm dừng. Hãy đợi kết nối hoặc thử mở lại ván đã lưu.",
 };
+type Destination = "home" | "setup" | "caro";
+
 export function App() {
-  const [page, setPage] = useState<"home" | "setup" | "game">("home");
+  const [page, setPage] = useState<Destination | "game">(() =>
+    caroInviteCode() ? "caro" : "home",
+  );
+  const [resumeCaro, setResumeCaro] = useState(false);
+  const [caroInGame, setCaroInGame] = useState(false);
   const [session, setSession] = useState<OfflineSession | OnlineSession | null>(
     null,
   );
@@ -89,7 +97,7 @@ export function App() {
   } | null>(null);
   const [rules, setRules] = useState(false);
   const [fullRules, setFullRules] = useState(false);
-  const [leave, setLeave] = useState<"home" | "setup" | null>(null);
+  const [leave, setLeave] = useState<Destination | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -134,15 +142,29 @@ export function App() {
     document.getElementById("main")?.focus({ preventScroll: true });
     document.documentElement.scrollTop = 0;
   }, [page]);
-  const navigate = (next: "home" | "setup") => {
+  const navigate = (next: Destination) => {
     if (operation.current) return;
     if (session) {
       setLeave(next);
       return;
     }
+    if (page === "caro" && next !== "caro") {
+      const url = new URL(location.href);
+      url.searchParams.delete("caro");
+      history.replaceState(history.state, "", url);
+    }
     setPage(next);
     setError("");
   };
+  function openCurrentGame() {
+    if (page === "caro") return;
+    if (session) setPage("game");
+    else navigate("setup");
+  }
+  function openCaro(resume = false) {
+    setResumeCaro(resume);
+    navigate("caro");
+  }
   async function start(
     human: PlayerConfig,
     botCount: number,
@@ -214,7 +236,7 @@ export function App() {
       setError(saveErrorMessage(reason));
     }
   }
-  async function exit(next: "home" | "setup", discard = false) {
+  async function exit(next: Destination, discard = false) {
     if (!session || operation.current) return;
     operation.current = true;
     setPending(true);
@@ -313,7 +335,7 @@ export function App() {
             <button
               aria-label="Vào bàn chơi"
               className={`nav-item ${page !== "home" ? "active" : ""}`}
-              onClick={() => (session ? setPage("game") : navigate("setup"))}
+              onClick={openCurrentGame}
             >
               <Icon name="dice" />
               <span>Vào bàn chơi</span>
@@ -333,6 +355,16 @@ export function App() {
               <span className="mini-game">♜</span>
               <span>
                 Cờ tỷ phú<small>Luật truyền thống</small>
+              </span>
+              <span className="tiny-arrow">↗</span>
+            </button>
+            <button
+              onClick={() => openCaro()}
+              aria-current={page === "caro" ? "page" : undefined}
+            >
+              <span className="mini-game caro-mini">×</span>
+              <span>
+                Cờ Caro<small>Hai người</small>
               </span>
               <span className="tiny-arrow">↗</span>
             </button>
@@ -356,11 +388,13 @@ export function App() {
               <strong>
                 {page === "home"
                   ? "Khám phá"
-                  : page === "setup"
-                    ? "Chọn chế độ"
-                    : finished
-                      ? "Kết quả"
-                      : "Bàn chơi"}
+                  : page === "caro"
+                    ? "Cờ Caro"
+                    : page === "setup"
+                      ? "Chọn chế độ"
+                      : finished
+                        ? "Kết quả"
+                        : "Bàn chơi"}
               </strong>
             </div>
             <div className="header-tools">
@@ -389,7 +423,7 @@ export function App() {
             </div>
           </header>
           <main id="main" tabIndex={-1}>
-            <PwaStatus inGame={Boolean(session)} />
+            <PwaStatus inGame={Boolean(session) || caroInGame} />
             {persistence.notice && (
               <div className="app-error">
                 {persistence.notice}
@@ -447,8 +481,18 @@ export function App() {
                   )}
                 </p>
               )}
+            {page === "caro" && (
+              <CaroScreen
+                startSaved={resumeCaro}
+                onHome={() => navigate("home")}
+                onRules={() => setRules(true)}
+                onInGame={setCaroInGame}
+              />
+            )}
             {page === "home" && (
               <Home
+                onCaro={() => openCaro()}
+                onResumeCaro={readCaroSave() ? () => openCaro(true) : undefined}
                 onPlay={() => navigate("setup")}
                 onRules={() => setRules(true)}
                 saved={persistence.saved}
@@ -494,7 +538,9 @@ export function App() {
           </main>
           <footer className="workspace-footer">
             <span>Nhà Chơi — Cùng nhau, thêm vui.</span>
-            <span>Tiền trong game, không có giá trị quy đổi</span>
+            {page !== "caro" && (
+              <span>Tiền trong game, không có giá trị quy đổi</span>
+            )}
           </footer>
         </div>
       </div>
@@ -503,7 +549,7 @@ export function App() {
           <Icon name="grid" />
           Khám phá
         </button>
-        <button onClick={() => (session ? setPage("game") : navigate("setup"))}>
+        <button onClick={openCurrentGame}>
           <Icon name="dice" />
           Vào bàn chơi
         </button>
@@ -512,7 +558,19 @@ export function App() {
           Luật chơi
         </button>
       </nav>
-      {rules && (
+      {rules && page === "caro" && (
+        <Dialog title="Luật chơi Cờ Caro" onClose={() => setRules(false)}>
+          <h2>Luật chơi Cờ Caro</h2>
+          <CaroRules />
+          <button
+            className="button primary full"
+            onClick={() => setRules(false)}
+          >
+            Mình hiểu rồi
+          </button>
+        </Dialog>
+      )}
+      {rules && page !== "caro" && (
         <Dialog title="Luật chơi Cờ tỷ phú" onClose={() => setRules(false)}>
           <h2>Một vòng luật chơi</h2>
           <p className="dialog-lead">

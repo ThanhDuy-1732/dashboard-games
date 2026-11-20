@@ -12,6 +12,7 @@ import {
 } from "@nha-choi/protocol";
 import type { RoomReply, CommandReply } from "@nha-choi/protocol";
 import type { RandomSource } from "@nha-choi/game-core";
+import { CaroRooms } from "./caro-rooms.js";
 import { Rooms } from "./rooms.js";
 import type { RoomStore } from "./database.js";
 import { serverRandom } from "./random.js";
@@ -63,6 +64,7 @@ export async function createGameServer({
     next();
   });
   const rooms = new Rooms(io, random, now);
+  const caro = new CaroRooms(io, now);
   if (store) {
     try {
       rooms.restore(await store.load());
@@ -122,6 +124,7 @@ export async function createGameServer({
     return value.count <= max;
   }
   io.on("connection", (socket) => {
+    caro.attach(socket, consume);
     function roomRequest<T>(
       event: string,
       schema: z.ZodType<T>,
@@ -239,6 +242,7 @@ export async function createGameServer({
   const interval = setInterval(() => {
     for (const [key, value] of limits)
       if (now() - value.start > 60000) limits.delete(key);
+    if (!closing) caro.sweep();
     if (closing || pending || (store && healthy && rooms.size === 0)) return;
     void mutate(() => rooms.sweep()).catch(() => {});
   }, 1000);
@@ -262,11 +266,15 @@ export async function createGameServer({
   return {
     url: `http://${host}:${address.port}`,
     rooms,
-    beginDrain: () => mutate(() => rooms.closeAll()),
+    beginDrain: () => {
+      caro.closeAll();
+      return mutate(() => rooms.closeAll());
+    },
     close: () => {
       if (closePromise) return closePromise;
       closing = true;
       clearInterval(interval);
+      caro.closeAll();
       closePromise = (async () => {
         await queue;
         if (store) {
