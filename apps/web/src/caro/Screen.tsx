@@ -222,7 +222,7 @@ export function CaroScreen({
 
   return (
     <section className="screen caro-screen">
-      <header className="caro-heading">
+      <header className={`caro-heading${game ? " in-match" : ""}`}>
         <div>
           <button
             className="text-button"
@@ -421,16 +421,14 @@ export function CaroScreen({
                 </div>
               ))}
             </div>
-            <h2>
-              <span role="status">
-                {game.result
-                  ? game.result.winner
-                    ? `${playerNames[game.result.winner]} thắng!`
-                    : "Ván hòa"
-                  : !local && !allConnected
-                    ? "Đang chờ kết nối"
-                    : `Lượt ${game.turn} · ${playerNames[game.turn]}`}
-              </span>
+            <h2 aria-live="polite" aria-atomic="true">
+              {game.result
+                ? game.result.winner
+                  ? `${playerNames[game.result.winner]} thắng!`
+                  : "Ván hòa"
+                : !local && !allConnected
+                  ? "Đang chờ kết nối"
+                  : `Lượt ${game.turn} · ${playerNames[game.turn]}`}
             </h2>
             {game.moves.length > 0 && (
               <p>

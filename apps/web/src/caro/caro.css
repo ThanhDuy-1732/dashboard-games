@@ -45,6 +45,7 @@
 
 .caro-heading {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: end;
   gap: 12px;
@@ -59,10 +60,17 @@
 .caro-heading > .button {
   white-space: nowrap;
 }
+.caro-heading.in-match {
+  align-items: center;
+  margin-block-end: 12px;
+}
+.caro-heading.in-match h1 {
+  font-size: clamp(1.65rem, 3vw, 2.4rem);
+  margin: 0;
+}
 .caro-menu {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-  align-items: start;
   gap: 16px;
 }
 .caro-menu-play {
@@ -105,11 +113,12 @@ button.caro-mode:hover {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 10px;
   margin-top: 6px;
 }
 .caro-online-panel {
   display: grid;
+  align-content: start;
   gap: 13px;
   padding: clamp(14px, 3vw, 24px);
   justify-items: start;
@@ -171,12 +180,12 @@ button.caro-mode:hover {
 
 .caro-match {
   display: grid;
-  grid-template-columns: minmax(0, 720px) minmax(200px, 1fr);
+  grid-template-columns: minmax(0, 1fr) clamp(220px, 20vw, 280px);
   align-items: start;
   gap: 16px;
 }
 .caro-paper {
-  padding: clamp(5px, 2vw, 16px);
+  padding: clamp(5px, 1vw, 12px);
   border: 1px solid #c7b89c;
   border-radius: 4px;
   background: var(--caro-sheet);
@@ -201,25 +210,25 @@ button.caro-mode:hover {
   overflow: auto;
 }
 .caro-paper-scroll.zoomed {
-  max-height: min(650px, 55vh);
+  max-height: 70vh;
 }
 .caro-grid {
   display: grid;
-  grid-template-columns: repeat(15, minmax(0, 1fr));
+  grid-template: repeat(15, minmax(0, 1fr)) / repeat(15, minmax(0, 1fr));
+  aspect-ratio: 1;
   border: 1px solid var(--caro-grid-line);
   border-bottom: 0;
   border-right: 0;
   color: var(--ink);
 }
 .caro-paper-scroll.zoomed .caro-grid {
-  min-width: 660px;
+  min-width: max(660px, 125%);
 }
 .caro-cell {
   display: grid;
   position: relative;
   place-items: center;
   padding: 0;
-  aspect-ratio: 1;
   background: transparent;
   border-right: 1px solid var(--caro-grid-line);
   border-bottom: 1px solid var(--caro-grid-line);
@@ -314,7 +323,13 @@ button.caro-mode:hover {
   color: var(--muted);
 }
 
-@media (max-width: 780px) {
+@media (min-width: 1051px) {
+  .caro-match-panel {
+    position: sticky;
+    top: 16px;
+  }
+}
+@media (max-width: 1050px) {
   .caro-match {
     grid-template-columns: minmax(0, 1fr);
     gap: 9px;
@@ -337,9 +352,14 @@ button.caro-mode:hover {
     padding-block: 6px;
   }
 }
-@media (max-width: 580px) {
+@media (max-width: 780px) {
   .caro-menu {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 580px) {
+  .caro-paper {
+    margin-inline: -10px;
   }
   .caro-home-card {
     grid-template-columns: 72px minmax(0, 1fr);
@@ -349,5 +369,14 @@ button.caro-mode:hover {
   }
   .caro-heading > .button {
     padding-inline: 9px;
+  }
+}
+@media (max-width: 400px) {
+  .caro-mode-form {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .caro-mode-form > .button {
+    grid-column: 2;
+    justify-self: start;
   }
 }

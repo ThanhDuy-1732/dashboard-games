@@ -2,6 +2,8 @@ import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
 const caro = (page: Page) => page.locator(".caro-screen");
+const matchHeading = (page: Page) =>
+  caro(page).locator(".caro-match-panel").getByRole("heading", { level: 2 });
 
 async function mark(page: Page, coordinate: string) {
   await caro(page)
@@ -39,17 +41,13 @@ test("Caro local shows the winning line, resumes after reload and swaps first pl
     await mark(page, o!);
     await mark(page, x!);
   }
-  await expect(
-    caro(page).getByRole("heading", { name: "Người chơi 1 thắng!" }),
-  ).toBeVisible();
+  await expect(matchHeading(page)).toHaveText("Người chơi 1 thắng!");
   await expect(page.locator(".caro-cell.won")).toHaveCount(5);
   await page.reload();
   await page.getByRole("button", { name: "Mở ván Caro đã lưu" }).click();
   await expect(page.locator(".caro-cell.won")).toHaveCount(5);
   await caro(page).getByRole("button", { name: "Chơi lại" }).click();
-  await expect(
-    caro(page).getByRole("heading", { name: "Lượt X · Người chơi 2" }),
-  ).toBeVisible();
+  await expect(matchHeading(page)).toHaveText("Lượt X · Người chơi 2");
 });
 
 test("Caro plays with a bot in installed offline assets on a small screen", async ({
@@ -99,13 +97,9 @@ test("Caro online shares an invite and resumes the same board after reloading", 
     await caro(guest).getByLabel("Tên hiển thị").fill("Bạn chơi");
     await caro(guest).getByRole("button", { name: "Vào phòng" }).click();
     await mark(page, "H8");
-    await expect(
-      caro(guest).getByRole("heading", { name: "Lượt O · Bạn chơi" }),
-    ).toBeVisible();
+    await expect(matchHeading(guest)).toHaveText("Lượt O · Bạn chơi");
     await guest.reload();
-    await expect(
-      caro(page).getByRole("heading", { name: "Đang chờ kết nối" }),
-    ).toBeVisible();
+    await expect(matchHeading(page)).toHaveText("Đang chờ kết nối");
     await caro(guest)
       .getByRole("button", { name: "Tiếp tục phòng Caro" })
       .click();

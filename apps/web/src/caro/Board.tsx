@@ -51,6 +51,10 @@ export function CaroBoard({
             element.getBoundingClientRect().left -
             container.getBoundingClientRect().left -
             (container.clientWidth - element.clientWidth) / 2;
+          container.scrollTop +=
+            element.getBoundingClientRect().top -
+            container.getBoundingClientRect().top -
+            (container.clientHeight - element.clientHeight) / 2;
         }
       });
   }
