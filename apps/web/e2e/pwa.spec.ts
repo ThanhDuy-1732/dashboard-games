@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "@playwright/test";
 import { execFileSync } from "node:child_process";
-import { readdirSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 const url = "http://127.0.0.1:5174";
 async function saved(page: Page) {
   return page.evaluate(
@@ -24,7 +24,7 @@ async function saved(page: Page) {
       }),
   );
 }
-test("production_PWA_installs_all_illustrations_and_opens_a_game_after_offline_reload", async ({
+test("production_PWA_refreshes_online_and_opens_a_game_after_offline_reload", async ({
   page,
   context,
 }) => {
@@ -37,8 +37,20 @@ test("production_PWA_installs_all_illustrations_and_opens_a_game_after_offline_r
     .getAttribute("href");
   expect(manifest).toBeTruthy();
   await page.reload();
+  await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
+  const entry = "apps/web/dist/index.html";
+  const html = readFileSync(entry, "utf8");
+  const title = await page.title();
+  try {
+    writeFileSync(entry, html.replace("</title>", " · Bản mới</title>"));
+    await page.reload();
+    await expect(page).toHaveTitle(`${title} · Bản mới`);
+  } finally {
+    writeFileSync(entry, html);
+  }
   await context.setOffline(true);
   await page.reload();
+  await expect(page).toHaveTitle(title);
   await page.getByRole("button", { name: "Chơi Cờ tỷ phú" }).click();
   await page.getByRole("textbox", { name: "Tên của bạn" }).fill("Offline PWA");
   await page.getByRole("button", { name: "Bắt đầu ván", exact: true }).click();
@@ -66,7 +78,7 @@ test("production_PWA_installs_all_illustrations_and_opens_a_game_after_offline_r
   await page.getByRole("button", { name: /^Gieo/ }).click();
   await expect(page.locator(".save-indicator")).toHaveText("Đã lưu");
 });
-test("update_preserves_the_game_and_applies_when_the_app_reopens", async ({
+test("a_new_release_does_not_interrupt_a_game_and_refresh_preserves_the_save", async ({
   page,
 }) => {
   test.setTimeout(60000);
@@ -108,12 +120,10 @@ test("update_preserves_the_game_and_applies_when_the_app_reopens", async ({
       (await navigator.serviceWorker.getRegistration())?.waiting?.state,
     ),
   ).toBe("installed");
-  let navigations = 0;
-  page.on("framenavigated", (frame) => {
-    if (frame === page.mainFrame()) navigations++;
-  });
   await page.reload();
-  await expect.poll(() => navigations).toBe(2);
+  await expect(
+    page.getByText("Đã sẵn sàng chơi với máy khi offline.", { exact: false }),
+  ).toBeVisible();
   await expect(page.getByRole("button", { name: "Cập nhật ngay" })).toHaveCount(
     0,
   );

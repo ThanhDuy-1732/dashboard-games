@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 import { setCacheNameDetails } from "workbox-core";
-import { precacheAndRoute, createHandlerBoundToURL } from "workbox-precaching";
+import { addRoute, createHandlerBoundToURL, precache } from "workbox-precaching";
 import { NavigationRoute, registerRoute } from "workbox-routing";
 declare const self: ServiceWorkerGlobalScope & {
   __WB_MANIFEST: { url: string; revision: string | null }[];
@@ -8,12 +8,19 @@ declare const self: ServiceWorkerGlobalScope & {
 declare const __BUILD_ID__: string;
 // shortcut: retain previous caches for tabs on older builds; add client-aware pruning if storage use grows.
 setCacheNameDetails({ prefix: "nha-choi", suffix: __BUILD_ID__ });
-precacheAndRoute(self.__WB_MANIFEST);
+precache(self.__WB_MANIFEST);
+const offlineNavigation = createHandlerBoundToURL("/index.html");
 registerRoute(
-  new NavigationRoute(createHandlerBoundToURL("/index.html"), {
+  new NavigationRoute(async (options) => {
+    const latest = await fetch(new URL("/index.html", self.location.origin), {
+      cache: "no-cache",
+    }).catch(() => undefined);
+    return latest?.ok ? latest : offlineNavigation(options);
+  }, {
     denylist: [/^\/socket\.io(?:\/|$)/],
   }),
 );
+addRoute();
 registerRoute(
   ({ url, request }) =>
     url.origin === self.location.origin &&
