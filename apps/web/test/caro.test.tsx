@@ -43,7 +43,7 @@ it("opens Caro from Nhà Chơi, confirms a move and restores the saved position"
   ).toBeTruthy();
 });
 
-it("plays and persists a bot reply after the human move", () => {
+it.each(["easy", "hard", "expert"])("plays and persists a %s bot reply", (mode) => {
   vi.useFakeTimers();
   render(
     <CaroScreen
@@ -54,7 +54,7 @@ it("plays and persists a bot reply after the human move", () => {
     />,
   );
   fireEvent.change(screen.getByRole("combobox", { name: "Độ khó" }), {
-    target: { value: "easy" },
+    target: { value: mode },
   });
   fireEvent.click(screen.getByRole("button", { name: "Bắt đầu" }));
   fireEvent.click(screen.getByRole("button", { name: "H8 trống" }));
@@ -62,7 +62,7 @@ it("plays and persists a bot reply after the human move", () => {
   expect(screen.getByRole("heading", { name: "Lượt O · Máy" })).toBeTruthy();
   act(() => vi.advanceTimersByTime(400));
   const saved = readCaroSave();
-  expect(saved?.mode).toBe("easy");
+  expect(saved?.mode).toBe(mode);
   expect(saved?.game.moves).toHaveLength(2);
   expect(saved?.game.turn).toBe("X");
 });

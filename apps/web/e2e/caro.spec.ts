@@ -63,9 +63,11 @@ test("Caro plays with a bot in installed offline assets on a small screen", asyn
   await context.setOffline(true);
   await page.reload();
   await page.getByRole("button", { name: "Chơi Cờ Caro" }).click();
+  await caro(page).getByLabel("Độ khó").selectOption("expert");
   await caro(page)
     .getByRole("button", { name: "Bắt đầu", exact: true })
     .click();
+  await expect(caro(page).getByText("Đấu máy · Rất khó")).toBeVisible();
   await mark(page, "H8");
   await expect(page.locator('.caro-cell[data-mark="O"]')).toHaveCount(1);
   await caro(page).getByRole("button", { name: "Phóng to bàn" }).click();

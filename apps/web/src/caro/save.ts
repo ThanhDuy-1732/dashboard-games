@@ -1,4 +1,4 @@
-import { restoreCaro } from "@nha-choi/game-core";
+import { isCaroDifficulty, restoreCaro } from "@nha-choi/game-core";
 import type { CaroDifficulty, CaroGame, CaroMark } from "@nha-choi/game-core";
 
 const KEY = "nha-choi-caro-offline-v1";
@@ -15,7 +15,7 @@ export function readCaroSave(): CaroSave | null {
     const data = JSON.parse(localStorage.getItem(KEY) ?? "null");
     if (
       data?.version !== 1 ||
-      !["local", "easy", "normal"].includes(data.mode) ||
+      (data.mode !== "local" && !isCaroDifficulty(data.mode)) ||
       (data.firstMark !== "X" && data.firstMark !== "O")
     )
       return null;

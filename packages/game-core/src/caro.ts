@@ -1,7 +1,12 @@
 export const CARO_SIZE = 15;
 const CELL_COUNT = CARO_SIZE ** 2;
 export type CaroMark = "X" | "O";
-export type CaroDifficulty = "easy" | "normal";
+export const CARO_DIFFICULTIES = ["easy", "normal", "hard", "expert"] as const;
+export type CaroDifficulty = (typeof CARO_DIFFICULTIES)[number];
+
+export function isCaroDifficulty(value: unknown): value is CaroDifficulty {
+  return CARO_DIFFICULTIES.some((difficulty) => difficulty === value);
+}
 
 export interface CaroGame {
   readonly board: readonly (CaroMark | null)[];
@@ -113,21 +118,15 @@ function shapeScore(board: CaroGame["board"], index: number, mark: CaroMark) {
   return score;
 }
 
-export function chooseCaroMove(
-  game: CaroGame,
-  difficulty: CaroDifficulty,
-  random = Math.random,
-) {
-  if (game.result) return null;
+function scoreMoves(board: CaroGame["board"], turn: CaroMark) {
   const center = Math.floor(CARO_SIZE / 2);
-  if (!game.moves.length) return cell(center, center);
-  const opponent = game.turn === "X" ? "O" : "X";
-  const candidates = game.board.flatMap((mark, index) => {
+  const opponent = turn === "X" ? "O" : "X";
+  return board.flatMap((mark, index) => {
     if (mark !== null) return [];
-    const wins = Boolean(winningLine(game.board, index, game.turn));
-    const blocks = Boolean(winningLine(game.board, index, opponent));
-    const attack = shapeScore(game.board, index, game.turn);
-    const defense = shapeScore(game.board, index, opponent);
+    const wins = Boolean(winningLine(board, index, turn));
+    const blocks = Boolean(winningLine(board, index, opponent));
+    const attack = shapeScore(board, index, turn);
+    const defense = shapeScore(board, index, opponent);
     const distance =
       Math.abs(Math.floor(index / CARO_SIZE) - center) +
       Math.abs((index % CARO_SIZE) - center);
@@ -136,17 +135,78 @@ export function chooseCaroMove(
         index,
         wins,
         blocks,
+        attack,
+        defense,
         nearby: attack + defense > 80,
         score: attack + defense * 0.9 - distance,
       },
     ];
   });
+}
+
+function searchMoves(candidates: ReturnType<typeof scoreMoves>) {
+  // Keep lookahead bounded for play on a phone or offline.
+  return candidates
+    .sort((a, b) => Number(b.blocks) - Number(a.blocks) || b.score - a.score)
+    .slice(0, 6);
+}
+
+function lookAhead(
+  board: (CaroMark | null)[],
+  turn: CaroMark,
+  depth: number,
+): number {
+  const candidates = scoreMoves(board, turn);
+  if (candidates.some((move) => move.wins)) return 100_000 + depth;
+  if (!candidates.length) return 0;
+  if (depth === 0) {
+    const attack = Math.max(...candidates.map((move) => move.attack));
+    const defense = Math.max(...candidates.map((move) => move.defense));
+    const threats = candidates.filter((move) => move.blocks).length;
+    return attack - defense - 5_000 * threats;
+  }
+  const opponent = turn === "X" ? "O" : "X";
+  let best = -Infinity;
+  for (const { index } of searchMoves(candidates)) {
+    board[index] = turn;
+    best = Math.max(best, -lookAhead(board, opponent, depth - 1));
+    board[index] = null;
+  }
+  return best;
+}
+
+export function chooseCaroMove(
+  game: CaroGame,
+  difficulty: CaroDifficulty,
+  random = Math.random,
+) {
+  if (game.result) return null;
+  const center = Math.floor(CARO_SIZE / 2);
+  if (!game.moves.length) return cell(center, center);
+  const candidates = scoreMoves(game.board, game.turn);
   const win = candidates.find((candidate) => candidate.wins);
   if (win) return win.index;
   if (difficulty === "easy") {
     const nearby = candidates.filter((candidate) => candidate.nearby);
     const pool = nearby.length ? nearby : candidates;
     return pool[Math.floor(random() * pool.length)]?.index ?? null;
+  }
+  if (difficulty === "hard" || difficulty === "expert") {
+    const board = [...game.board];
+    const opponent = game.turn === "X" ? "O" : "X";
+    const depth = difficulty === "expert" ? 2 : 1;
+    let bestScore = -Infinity;
+    let bestMove = null;
+    for (const { index } of searchMoves(candidates)) {
+      board[index] = game.turn;
+      const score = -lookAhead(board, opponent, depth);
+      board[index] = null;
+      if (score > bestScore) {
+        bestScore = score;
+        bestMove = index;
+      }
+    }
+    return bestMove;
   }
   return (
     candidates.find((candidate) => candidate.blocks)?.index ??

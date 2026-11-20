@@ -70,4 +70,17 @@ describe("Cờ Caro", () => {
     const easyMove = chooseCaroMove(mustBlock, "easy", () => 0);
     expect(mustBlock.board[easyMove!]).toBeNull();
   });
+
+  it.each(["hard", "expert"] as const)("finds a double threat on %s", (mode) => {
+    const game = restoreCaro([
+      154, 142, 71, 145, 156, 125, 112, 155, 140, 159,
+      96, 174, 114, 99, 67, 111, 158, 127, 81,
+    ])!;
+    Object.freeze(game.board);
+    expect(chooseCaroMove(game, mode)).toBe(143);
+    const next = playCaro(game, 143)!;
+    // Blocking either end gives O a winning play at the other end.
+    expect(playCaro(playCaro(next, 95)!, 175)?.result?.winner).toBe("O");
+    expect(playCaro(playCaro(next, 175)!, 95)?.result?.winner).toBe("O");
+  });
 });

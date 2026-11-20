@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { chooseCaroMove, createCaro, playCaro } from "@nha-choi/game-core";
-import type { CaroMark } from "@nha-choi/game-core";
+import {
+  CARO_DIFFICULTIES,
+  chooseCaroMove,
+  createCaro,
+  isCaroDifficulty,
+  playCaro,
+} from "@nha-choi/game-core";
+import type { CaroDifficulty, CaroMark } from "@nha-choi/game-core";
 import { Dialog } from "../components/Dialog.js";
 import { Icon } from "../components/Icon.js";
 import { isNative } from "../platform.js";
@@ -17,10 +23,11 @@ import { readCaroSave, writeCaroSave } from "./save.js";
 import type { CaroLocalMode, CaroSave } from "./save.js";
 import "./caro.css";
 
-const modeName: Record<CaroLocalMode, string> = {
-  local: "Hai người cùng máy",
-  easy: "Đấu máy · Dễ",
-  normal: "Đấu máy · Thường",
+const difficultyName: Record<CaroDifficulty, string> = {
+  easy: "Dễ",
+  normal: "Thường",
+  hard: "Khó",
+  expert: "Rất khó",
 };
 
 export function CaroRules() {
@@ -62,7 +69,7 @@ export function CaroScreen({
     startSaved ? readCaroSave() : null,
   );
   const [replace, setReplace] = useState<CaroLocalMode | null>(null);
-  const [difficulty, setDifficulty] = useState<"easy" | "normal">("normal");
+  const [difficulty, setDifficulty] = useState<CaroDifficulty>("normal");
   const [name, setName] = useState("");
   const [code, setCode] = useState(caroInviteCode);
   const [onlineSetup, setOnlineSetup] = useState(() =>
@@ -95,18 +102,17 @@ export function CaroScreen({
   }
 
   useEffect(() => {
+    const mode = local?.mode;
     if (
       !local ||
-      local.mode === "local" ||
+      !mode ||
+      mode === "local" ||
       local.game.result ||
       local.game.turn === local.firstMark
     )
       return;
     const timer = window.setTimeout(() => {
-      const move = chooseCaroMove(
-        local.game,
-        local.mode === "easy" ? "easy" : "normal",
-      );
+      const move = chooseCaroMove(local.game, mode);
       const game = move === null ? null : playCaro(local.game, move);
       if (game) {
         const next = { ...local, game };
@@ -272,14 +278,16 @@ export function CaroScreen({
                   Độ khó
                   <select
                     value={difficulty}
-                    onChange={(event) =>
-                      setDifficulty(
-                        event.target.value === "easy" ? "easy" : "normal",
-                      )
-                    }
+                    onChange={(event) => {
+                      const mode = event.target.value;
+                      if (isCaroDifficulty(mode)) setDifficulty(mode);
+                    }}
                   >
-                    <option value="easy">Dễ</option>
-                    <option value="normal">Thường</option>
+                    {CARO_DIFFICULTIES.map((mode) => (
+                      <option key={mode} value={mode}>
+                        {difficultyName[mode]}
+                      </option>
+                    ))}
                   </select>
                 </label>
               </div>
@@ -400,7 +408,11 @@ export function CaroScreen({
           />
           <div className="caro-match-panel">
             <p className="caro-match-mode">
-              {local ? modeName[local.mode] : `Ván ${room?.round} · Online`}
+              {local
+                ? local.mode === "local"
+                  ? "Hai người cùng máy"
+                  : `Đấu máy · ${difficultyName[local.mode]}`
+                : `Ván ${room?.round} · Online`}
             </p>
             <div className="caro-players">
               {(["X", "O"] as const).map((mark) => (
