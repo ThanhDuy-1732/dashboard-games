@@ -1,4 +1,12 @@
 export type PlayerId = string;
+export const VIETNAMESE_TOKENS = [
+  "cyclo",
+  "conical-hat",
+  "lotus",
+  "scooter",
+  "carp",
+  "lantern",
+] as const;
 export const TOKENS = [
   "car",
   "cat",
@@ -12,12 +20,7 @@ export const TOKENS = [
   "butterfly",
   "camera",
   "guitar",
-  "cyclo",
-  "conical-hat",
-  "lotus",
-  "scooter",
-  "carp",
-  "lantern",
+  ...VIETNAMESE_TOKENS,
 ] as const;
 export type Token = (typeof TOKENS)[number];
 export interface PlayerConfig {

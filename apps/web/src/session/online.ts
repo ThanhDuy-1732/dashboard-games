@@ -1,5 +1,6 @@
 import { isNative, onlineServerUrl } from "../platform.js";
 import { io } from "socket.io-client";
+import { VIETNAMESE_TOKENS } from "@nha-choi/game-core";
 import type { Token } from "@nha-choi/game-core";
 import type {
   CommandEnvelope,
@@ -317,12 +318,18 @@ async function connect(
             socket.io.engine?.close();
             return;
           }
+          const reason =
+            reply.code === "INVALID_INPUT" &&
+            !resuming &&
+            VIETNAMESE_TOKENS.some((token) => token === input.token)
+              ? "Máy chủ online chưa hỗ trợ quân này. Hãy chọn một quân khác hoặc dùng quân này khi chơi với máy."
+              : roomError(reply.code);
           publish({
             ...update,
             connection: "closed",
-            reason: roomError(reply.code),
+            reason,
           });
-          rejectInitial(new Error(roomError(reply.code)));
+          rejectInitial(new Error(reason));
           await session.close();
           return;
         }
