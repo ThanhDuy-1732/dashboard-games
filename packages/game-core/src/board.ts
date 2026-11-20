@@ -1,6 +1,6 @@
 import type { Space } from "./types.js";
 export const GO_BONUS = 200;
-export const BOARD_SIZES = [24, 40] as const;
+export const BOARD_SIZES = [24, 32, 40] as const;
 export type BoardSize = (typeof BOARD_SIZES)[number];
 export const BOARD: readonly Space[] = [
   { id: 0, name: "Xuất phát", kind: "go" },
@@ -266,27 +266,37 @@ export const BOARD: readonly Space[] = [
 ];
 
 // Keep the four corners and complete property groups on the shorter loop.
-const COMPACT_IDS: readonly number[] = [
-  0, 1, 2, 3, 5, 7,
-  10, 11, 12, 13, 14, 15,
-  20, 21, 23, 24, 25, 28,
-  30, 33, 35, 37, 38, 39,
-];
-const COMPACT_BOARD: readonly Space[] = COMPACT_IDS.map((source, id) => ({
-  ...BOARD[source]!,
-  id,
-}));
+const SHORT_IDS: Readonly<Partial<Record<number, readonly number[]>>> = {
+  24: [
+    0, 1, 2, 3, 5, 7,
+    10, 11, 12, 13, 14, 15,
+    20, 21, 23, 24, 25, 28,
+    30, 33, 35, 37, 38, 39,
+  ],
+  32: [
+    0, 1, 2, 3, 4, 5, 7, 15,
+    10, 11, 12, 13, 14, 16, 18, 19,
+    20, 21, 22, 23, 24, 25, 28, 38,
+    30, 31, 32, 33, 34, 35, 37, 39,
+  ],
+};
+const BOARDS = new Map<number, readonly Space[]>(
+  BOARD_SIZES.map((size) => [
+    size,
+    SHORT_IDS[size]?.map((source, id) => ({ ...BOARD[source]!, id })) ?? BOARD,
+  ]),
+);
 
 export function boardFor(size: number): readonly Space[] {
-  if (size === 24) return COMPACT_BOARD;
-  if (size === 40) return BOARD;
+  const board = BOARDS.get(size);
+  if (board) return board;
   throw new RangeError(`Unsupported board size: ${size}`);
 }
 
 export function classicSpaceId(size: number, id: number) {
-  return size === 24 ? COMPACT_IDS[id]! : id;
+  return SHORT_IDS[size]?.[id] ?? id;
 }
 
 export function boardSpaceId(size: number, classicId: number) {
-  return size === 24 ? COMPACT_IDS.indexOf(classicId) : classicId;
+  return SHORT_IDS[size]?.indexOf(classicId) ?? classicId;
 }

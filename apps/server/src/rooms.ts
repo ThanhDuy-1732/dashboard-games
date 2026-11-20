@@ -58,10 +58,10 @@ export class Rooms {
     if (this.effects) this.effects.push(work);
     else work();
   }
-  private supportsCompactBoard(socketId: string) {
-    return (
-      this.io.sockets.sockets.get(socketId)?.handshake.auth.compactBoard === true
-    );
+  private supportsBoard(socketId: string, size: BoardSize) {
+    if (size === 40) return true;
+    const auth = this.io.sockets.sockets.get(socketId)?.handshake.auth;
+    return size === 24 ? auth?.compactBoard === true : auth?.mediumBoard === true;
   }
   checkpoint(): RoomCheckpoint[] {
     return [...this.rooms.values()].map((room) => ({
@@ -262,7 +262,7 @@ export class Rooms {
   }
   create(socketId: string, input: CreateRoomInput): RoomReply {
     if (this.draining) return { ok: false, code: "SERVER_CLOSING" };
-    if (input.boardSize === 24 && !this.supportsCompactBoard(socketId))
+    if (!this.supportsBoard(socketId, input.boardSize ?? 40))
       return { ok: false, code: "UNSUPPORTED_BOARD" };
     if (input.resumeToken && this.secrets.has(hash(input.resumeToken)))
       return this.resume(socketId, input.resumeToken);
@@ -296,7 +296,7 @@ export class Rooms {
     const room = roomId ? this.rooms.get(roomId) : undefined;
     if (!room || room.closedAt !== null)
       return { ok: false, code: "INVALID_ROOM" };
-    if (room.boardSize === 24 && !this.supportsCompactBoard(socketId))
+    if (!this.supportsBoard(socketId, room.boardSize))
       return { ok: false, code: "UNSUPPORTED_BOARD" };
     if (input.resumeToken) {
       const previous = this.secrets.get(hash(input.resumeToken));
@@ -318,7 +318,7 @@ export class Rooms {
     const room = proof ? this.rooms.get(proof.roomId) : undefined;
     const member = room?.members.find((p) => p.id === proof?.playerId);
     if (!room || !member) return { ok: false, code: "INVALID_ROOM" };
-    if (room.boardSize === 24 && !this.supportsCompactBoard(socketId))
+    if (!this.supportsBoard(socketId, room.boardSize))
       return { ok: false, code: "UNSUPPORTED_BOARD" };
     const old = this.bound(socketId);
     if (old && (old.room.id !== room.id || old.member.id !== member.id))

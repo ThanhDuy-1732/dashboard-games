@@ -8,12 +8,12 @@ const cleanups: (() => Promise<void>)[] = [];
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
 });
-export async function connect(url: string, compactBoard = false) {
+export async function connect(url: string, compactBoard = false, mediumBoard = false) {
   const socket = io(url, {
     transports: ["websocket"],
     reconnection: false,
     forceNew: true,
-    auth: { compactBoard },
+    auth: { compactBoard, mediumBoard },
   });
   cleanups.push(async () => {
     socket.disconnect();
@@ -24,19 +24,19 @@ export async function connect(url: string, compactBoard = false) {
   });
   return socket;
 }
-it("keeps the host board size and rejects legacy clients for compact rooms", async () => {
+it.each([24, 32])("keeps the host's %i-tile board and rejects older clients", async (size) => {
   const app = await createGameServer({ port: 0 });
   cleanups.push(app.close);
-  const host = await connect(app.url, true);
+  const host = await connect(app.url, true, true);
   const created = await ack(host, "room:create", {
     name: "Chủ phòng",
     token: "car",
-    boardSize: 24,
+    boardSize: size,
   });
   if (!created.ok) throw new Error(created.code);
-  expect(created.room.boardSize).toBe(24);
+  expect(created.room.boardSize).toBe(size);
   const invite = { code: created.room.code, name: "Bạn", token: "cat" };
-  const legacy = await connect(app.url);
+  const legacy = await connect(app.url, size === 32);
   expect(await ack(legacy, "room:join", invite)).toEqual({
     ok: false,
     code: "UNSUPPORTED_BOARD",
@@ -44,10 +44,10 @@ it("keeps the host board size and rejects legacy clients for compact rooms", asy
   expect(
     await ack(legacy, "room:resume", { resumeToken: created.resumeToken }),
   ).toEqual({ ok: false, code: "UNSUPPORTED_BOARD" });
-  const guest = await connect(app.url, true);
+  const guest = await connect(app.url, true, true);
   expect(await ack(guest, "room:join", invite)).toMatchObject({
     ok: true,
-    room: { boardSize: 24 },
+    room: { boardSize: size },
   });
   for (const player of [host, guest])
     await ack(player, "room:ready", { ready: true });
@@ -55,12 +55,12 @@ it("keeps the host board size and rejects legacy clients for compact rooms", asy
   const restarted = await createGameServer({ port: 0 });
   cleanups.push(restarted.close);
   restarted.rooms.restore(app.rooms.checkpoint());
-  const returning = await connect(restarted.url, true);
+  const returning = await connect(restarted.url, true, true);
   expect(
     await ack(returning, "room:resume", { resumeToken: created.resumeToken }),
-  ).toMatchObject({ ok: true, room: { boardSize: 24, started: true } });
+  ).toMatchObject({ ok: true, room: { boardSize: size, started: true } });
   expect(restarted.rooms.checkpoint()[0]?.authority?.state.board).toHaveLength(
-    24,
+    size,
   );
 });
 export function ack<T = RoomReply>(

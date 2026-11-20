@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyAction, boardFor, createGame } from "../src/index.js";
+import { applyAction, boardFor, boardSpaceId, createGame } from "../src/index.js";
 import type { GameState, GameAction } from "../src/index.js";
 import { makeState, players } from "./fixtures/state-factory.js";
 import { randomTape, seededRandom } from "./fixtures/random-tape.js";
@@ -44,29 +44,32 @@ describe("turns, cards and jail", () => {
     expect(state.revision).toBe(0);
     expect(next.revision).toBe(1);
   });
-  it("uses the shorter loop for salary, jail and card destinations", () => {
+  it.each([24, 32] as const)("uses the %i-tile loop for salary, jail and cards", (size) => {
     const state = createGame(
-      { gameId: "compact", players, boardSize: 24 },
+      { gameId: "compact", players, boardSize: size },
       seededRandom(42),
     );
-    expect(state.board).toHaveLength(24);
+    expect(state.board).toHaveLength(size);
     state.turn.playerId = "p1";
-    state.players[0]!.position = 23;
+    state.players[0]!.position = size - 1;
     const crossed = act(state, { type: "roll" }, [1, 1]);
     expect(crossed.players[0]).toMatchObject({ position: 1, cash: 1700 });
 
-    state.players[0]!.position = 16;
+    state.players[0]!.position = (size * 3) / 4 - 2;
     const jailed = act(state, { type: "roll" }, [1, 1]);
-    expect(jailed.players[0]).toMatchObject({ position: 6, jail: { turns: 0 } });
+    expect(jailed.players[0]).toMatchObject({
+      position: size / 4,
+      jail: { turns: 0 },
+    });
 
-    state.players[0]!.position = 3;
+    state.players[0]!.position = boardSpaceId(size, 7) - 2;
     state.decks.chance = [
       "chance-2",
       ...state.decks.chance.filter((card) => card !== "chance-2"),
     ];
     const moved = act(state, { type: "roll" }, [1, 1]);
-    expect(boardFor(24)[moved.players[0]!.position]?.name).toBe("Nghệ An");
-    expect(moved.purchase).toBe(15);
+    expect(boardFor(size)[moved.players[0]!.position]?.name).toBe("Nghệ An");
+    expect(moved.purchase).toBe(boardSpaceId(size, 24));
   });
   it("awards exactly one 200 bonus when landing on the start tile", () => {
     const state = makeState();

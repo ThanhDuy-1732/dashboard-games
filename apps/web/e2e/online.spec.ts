@@ -22,8 +22,8 @@ async function setup(page: Page, name: string, token: Token, code?: string, size
   if (code) {
     await page.getByLabel("Phòng chơi", { exact: true }).selectOption("join");
     await page.getByRole("textbox", { name: "Mã phòng" }).fill(code);
-  } else if (size === 24) {
-    await page.getByLabel("Số ô trên bàn cờ").selectOption("24");
+  } else if (size !== 40) {
+    await page.getByLabel("Số ô trên bàn cờ").selectOption(String(size));
   }
   await page
     .getByRole("button", {
@@ -37,6 +37,7 @@ for (const { count, size } of [
   { count: 2, size: 40 },
   { count: 6, size: 40 },
   { count: 2, size: 24 },
+  { count: 2, size: 32 },
 ])
   test(`online_${count}_players_share_${size}_tile_board_and_resume_after_reload`, async ({
     browser,

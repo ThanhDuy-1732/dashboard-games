@@ -5,6 +5,11 @@ import type { BoardSize, PlayerConfig, Token } from "@nha-choi/game-core";
 import { TOKEN_NAMES, TokenArt } from "../components/TokenArt.js";
 import { Icon } from "../components/Icon.js";
 import { prepareOnlineConnection } from "../session/online.js";
+const BOARD_LABELS: Record<BoardSize, string> = {
+  24: "24 ô · Gọn cho điện thoại",
+  32: "32 ô · Vừa",
+  40: "40 ô · Truyền thống",
+};
 export function Setup({
   onStart,
   onBack,
@@ -211,15 +216,16 @@ export function Setup({
                   <select
                     id="board-size"
                     value={boardSize}
-                    onChange={(event) =>
-                      setBoardSize(event.target.value === "24" ? 24 : 40)
-                    }
+                    onChange={(event) => {
+                      const selected = BOARD_SIZES.find(
+                        (size) => String(size) === event.target.value,
+                      );
+                      if (selected !== undefined) setBoardSize(selected);
+                    }}
                   >
                     {BOARD_SIZES.map((size) => (
                       <option key={size} value={size}>
-                        {size === 24
-                          ? "24 ô · Gọn cho điện thoại"
-                          : "40 ô · Truyền thống"}
+                        {BOARD_LABELS[size]}
                       </option>
                     ))}
                   </select>

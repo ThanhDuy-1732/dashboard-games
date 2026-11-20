@@ -23,7 +23,7 @@ export const roomError = (code: string) =>
     NOT_HOST: "Chỉ chủ phòng mới có thể bắt đầu.",
     NOT_READY: "Cần 2–6 người kết nối và tất cả sẵn sàng.",
     GAME_STARTED: "Ván đã bắt đầu, không thể thêm người mới.",
-    UNSUPPORTED_BOARD: "Hãy cập nhật Nhà Chơi để vào phòng 24 ô.",
+    UNSUPPORTED_BOARD: "Hãy cập nhật Nhà Chơi để vào phòng có kích thước bàn này.",
     RATE_LIMITED: "Bạn thao tác quá nhanh. Hãy đợi một chút.",
     PROTOCOL_MISMATCH:
       "Phiên bản ứng dụng không phù hợp. Hãy cập nhật rồi mở lại.",
@@ -52,7 +52,12 @@ function createSocket(serverUrl: string) {
     autoConnect: false,
     transports: ["websocket", "polling"],
     tryAllTransports: true,
-    auth: { protocolVersion: 1, rulesVersion: "classic-v1", compactBoard: true },
+    auth: {
+      protocolVersion: 1,
+      rulesVersion: "classic-v1",
+      compactBoard: true,
+      mediumBoard: true,
+    },
     reconnectionDelay: 500,
     reconnectionDelayMax: 3000,
   });
@@ -100,7 +105,9 @@ export function connectOnlineRoom(input: {
       name: input.name,
       token: input.token,
       ...(input.code ? { code: input.code } : {}),
-      ...(!input.code && input.boardSize === 24 ? { boardSize: 24 } : {}),
+      ...(!input.code && input.boardSize !== undefined && input.boardSize !== 40
+        ? { boardSize: input.boardSize }
+        : {}),
       resumeToken,
     },
     false,
@@ -304,6 +311,8 @@ async function connect(
     serverUpdate = null;
     void (async () => {
       try {
+        const requestedSize = !resuming ? input.boardSize : undefined;
+        const oldServerMessage = `Máy chủ online chưa hỗ trợ bàn ${requestedSize} ô. Bạn vẫn có thể chơi bàn này với máy.`;
         const reply = await request<RoomReply>(
           resuming ? "room:resume" : input.code ? "room:join" : "room:create",
           resuming ? { resumeToken: input.resumeToken } : input,
@@ -328,7 +337,9 @@ async function connect(
             return;
           }
           const reason =
-            reply.code === "INVALID_INPUT" &&
+            reply.code === "INVALID_INPUT" && requestedSize === 32
+              ? oldServerMessage
+              : reply.code === "INVALID_INPUT" &&
             !resuming &&
             VIETNAMESE_TOKENS.some((token) => token === input.token)
               ? "Máy chủ online chưa hỗ trợ quân này. Hãy chọn một quân khác hoặc dùng quân này khi chơi với máy."
@@ -342,11 +353,9 @@ async function connect(
           await session.close();
           return;
         }
-        if (!resuming && input.boardSize === 24 && reply.room.boardSize !== 24) {
+        if (requestedSize !== undefined && reply.room.boardSize !== requestedSize) {
           await request<RoomReply>("room:leave", {}).catch(() => {});
-          rejectInitial(new Error(
-            "Máy chủ online chưa hỗ trợ bàn 24 ô. Bạn có thể tạo phòng 40 ô hoặc chơi bàn 24 ô với máy.",
-          ));
+          rejectInitial(new Error(oldServerMessage));
           await session.close();
           return;
         }
