@@ -63,6 +63,7 @@ test("compact_board_keeps_larger_tiles_and_resumes_offline", async ({ page }) =>
   expect((await tiles.first().boundingBox())!.width).toBeGreaterThan(36);
   await page.getByRole("button", { name: "Rời bàn chơi" }).click();
   await page.getByRole("button", { name: "Lưu và rời ván" }).click();
+  await page.getByRole("button", { name: "Tiếp tục ván", exact: true }).waitFor();
   await page.reload();
   await page.getByRole("button", { name: "Tiếp tục ván", exact: true }).click();
   await expect(tiles).toHaveCount(24);
