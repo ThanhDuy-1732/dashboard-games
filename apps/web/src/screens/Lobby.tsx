@@ -2,7 +2,9 @@ import type { LobbyView, RoomReply } from "@nha-choi/protocol";
 import { TokenArt } from "../components/TokenArt.js";
 import type { OnlineSession } from "../session/online.js";
 import { roomError } from "../session/online.js";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { preload } from "react-dom";
+import photos from "../locations.json";
 export function Lobby({
   room,
   session,
@@ -17,6 +19,10 @@ export function Lobby({
   const [pending, setPending] = useState<"ready" | "start" | null>(null),
     [error, setError] = useState(""),
     [copied, setCopied] = useState(false);
+  useEffect(() => {
+    for (const { src } of Object.values(photos))
+      preload(src, { as: "image", fetchPriority: "low" });
+  }, []);
   const self = room.players.find((p) => p.id === session.selfId);
   async function act(kind: "ready" | "start", action: () => Promise<RoomReply>) {
     setPending(kind);
