@@ -78,16 +78,13 @@ for (const count of [2, 6])
       for (const page of pages) {
         await expect(page.locator(".board-cell")).toHaveCount(40);
         await expectNoHorizontalOverflow(page);
-        const corner = (await page
-          .locator(".board-cell")
-          .nth(0)
-          .boundingBox())!;
-        const edge = (await page.locator(".board-cell").nth(1).boundingBox())!;
-        const board = (await page.locator(".board").boundingBox())!;
-        const center = (await page.locator(".board-center").boundingBox())!;
-        expect(corner.width).toBeGreaterThan(edge.width * 2.5);
-        expect(center.width / board.width).toBeLessThan(0.65);
-        expect(center.height / board.height).toBeLessThan(0.65);
+        const sizes = await page.locator(".board-cell").evaluateAll((cells) =>
+          cells.flatMap((cell) => {
+            const { width, height } = cell.getBoundingClientRect();
+            return [width, height];
+          }),
+        );
+        expect(Math.max(...sizes) - Math.min(...sizes)).toBeLessThanOrEqual(1);
         const pawns = page.locator(".cell-pawns");
         await expect(pawns).toHaveCount(1);
         await expectPawnsCentered(pawns);

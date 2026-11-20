@@ -63,26 +63,16 @@ export function Board({
   const previousSlots = useRef(new Map<string, readonly [number, number]>());
   useLayoutEffect(() => {
     const root = board.current!;
-    const cells = root.querySelectorAll(".board-cell");
+    const tile = root.querySelector(".board-cell")!;
     const measure = () => {
-      const corner = cells[0]!.getBoundingClientRect();
-      const edge = cells[1]!.getBoundingClientRect();
-      if (corner.width && edge.width) {
-        root.style.setProperty(
-          "--corner-side",
-          `${Math.min(corner.width, corner.height)}px`,
-        );
-        root.style.setProperty(
-          "--edge-side",
-          `${Math.min(edge.width, edge.height)}px`,
-        );
-      }
+      const { width, height } = tile.getBoundingClientRect();
+      if (width && height)
+        root.style.setProperty("--tile-side", `${Math.min(width, height)}px`);
     };
     measure();
     if (typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(measure);
-    observer.observe(cells[0]!);
-    observer.observe(cells[1]!);
+    observer.observe(tile);
     return () => observer.disconnect();
   }, []);
   useLayoutEffect(() => {
@@ -203,7 +193,6 @@ export function Board({
             <button
               type="button"
               key={space.id}
-              data-corner={space.id % 10 === 0 ? "" : undefined}
               className={`board-cell ${self && !self.bankrupt && self.position === space.id ? "your-space" : ""} ${visitors.length ? "occupied" : ""} ${photo ? "has-photo" : "special"} ${visitors.some((p) => p.id === view.turn.playerId) ? "current" : ""}`}
               style={
                 {

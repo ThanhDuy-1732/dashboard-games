@@ -1080,10 +1080,7 @@ dd {
 }
 .board {
   display: grid;
-  --rim: minmax(0, 2.7fr);
-  grid-template:
-    var(--rim) repeat(9, minmax(0, 1fr)) var(--rim) /
-    var(--rim) repeat(9, minmax(0, 1fr)) var(--rim);
+  grid-template: repeat(11, minmax(0, 1fr)) / repeat(11, minmax(0, 1fr));
   aspect-ratio: 1;
   background: #304a3d;
   border: 9px solid #304a3d;
@@ -2405,7 +2402,7 @@ dialog .location-figure + .tag + h2 {
   z-index: 2;
 }
 .cell-pawns {
-  --cell-side: var(--edge-side, 32px);
+  --cell-side: var(--tile-side, 32px);
   --columns: 1;
   --pawn-gap: 2px;
   --pawn-size: min(
@@ -2426,11 +2423,9 @@ dialog .location-figure + .tag + h2 {
   z-index: 4;
   pointer-events: none;
 }
-.board-cell[data-corner] .cell-pawns {
-  --cell-side: var(--corner-side, 48px);
-}
 .cell-pawns.group {
   --pawn-limit: 46px;
+  --pawn-gap: 1px;
 }
 .cell-pawns[data-columns="2"] {
   --columns: 2;
