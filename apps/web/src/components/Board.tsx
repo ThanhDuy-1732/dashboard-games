@@ -211,18 +211,7 @@ export function Board({
               {visitors.length > 0 && (
                 <span
                   className={`cell-pawns ${visitors.length > 1 ? "group" : ""}`}
-                  data-edge={
-                    row === 11
-                      ? "bottom"
-                      : row === 1
-                        ? "top"
-                        : col === 1
-                          ? "left"
-                          : "right"
-                  }
-                  data-corner={
-                    col === 1 ? "left" : col === 11 ? "right" : undefined
-                  }
+                  data-columns={visitors.length > 4 ? 3 : undefined}
                   aria-hidden="true"
                 >
                   {visitors.map((p) => (

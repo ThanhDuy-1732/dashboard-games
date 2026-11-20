@@ -111,10 +111,22 @@ test("restores_saved_debt_auction_jail_and_bot_turn", async ({ page }) => {
       await expect(
         page.getByRole("heading", { name: /Đấu giá Thái Nguyên/ }),
       ).toBeVisible();
-    if (phase === "jail-choice")
+    if (phase === "jail-choice") {
       await expect(
         page.getByRole("button", { name: "Trả 50 để ra tù" }),
       ).toBeVisible();
+      const pawnOffset = await page
+        .locator(".own-pawn img")
+        .evaluate((image) => {
+          const pawn = image.getBoundingClientRect();
+          const cell = image.closest(".board-cell")!.getBoundingClientRect();
+          return Math.hypot(
+            pawn.x + pawn.width / 2 - (cell.x + cell.width / 2),
+            pawn.y + pawn.height / 2 - (cell.y + cell.height / 2),
+          );
+        });
+      expect(pawnOffset).toBeLessThanOrEqual(1);
+    }
     if (phase === "awaiting-roll")
       await page.getByRole("button", { name: /^Gieo/ }).waitFor();
     await expect(page.locator(".save-indicator")).toHaveText("Đã lưu");

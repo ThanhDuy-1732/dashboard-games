@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { TOKEN_NAMES } from "../src/components/TokenArt.js";
 import type { Token } from "@nha-choi/game-core";
 async function setup(page: Page, name: string, token: Token, code?: string) {
@@ -86,6 +86,7 @@ for (const count of [2, 6])
         expect(corner.width).toBeGreaterThan(edge.width * 1.5);
         const pawns = page.locator(".cell-pawns");
         await expect(pawns).toHaveCount(1);
+        await expectPawnsCentered(pawns);
         await expect(pawns.locator(".board-pawn")).toHaveCount(count);
         const ownPawn = pawns.locator(".own-pawn");
         await expect(ownPawn).toHaveCount(1);
@@ -189,6 +190,21 @@ async function expectNoHorizontalOverflow(page: Page) {
       page.evaluate(
         () => document.documentElement.scrollWidth - window.innerWidth,
       ),
+    )
+    .toBeLessThanOrEqual(1);
+}
+
+async function expectPawnsCentered(pawns: Locator) {
+  await expect
+    .poll(() =>
+      pawns.evaluate((piece) => {
+        const pawn = piece.getBoundingClientRect();
+        const cell = piece.closest(".board-cell")!.getBoundingClientRect();
+        return Math.hypot(
+          pawn.left + pawn.width / 2 - (cell.left + cell.width / 2),
+          pawn.top + pawn.height / 2 - (cell.top + cell.height / 2),
+        );
+      }),
     )
     .toBeLessThanOrEqual(1);
 }
