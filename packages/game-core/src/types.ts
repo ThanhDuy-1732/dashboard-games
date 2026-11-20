@@ -12,6 +12,12 @@ export const TOKENS = [
   "butterfly",
   "camera",
   "guitar",
+  "cyclo",
+  "conical-hat",
+  "lotus",
+  "scooter",
+  "carp",
+  "lantern",
 ] as const;
 export type Token = (typeof TOKENS)[number];
 export interface PlayerConfig {

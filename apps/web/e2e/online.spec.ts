@@ -46,7 +46,7 @@ for (const count of [2, 6])
       if (count === 6)
         await pages[0]!.setViewportSize({ width: 375, height: 812 });
       else await pages[1]!.setViewportSize({ width: 320, height: 800 });
-      const tokens = ["rocket", "bike", "hat", "ship", "dog", "plane"] as const;
+      const tokens = ["lotus", "cyclo", "hat", "ship", "dog", "plane"] as const;
       await setup(pages[0]!, "Chủ phòng", tokens[0]!);
       const code = (
         await pages[0]!.getByTestId("room-code").textContent()

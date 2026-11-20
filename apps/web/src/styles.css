@@ -2488,13 +2488,31 @@ dialog .location-figure + .tag + h2 {
   object-fit: contain;
 }
 .board-pawn .token-art {
+  --art-scale: 1.1;
   width: 100%;
   height: 100%;
   min-width: 0;
   min-height: 0;
   position: relative;
-  transform: scale(1.1);
+  transform: scale(var(--art-scale)) translateY(var(--art-offset, 0%));
   filter: drop-shadow(0 1px 0 #fffb) drop-shadow(0 2px 1px #173b3e99);
+}
+/* Center the painted silhouette of sprites with uneven transparent padding. */
+.board-pawn .token-art[data-token="bike"] {
+  --art-offset: -11%;
+}
+.board-pawn .token-art[data-token="car"],
+.board-pawn .token-art[data-token="camera"] {
+  --art-offset: -14%;
+}
+.board-pawn .token-art[data-token="cat"] {
+  --art-offset: -2%;
+}
+.board-pawn .token-art[data-token="dog"] {
+  --art-offset: -5%;
+}
+.board-pawn .token-art[data-token="hat"] {
+  --art-offset: -3%;
 }
 .result-token .token-art {
   width: 70px;
@@ -3005,7 +3023,7 @@ dialog {
   outline: 3px solid var(--focus);
 }
 .board-pawn.own-pawn .token-art {
-  transform: scale(1.36);
+  --art-scale: 1.36;
 }
 .own-pawn-label {
   position: absolute;

@@ -37,7 +37,7 @@ it("opens_real_offline_setup_and_validates_player_name", () => {
   expect(
     screen.getByRole("spinbutton", { name: "Số đối thủ máy" }),
   ).toBeTruthy();
-  expect(screen.getAllByRole("button", { name: /Chọn quân/ })).toHaveLength(12);
+  expect(screen.getAllByRole("button", { name: /Chọn quân/ })).toHaveLength(18);
   const name = screen.getByRole("textbox", { name: "Tên của bạn" });
   fireEvent.change(name, { target: { value: "   " } });
   fireEvent.click(screen.getByRole("button", { name: "Bắt đầu ván" }));

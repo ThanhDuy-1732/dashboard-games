@@ -11,6 +11,15 @@ export async function registerPwa(options: Options) {
   const controllerChange = () => {
     if (accepted) location.reload();
   };
+  const checkForUpdate = () => {
+    if (
+      document.visibilityState === "visible" &&
+      registration?.active &&
+      !registration.waiting &&
+      !registration.installing
+    )
+      void registration.update().catch(() => {});
+  };
   const result = {
     async update() {
       if (options.inGame() || !registration?.waiting) return false;
@@ -19,6 +28,7 @@ export async function registerPwa(options: Options) {
       return true;
     },
     dispose() {
+      globalThis.document?.removeEventListener("visibilitychange", checkForUpdate);
       navigator.serviceWorker?.removeEventListener(
         "controllerchange",
         controllerChange,
@@ -49,6 +59,7 @@ export async function registerPwa(options: Options) {
     };
     watch();
     registration.addEventListener("updatefound", watch);
+    globalThis.document?.addEventListener("visibilitychange", checkForUpdate);
   } catch (error) {
     options.onError?.(error);
   }

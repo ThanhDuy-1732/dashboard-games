@@ -117,12 +117,28 @@ test("restores_saved_debt_auction_jail_and_bot_turn", async ({ page }) => {
       ).toBeVisible();
       const pawnOffset = await page
         .locator(".own-pawn img")
-        .evaluate((image) => {
+        .evaluate(async (image: HTMLImageElement) => {
+          await image.decode();
+          const canvas = document.createElement("canvas");
+          canvas.width = image.naturalWidth;
+          canvas.height = image.naturalHeight;
+          const context = canvas.getContext("2d")!;
+          context.drawImage(image, 0, 0);
+          const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+          let top = canvas.height,
+            bottom = 0;
+          for (let pixel = 0; pixel < data.length / 4; pixel++) {
+            if (data[pixel * 4 + 3]! <= 140) continue;
+            const row = Math.floor(pixel / canvas.width);
+            top = Math.min(top, row);
+            bottom = Math.max(bottom, row + 1);
+          }
           const pawn = image.getBoundingClientRect();
           const cell = image.closest(".board-cell")!.getBoundingClientRect();
           return Math.hypot(
             pawn.x + pawn.width / 2 - (cell.x + cell.width / 2),
-            pawn.y + pawn.height / 2 - (cell.y + cell.height / 2),
+            pawn.y + (pawn.height * (top + bottom)) / (2 * canvas.height) -
+              (cell.y + cell.height / 2),
           );
         });
       expect(pawnOffset).toBeLessThanOrEqual(1);
