@@ -9,6 +9,9 @@ if (process.env.NODE_ENV === "production" && !process.env.DATABASE_URL) {
 const port = Number(process.env.PORT ?? 3001);
 if (!Number.isInteger(port) || port < 1 || port > 65535)
   throw new Error("PORT must be 1–65535");
+const telemetryPeerLimit = Number(process.env.TELEMETRY_PEER_LIMIT ?? 30);
+if (!Number.isInteger(telemetryPeerLimit) || telemetryPeerLimit < 1 || telemetryPeerLimit > 1000)
+  throw new Error("TELEMETRY_PEER_LIMIT must be 1–1000");
 const origins = (
   process.env.ALLOWED_ORIGINS ?? "http://127.0.0.1:5173,http://localhost:5173"
 )
@@ -26,6 +29,7 @@ try {
     origins,
     store,
     metrics: store,
+    telemetryPeerLimit,
     admin: process.env.ADMIN_PASSWORD_HASH && process.env.ADMIN_ORIGIN ? {
       origin: process.env.ADMIN_ORIGIN,
       passwordHash: process.env.ADMIN_PASSWORD_HASH,

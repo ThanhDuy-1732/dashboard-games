@@ -113,3 +113,25 @@ test("Caro online shares an invite and resumes the same board after reloading", 
     await guest.close();
   }
 });
+
+test("a legacy Caro game completed offline from Home syncs just its completion", async ({ page, context }) => {
+  const events: { id: string; kind: string; game?: string }[] = [];
+  await page.route("**/api/telemetry", async (route) => {
+    const { events: batch } = route.request().postDataJSON();
+    events.push(...batch);
+    await route.fulfill({ json: { accepted: batch.map(({ id }: { id: string }) => id), expired: [] } });
+  });
+  await page.goto("/");
+  await page.evaluate(() => localStorage.setItem("nha-choi-caro-offline-v1", JSON.stringify({
+    version: 1, mode: "local", firstMark: "X", moves: [0, 30, 1, 31, 2, 32, 3, 33],
+  })));
+  await page.reload();
+  await context.setOffline(true);
+  await page.getByRole("button", { name: "Mở ván Caro đã lưu" }).click();
+  await mark(page, "E1");
+  await expect(matchHeading(page)).toHaveText("Người chơi 1 thắng!");
+  expect(events.filter(({ game }) => game === "caro")).toHaveLength(0);
+  await context.setOffline(false);
+  await expect.poll(() => events.filter(({ game }) => game === "caro").map(({ kind }) => kind)).toEqual(["game_completed"]);
+  expect(new Set(events.filter(({ kind }) => kind === "session_started").map(({ id }) => id)).size).toBe(1);
+});

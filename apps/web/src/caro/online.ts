@@ -1,3 +1,4 @@
+import { trackDeviceLatency } from "../telemetry.js";
 import { useEffect, useRef, useState } from "react";
 import { App } from "@capacitor/app";
 import { io } from "socket.io-client";
@@ -187,6 +188,7 @@ export function useCaroOnline(entry: CaroEntry | null) {
     if (!socket?.connected || !authenticated.current || !seat || action.current)
       return;
     const id = Symbol();
+    const start = performance.now();
     action.current = id;
     setPending(true);
     setMessage("");
@@ -198,6 +200,7 @@ export function useCaroOnline(entry: CaroEntry | null) {
           ? { round: seat.room.round }
           : { index, revision: seat.room.revision },
         (error: Error | null, reply: CaroRoomReply) => {
+          if (event === "caro:move") trackDeviceLatency(start, Boolean(error));
           if (action.current !== id) return;
           action.current = null;
           setPending(false);

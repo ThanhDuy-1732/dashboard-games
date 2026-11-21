@@ -31,6 +31,7 @@ import { useGameSession } from "./session/useGameSession.js";
 import { useOfflineSave, saveErrorMessage } from "./storage/useOfflineSave.js";
 import { SaveError } from "./storage/save.js";
 import type { SavedGame } from "./storage/save-schema.js";
+import { startTelemetry, trackGame, trackScreen } from "./telemetry.js";
 const ERROR_TEXT: Record<string, string> = {
   STORAGE_UNAVAILABLE:
     "Máy chủ chưa xác nhận lưu được hành động. Hãy đợi đồng bộ lại trước khi tiếp tục.",
@@ -203,6 +204,7 @@ export function App() {
       created = createOfflineSession({ human, botCount, boardSize }, saved);
       created.pause("Đang chuẩn bị bản lưu.");
       await persistence.write(created, replace);
+      if (!saved) trackGame("ty-phu", created.snapshot().gameId, "game_started");
       created.resume();
       setSession(created);
       setNewGame(null);
@@ -304,6 +306,9 @@ export function App() {
   }
   const finished =
     update?.view?.phase === "finished" || Boolean(online && lobby?.closed);
+  const telemetryScreen = page === "game" ? finished ? "results" : online && !lobby?.started ? "lobby" : "game" : page;
+  useEffect(() => trackScreen(telemetryScreen), [telemetryScreen]);
+  useEffect(startTelemetry, []);
   return (
     <>
       <div className="app-shell">

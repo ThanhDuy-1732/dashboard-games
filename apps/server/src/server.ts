@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import type { TelemetryEvent } from "@nha-choi/protocol";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { Server } from "socket.io";
@@ -17,7 +19,7 @@ import { Rooms } from "./rooms.js";
 import type { RoomStore } from "./database.js";
 import type { MetricWriter } from "./metrics.js";
 import { ingestTelemetry } from "./telemetry-http.js";
-import { createAdminHandler } from "./admin.js";
+import { createAdminHandler, createCleanupHandler } from "./admin.js";
 import type { AdminOptions } from "./admin.js";
 import { json } from "./http.js";
 import { serverRandom } from "./random.js";
@@ -30,6 +32,7 @@ interface Options {
   store?: RoomStore;
   metrics?: MetricWriter;
   admin?: AdminOptions;
+  telemetryPeerLimit?: number;
 }
 export async function createGameServer({
   port = 3001,
@@ -40,10 +43,22 @@ export async function createGameServer({
   store,
   metrics,
   admin,
+  telemetryPeerLimit = 30,
 }: Options = {}) {
   let healthy = true,
     closing = false;
-  const adminHandler = admin && createAdminHandler(admin);
+  const cleanup = createCleanupHandler(metrics);
+  const adminHandler = admin && createAdminHandler(admin, async (req, res, url, session) => {
+    if (await cleanup(req, res, url, session)) return;
+    if (req.method !== "GET" || !["/api/admin/summary", "/api/admin/system"].includes(url.pathname))
+      return json(res, 404, { error: "NOT_FOUND" });
+    if (!metrics?.summary) return json(res, 503, { error: "METRICS_UNAVAILABLE" });
+    const range = url.searchParams.get("range") ?? "7d";
+    const days = range === "today" ? 1 : range === "7d" ? 7 : range === "30d" ? 30 : 0;
+    if (!days) return json(res, 400, { error: "RANGE" });
+    const summary = await metrics.summary(days, true);
+    json(res, 200, { ...summary, ongoing: { caro: caro.activeGames, "ty-phu": rooms.activeGames }, droppedMetrics, metricWriteErrors });
+  });
   const http = createServer((req, res) => {
     if (req.url?.startsWith("/api/admin/") && adminHandler) {
       void adminHandler(req, res, new URL(req.url, "http://localhost"))
@@ -52,7 +67,7 @@ export async function createGameServer({
     }
     if (req.url === "/api/telemetry") {
       void ingestTelemetry(req, res, origins, () =>
-        consume(`telemetry:${req.socket.remoteAddress}`, 30, 60000), metrics,
+        consume(`telemetry:${req.socket.remoteAddress}`, telemetryPeerLimit, 60000), metrics,
       ).catch(() => { if (!res.headersSent) json(res, 400, { error: "REQUEST" }); });
       return;
     }
@@ -85,7 +100,34 @@ export async function createGameServer({
     next();
   });
   const rooms = new Rooms(io, random, now);
-  const caro = new CaroRooms(io, now);
+  const serverEvents: TelemetryEvent[] = [];
+  let droppedMetrics = 0, metricWriteErrors = 0;
+  let writingMetrics: Promise<void> | undefined;
+  function addMetric(event: TelemetryEvent) {
+    if (!metrics) return;
+    if (serverEvents.length >= 1000) {
+      droppedMetrics++;
+      return;
+    }
+    serverEvents.push(event);
+  }
+  function latency(metric: "backend" | "database", start: number, technicalError: boolean) {
+    if (!metrics) return;
+    addMetric({ id: randomUUID(), occurredAt: new Date(now()).toISOString(), kind: "latency",
+      metric, durationMs: Math.min(120_000, performance.now() - start), technicalError });
+  }
+  function flushMetrics() {
+    if (!metrics || writingMetrics || !serverEvents.length) return writingMetrics;
+    const batch = serverEvents.slice(0, 50);
+    writingMetrics = metrics.record("server", batch)
+      .then((receipt) => {
+        droppedMetrics += receipt.expired.length;
+        serverEvents.splice(0, batch.length);
+      }, () => { metricWriteErrors++; })
+      .finally(() => { writingMetrics = undefined; });
+    return writingMetrics;
+  }
+  const caro = new CaroRooms(io, now, metrics ? addMetric : undefined);
   if (store) {
     try {
       rooms.restore(await store.load());
@@ -98,7 +140,7 @@ export async function createGameServer({
   let queue: Promise<void> = Promise.resolve(),
     pending = 0;
   const disconnected = new Set<string>();
-  async function mutate<T>(work: () => T): Promise<T> {
+  async function mutate<T>(work: () => T, track = false): Promise<T> {
     if (!store) return work();
     if (pending >= 256) throw new Error("Room queue is full");
     pending++;
@@ -114,7 +156,16 @@ export async function createGameServer({
           for (const id of dropped) rooms.disconnect(id);
           return work();
         },
-        (records) => store.save(records),
+        async (records, events) => {
+          const start = performance.now();
+          try {
+            const elapsed = await store.save(records, events);
+            if (track && typeof elapsed === "number") latency("database", performance.now() - elapsed, false);
+          } catch (error) {
+            if (track) latency("database", start, true);
+            throw error;
+          }
+        },
       );
       for (const id of dropped) disconnected.delete(id);
       return value;
@@ -236,9 +287,14 @@ export async function createGameServer({
         ack(reply);
         return;
       }
-      void mutate(() => rooms.command(socket.id, payload))
-        .then((value) => ack(value))
+      const start = performance.now();
+      void mutate(() => rooms.command(socket.id, payload), true)
+        .then((value) => {
+          latency("backend", start, false);
+          ack(value);
+        })
         .catch(() => {
+          latency("backend", start, true);
           const raw = payload as { commandId?: unknown } | null;
           const reply: CommandReply = {
             ok: false,
@@ -263,7 +319,10 @@ export async function createGameServer({
   const interval = setInterval(() => {
     for (const [key, value] of limits)
       if (now() - value.start > 60000) limits.delete(key);
-    if (!closing) caro.sweep();
+    if (!closing) {
+      caro.sweep();
+      void flushMetrics();
+    }
     if (closing || pending || (store && healthy && rooms.size === 0)) return;
     void mutate(() => rooms.sweep()).catch(() => {});
   }, 1000);
@@ -306,6 +365,12 @@ export async function createGameServer({
           }
         } else rooms.closeAll();
         await new Promise<void>((resolve) => io.close(() => resolve()));
+        await writingMetrics;
+        while (serverEvents.length) {
+          const pending = serverEvents.length;
+          await flushMetrics();
+          if (serverEvents.length === pending) break;
+        }
         await store?.close();
       })();
       return closePromise;

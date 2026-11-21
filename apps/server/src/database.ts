@@ -1,7 +1,10 @@
+import type { TelemetryEvent } from "@nha-choi/protocol";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { Pool } from "pg";
 import type { PoolClient } from "pg";
+import { cleanupHistory, cleanupMetrics, previewCleanup } from "./metrics-cleanup.js";
+import { captureStorage, readMetrics } from "./metrics-read.js";
 import { recordEvents } from "./metrics.js";
 import type { MetricWriter } from "./metrics.js";
 import { roomCheckpointSchema } from "./room-checkpoint.js";
@@ -9,7 +12,7 @@ import type { RoomCheckpoint } from "./room-checkpoint.js";
 export interface RoomStore {
   needsReload(): boolean;
   load(): Promise<RoomCheckpoint[]>;
-  save(rooms: RoomCheckpoint[]): Promise<void>;
+  save(rooms: RoomCheckpoint[], events?: TelemetryEvent[]): Promise<number | void>;
   close(): Promise<void>;
 }
 export class RoomStoreError extends Error {
@@ -30,6 +33,8 @@ export class NeonRoomStore implements RoomStore, MetricWriter {
   private initialized = false;
   private previous = new Map<string, string>();
   private lastWrite = 0;
+  private lastStorageDay = "";
+  private storageSample?: Promise<unknown>;
   constructor(
     connectionString: string,
     private scope = "online-v1",
@@ -70,8 +75,27 @@ export class NeonRoomStore implements RoomStore, MetricWriter {
   needsReload() {
     return performance.now() - this.lastWrite >= 20000;
   }
-  record(...args: Parameters<MetricWriter["record"]>) {
-    return recordEvents(this.pool, this.scope, ...args);
+  preview(filter: Parameters<typeof previewCleanup>[2]) {
+    return previewCleanup(this.pool, this.scope, filter);
+  }
+  cleanup(filter: Parameters<typeof cleanupMetrics>[2]) {
+    return cleanupMetrics(this.pool, this.scope, filter);
+  }
+  cleanupHistory() {
+    return cleanupHistory(this.pool, this.scope);
+  }
+  summary(days: number, includeSystem: boolean) {
+    return readMetrics(this.pool, this.scope, days, includeSystem);
+  }
+  async record(...args: Parameters<MetricWriter["record"]>) {
+    const receipt = await recordEvents(this.pool, this.scope, ...args);
+    const day = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Ho_Chi_Minh" }).format(new Date());
+    if (this.lastStorageDay !== day && !this.storageSample) {
+      this.storageSample = captureStorage(this.pool, this.scope)
+        .then(() => { this.lastStorageDay = day; }, () => {})
+        .finally(() => { this.storageSample = undefined; });
+    }
+    return receipt;
   }
   async load() {
     if (!this.initialized) {
@@ -108,7 +132,7 @@ export class NeonRoomStore implements RoomStore, MetricWriter {
     this.lastWrite = performance.now();
     return records;
   }
-  async save(rooms: RoomCheckpoint[]) {
+  async save(rooms: RoomCheckpoint[], events: TelemetryEvent[] = []) {
     const current = new Map(
       rooms.map((room) => [room.id, JSON.stringify(room)]),
     );
@@ -120,50 +144,59 @@ export class NeonRoomStore implements RoomStore, MetricWriter {
       if (!roomCheckpointSchema.safeParse(room).success)
         throw new RoomStoreError("INVALID_CHECKPOINT");
     if (
+      !events.length &&
       !changed.length &&
       !removed.length &&
       performance.now() - this.lastWrite < 10000
     )
       return;
     // One atomic statement fences the writer and persists its changed rooms.
-    const lease = await this.pool.query(
-      `WITH lease AS (
-         UPDATE nha_choi_backend_leases
-         SET expires_at = clock_timestamp() + interval '45 seconds'
-         WHERE scope = $1 AND owner = $2 AND expires_at > clock_timestamp()
-         RETURNING scope
-       ), saved AS (
-         INSERT INTO nha_choi_room_checkpoints(scope,id,code,document)
-         SELECT lease.scope, room.id, room.code, room.document
-         FROM lease CROSS JOIN jsonb_to_recordset($3::jsonb)
-           AS room(id uuid, code text, document jsonb)
-         ON CONFLICT(scope,id) DO UPDATE SET
-           code = EXCLUDED.code, document = EXCLUDED.document,
-           updated_at = clock_timestamp()
-       ), removed AS (
-         DELETE FROM nha_choi_room_checkpoints AS room USING lease
-         WHERE room.scope = lease.scope AND room.id = ANY($4::uuid[])
-       )
-       SELECT scope FROM lease`,
-      [
-        this.scope,
-        this.owner,
-        JSON.stringify(
-          changed.map((room) => ({
-            id: room.id,
-            code: room.code,
-            document: room,
-          })),
-        ),
-        removed,
-      ],
-    );
-    if (!lease.rowCount) throw new RoomStoreError("WRITER_LEASE_LOST");
+    const save = async (db: Pool | PoolClient) => {
+      const lease = await db.query(
+        `WITH lease AS (
+           UPDATE nha_choi_backend_leases
+           SET expires_at = clock_timestamp() + interval '45 seconds'
+           WHERE scope = $1 AND owner = $2 AND expires_at > clock_timestamp()
+           RETURNING scope
+         ), saved AS (
+           INSERT INTO nha_choi_room_checkpoints(scope,id,code,document)
+           SELECT lease.scope, room.id, room.code, room.document
+           FROM lease CROSS JOIN jsonb_to_recordset($3::jsonb)
+             AS room(id uuid, code text, document jsonb)
+           ON CONFLICT(scope,id) DO UPDATE SET
+             code = EXCLUDED.code, document = EXCLUDED.document,
+             updated_at = clock_timestamp()
+         ), removed AS (
+           DELETE FROM nha_choi_room_checkpoints AS room USING lease
+           WHERE room.scope = lease.scope AND room.id = ANY($4::uuid[])
+         )
+         SELECT scope FROM lease`,
+        [
+          this.scope,
+          this.owner,
+          JSON.stringify(
+            changed.map((room) => ({
+              id: room.id,
+              code: room.code,
+              document: room,
+            })),
+          ),
+          removed,
+        ],
+      );
+      if (!lease.rowCount) throw new RoomStoreError("WRITER_LEASE_LOST");
+      if (events.length) await recordEvents(db, this.scope, "server", events);
+    };
+    const start = performance.now();
+    if (events.length) await this.transaction(save);
+    else await save(this.pool);
     this.previous = current;
     this.lastWrite = performance.now();
+    return this.lastWrite - start;
   }
   async close() {
     try {
+      await this.storageSample;
       if (this.initialized)
         await this.pool.query(
           "UPDATE nha_choi_backend_leases SET owner=NULL,expires_at=clock_timestamp() WHERE scope=$1 AND owner=$2",

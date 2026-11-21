@@ -53,3 +53,34 @@ npm run test:e2e
 Kiểm tra phụ thuộc: runtime `npm audit --omit=dev` không báo lỗ hổng ở lần kiểm tra gần nhất. Full audit còn 19 báo cáo dev-only qua glob (GHSA-3g3m-2fjr-6pw4), minimatch (GHSA-g3hv-75wg-m249), picomatch (GHSA-fc5q-39xc-vjpf). Chưa force-downgrade toàn toolchain hoặc ép major override; glob build không nhận dữ liệu người chơi. Cần theo dõi bản vá trước khi đưa toolchain vào môi trường build nhận đầu vào không tin cậy.
 
 Bằng chứng trình duyệt và trạng thái WEB-PASS ghi trong `docs/runbooks/web-verification.md` sau nghiệm thu. Chưa tự đăng ký hosting hoặc triển khai công khai.
+
+## Dashboard quản trị
+
+Dashboard nằm tại `https://<tên-miền-web>/admin`. Backend cần PostgreSQL và sẽ tự chạy migration `002_admin_metrics.sql`. Triển khai cả frontend lẫn backend cùng phiên bản và đóng gói cả hai file migration.
+
+Trên backend, đặt `ADMIN_ORIGIN` bằng origin chính xác của trang web (ví dụ `https://nha-choi.example`, không có dấu / cuối) và `ADMIN_PASSWORD_HASH` bằng chuỗi salt và hash. Dùng một mật khẩu dài, riêng cho admin. Lệnh sau đọc mật khẩu từ terminal và chỉ in giá trị hash để cấu hình.
+
+```zsh
+read -rs 'admin_password?Mật khẩu admin: '
+printf '%s' "$admin_password" | node --input-type=module -e '
+  import { readFileSync } from "node:fs";
+  import { randomBytes, scryptSync } from "node:crypto";
+  const password = readFileSync(0, "utf8");
+  if (password.length < 16 || password.length > 256) process.exit(1);
+  const salt = randomBytes(16).toString("hex");
+  console.log(salt + ":" + scryptSync(password, salt, 64).toString("hex"));
+'
+unset admin_password
+```
+
+Ở máy chủ web hoặc Vercel, chuyển tiếp `/api/admin/*` và `/api/telemetry` đến backend **trước** quy tắc fallback `/index.html`. Giữ `Origin`, `Cookie` và `Set-Cookie` qua proxy. Tắt cache cho hai API. Mở trực tiếp `/admin` hoặc các trang con phải tải ứng dụng web. Vite dev/preview đã có proxy cho `/api`. Thêm origin web và origin native đã triển khai vào `ALLOWED_ORIGINS` của backend để nhận thống kê.
+
+Dashboard bắt đầu thu dữ liệu từ lúc bật thu thập. Thiết bị đồng bộ sự kiện offline khi ứng dụng mở và có mạng. Sự kiện quá 30 ngày hết hạn. Dữ liệu có thể thiếu nếu người dùng xóa dữ liệu cục bộ, hàng đợi 5.000 mục đầy hoặc Caro online chưa ghi được sự kiện trước khi backend khởi động lại. Các cột p50/p95 là ước lượng theo nhóm độ trễ. Dung lượng DB là tổng kích thước các bảng Nhà Chơi, có cả chỉ mục, và không đại diện hạn mức Neon. Sau khi xóa, PostgreSQL có thể giữ phần không gian đã cấp phát để tái sử dụng.
+
+Để kiểm tra chức năng dọn, chọn loại và mốc thời gian, xem trước rồi xác nhận từng lô. Chạy kiểm thử PostgreSQL trên một instance thử qua Unix socket ở cổng 55474. Không dùng socket dữ liệu thật.
+
+```sh
+ADMIN_TEST_PG_SOCKET=/path/to/test/socket npm run test:admin-database
+```
+
+Nếu reverse proxy gom lưu lượng về cùng địa chỉ kết nối, giới hạn `/api/telemetry` theo từng client tại proxy và đặt `TELEMETRY_PEER_LIMIT` phù hợp với lưu lượng từ proxy (mặc định 30 yêu cầu/phút, tối đa 1.000). Backend dùng địa chỉ kết nối trực tiếp, không tin header IP do client gửi.

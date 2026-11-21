@@ -30,6 +30,7 @@
     "build:ios": "npm run build:ios --workspace @nha-choi/mobile",
     "test:android": "npm run test:android --workspace @nha-choi/mobile",
     "test:ios": "npm run test:ios --workspace @nha-choi/mobile",
+    "test:admin-database": "vitest run apps/server/test/metrics.live.test.ts apps/server/test/metrics-cleanup.live.test.ts",
     "test:database": "NEON_INTEGRATION=1 node --env-file-if-exists=.env node_modules/vitest/vitest.mjs run apps/server/test/database.live.test.ts"
   },
   "devDependencies": {

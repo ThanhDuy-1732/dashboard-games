@@ -74,6 +74,11 @@ it.runIf(process.env.NEON_INTEGRATION === "1")(
       await ack(host, "room:ready", { ready: true });
       await ack(guest, "room:ready", { ready: true });
       await ack(host, "room:start", {});
+      const milestones = await inspection.query(
+        "SELECT kind, count::int FROM nha_choi_metric_days WHERE scope = $1",
+        [scope],
+      );
+      expect(milestones.rows).toEqual([{ kind: "game_started", count: 1 }]);
       const view = update!.view!;
       const command = {
         protocolVersion: 1,
@@ -162,6 +167,8 @@ it.runIf(process.env.NEON_INTEGRATION === "1")(
         "DELETE FROM nha_choi_backend_leases WHERE scope=$1",
         [scope],
       );
+      await inspection.query("DELETE FROM nha_choi_metric_events WHERE scope=$1", [scope]);
+      await inspection.query("DELETE FROM nha_choi_metric_days WHERE scope=$1", [scope]);
       await inspection.end();
     }
   },

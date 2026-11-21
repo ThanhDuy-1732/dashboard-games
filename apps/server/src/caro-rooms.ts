@@ -1,8 +1,8 @@
-import { createHash, randomInt } from "node:crypto";
+import { createHash, randomInt, randomUUID } from "node:crypto";
 import { CARO_SIZE, createCaro, playCaro } from "@nha-choi/game-core";
 import type { CaroGame, CaroMark } from "@nha-choi/game-core";
 import { resumeTokenSchema } from "@nha-choi/protocol";
-import type { CaroRoomReply, CaroRoomView } from "@nha-choi/protocol";
+import type { CaroRoomReply, CaroRoomView, TelemetryEvent } from "@nha-choi/protocol";
 import type { Server, Socket } from "socket.io";
 import { z } from "zod";
 
@@ -13,6 +13,7 @@ interface Seat {
   readyForRematch: boolean;
 }
 interface Room {
+  id: string;
   code: string;
   seats: Map<string, Seat>;
   game: CaroGame;
@@ -54,7 +55,19 @@ export class CaroRooms {
   constructor(
     private io: Server,
     private now: () => number,
+    private record?: (event: TelemetryEvent) => void,
   ) {}
+
+  get activeGames() {
+    return [...this.rooms.values()].filter(({ game }) => game.moves.length > 0 && !game.result).length;
+  }
+
+  private milestone(room: Room, kind: "game_started" | "game_completed") {
+    this.record?.({
+      id: `${room.id}:${room.round}:${kind}`, occurredAt: new Date(this.now()).toISOString(),
+      kind, game: "caro", mode: "online",
+    });
+  }
 
   attach(
     socket: Socket,
@@ -79,12 +92,13 @@ export class CaroRooms {
           ack({ ok: false, code: "RATE_LIMITED" });
           return;
         }
+        const start = performance.now();
         const parsed = schema.safeParse(input);
-        ack(
-          parsed.success
-            ? handle(parsed.data)
-            : { ok: false, code: "INVALID_INPUT" },
-        );
+        const value = parsed.success ? handle(parsed.data) : { ok: false, code: "INVALID_INPUT" };
+        if (parsed.success && event === "caro:move")
+          this.record?.({ id: randomUUID(), occurredAt: new Date(this.now()).toISOString(),
+            kind: "latency", metric: "backend", durationMs: Math.min(120_000, performance.now() - start), technicalError: false });
+        ack(value);
       });
     };
     request(
@@ -108,6 +122,8 @@ export class CaroRooms {
           const game = playCaro(room.game, index);
           if (!game) return false;
           room.game = game;
+          if (game.moves.length === 1) this.milestone(room, "game_started");
+          if (game.result) this.milestone(room, "game_completed");
           return true;
         },
       ),
@@ -159,6 +175,7 @@ export class CaroRooms {
         ).join("");
       } while (this.rooms.has(roomCode));
       room = {
+        id: randomUUID(),
         code: roomCode,
         seats: new Map(),
         game: createCaro(),

@@ -9,6 +9,7 @@ import type {
 import { cryptoRandom } from "../random.js";
 import { savedGameSchema } from "../storage/save-schema.js";
 import type { SavedGame } from "../storage/save-schema.js";
+import { trackGame } from "../telemetry.js";
 export interface OfflineSession extends GameSession {
   snapshot(): GameState;
   pause(reason: string): void;
@@ -62,8 +63,14 @@ export function createOfflineSession(
       ...(failure ? { reason: failure } : {}),
     };
   }
+  let finished = restored?.state.phase === "finished";
   function emit() {
-    for (const listener of listeners) listener(update());
+    const value = update();
+    if (!finished && value.view?.phase === "finished") {
+      finished = true;
+      trackGame("ty-phu", value.view.gameId, "game_completed");
+    }
+    for (const listener of listeners) listener(value);
   }
   function schedule() {
     clearTimeout(timer);

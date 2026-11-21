@@ -5,6 +5,7 @@ import type {
   RoomReply,
   CommandReply,
   SessionUpdate,
+  TelemetryEvent,
 } from "@nha-choi/protocol";
 import type { RoomCheckpoint } from "../src/room-checkpoint.js";
 import type { RoomStore } from "../src/database.js";
@@ -15,19 +16,21 @@ class MemoryStore implements RoomStore {
     return this.reload;
   }
   records: RoomCheckpoint[] = [];
+  events: TelemetryEvent[] = [];
   fail: "before" | "after" | null = null;
   gate: Promise<void> | null = null;
   async load() {
     this.reload = false;
     return structuredClone(this.records);
   }
-  async save(records: RoomCheckpoint[]) {
+  async save(records: RoomCheckpoint[], events: TelemetryEvent[] = []) {
     if (this.gate) await this.gate;
     if (this.fail === "before") {
       this.fail = null;
       throw new Error("database down");
     }
     this.records = structuredClone(records);
+    this.events.push(...events);
     if (this.fail === "after") {
       this.fail = null;
       throw new Error("commit acknowledgement lost");
@@ -313,4 +316,12 @@ it("removes the checkpoint only when every player chooses to discard on exit", a
   expect(
     await ack(hostAgain, "room:resume", { resumeToken: a.resumeToken }),
   ).toEqual({ ok: false, code: "INVALID_ROOM" });
+});
+
+it("stores one start milestone together with the durable room", async () => {
+  const store = new MemoryStore();
+  const { host } = await pair(store);
+  expect(store.events).toMatchObject([{ kind: "game_started", game: "ty-phu", mode: "online" }]);
+  expect((await ack(host, "room:start", {})).ok).toBe(false);
+  expect(store.events).toHaveLength(1);
 });

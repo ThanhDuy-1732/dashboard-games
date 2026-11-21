@@ -12,7 +12,7 @@ npm run build
 npm run start --workspace @nha-choi/server
 ```
 
-Backend tự tạo hai bảng riêng của ứng dụng bằng migration cộng thêm `apps/server/migrations/001_online_rooms.sql`: `nha_choi_room_checkpoints` và `nha_choi_backend_leases`. Không xóa/sửa bảng của ứng dụng khác. Role cần quyền tạo bảng lần đầu và đọc/ghi hai bảng này. Nếu chỉ triển khai dist, phải copy thư mục migrations bên cạnh dist. Không để PostgreSQL port/credential truy cập từ trình duyệt.
+Backend tự tạo hai bảng riêng của ứng dụng bằng migration cộng thêm `apps/server/migrations/001_online_rooms.sql`: `nha_choi_room_checkpoints` và `nha_choi_backend_leases`. Migration `002_admin_metrics.sql` tạo các bảng thống kê riêng cho dashboard. Role cần quyền tạo bảng lần đầu và đọc/ghi các bảng Nhà Chơi. Bảng của ứng dụng khác nằm ngoài phạm vi. Nếu chỉ triển khai dist, phải copy thư mục migrations bên cạnh dist. Không để PostgreSQL port/credential truy cập từ trình duyệt.
 
 `NODE_ENV=production` yêu cầu DATABASE_URL; thiếu thì dừng thay vì âm thầm mất lưu bền. Chế độ phát triển/test không có DATABASE_URL vẫn dùng bộ nhớ, giữ giới hạn mất ván khi restart. `HOST=0.0.0.0`, PORT do hosting cung cấp; ALLOWED_ORIGINS chứa domain frontend. VITE_SERVER_URL là URL HTTPS của backend, **không phải URL PostgreSQL**.
 

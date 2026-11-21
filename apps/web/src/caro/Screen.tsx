@@ -1,3 +1,4 @@
+import { trackGame } from "../telemetry.js";
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import {
@@ -65,9 +66,10 @@ export function CaroScreen({
   onInGame: (active: boolean) => void;
 }) {
   const [saved, setSaved] = useState(readCaroSave);
-  const [local, setLocal] = useState<CaroSave | null>(() =>
-    startSaved ? readCaroSave() : null,
-  );
+  const [local, setLocal] = useState<CaroSave | null>(() => {
+    const initial = startSaved ? readCaroSave() : null;
+    return initial && !initial.id ? { ...initial, id: crypto.randomUUID() } : initial;
+  });
   const [replace, setReplace] = useState<CaroLocalMode | null>(null);
   const [difficulty, setDifficulty] = useState<CaroDifficulty>("normal");
   const [name, setName] = useState("");
@@ -89,7 +91,7 @@ export function CaroScreen({
     return () => onInGame(false);
   }, [inGame, onInGame]);
 
-  function persist(save: CaroSave) {
+  function persist(save: CaroSave, moved = false) {
     try {
       writeCaroSave(save);
       setSaved(save);
@@ -99,7 +101,22 @@ export function CaroScreen({
         "Thiết bị chưa lưu được ván này. Bạn vẫn có thể tiếp tục chơi trên trang hiện tại.",
       );
     }
+    if (moved && save.id) {
+      if (save.game.moves.length === 1) trackGame("caro", save.id, "game_started");
+      if (save.game.result) trackGame("caro", save.id, "game_completed");
+    }
   }
+
+  useEffect(() => {
+    if (local?.id && saved && !saved.id && startSaved) {
+      try {
+        writeCaroSave(local);
+        setSaved(local);
+      } catch {
+        setNotice("Thiết bị chưa lưu được ván này.");
+      }
+    }
+  }, [local, saved, startSaved]);
 
   useEffect(() => {
     const mode = local?.mode;
@@ -116,7 +133,7 @@ export function CaroScreen({
       const game = move === null ? null : playCaro(local.game, move);
       if (game) {
         const next = { ...local, game };
-        persist(next);
+        persist(next, true);
         setLocal(next);
       }
     }, 330);
@@ -129,7 +146,7 @@ export function CaroScreen({
   }, [room?.revision]);
 
   function start(mode: CaroLocalMode, firstMark: CaroMark = "X") {
-    const save = { mode, firstMark, game: createCaro() };
+    const save = { id: crypto.randomUUID(), mode, firstMark, game: createCaro() };
     setLocal(save);
     setBoardKey((key) => key + 1);
     setSelected(null);
@@ -220,7 +237,7 @@ export function CaroScreen({
       const nextGame = playCaro(local.game, selected);
       if (!nextGame) return;
       const next = { ...local, game: nextGame };
-      persist(next);
+      persist(next, true);
       setLocal(next);
     } else online.send("caro:move", selected);
     setSelected(null);
@@ -255,7 +272,9 @@ export function CaroScreen({
                 className="button primary"
                 onClick={() => {
                   setSelected(null);
-                  setLocal(saved);
+                  const resumed = saved.id ? saved : { ...saved, id: crypto.randomUUID() };
+                  if (!saved.id) persist(resumed);
+                  setLocal(resumed);
                 }}
               >
                 {saved.game.result ? "Xem kết quả Caro" : "Tiếp tục ván Caro"}{" "}

@@ -1,3 +1,4 @@
+import { trackDeviceLatency } from "../telemetry.js";
 import { isNative, onlineServerUrl } from "../platform.js";
 import { io } from "socket.io-client";
 import { VIETNAMESE_TOKENS } from "@nha-choi/game-core";
@@ -175,11 +176,15 @@ async function connect(
         reject(new Error("Mất kết nối. Hãy đợi phòng kết nối lại."));
         return;
       }
-      socket
-        .timeout(4000)
-        .emit(event, payload, (err: Error | null, reply: T) =>
-          err ? reject(err) : resolve(reply),
-        );
+      const start = performance.now();
+      socket.timeout(4000).emit(event, payload, (err: Error | null, reply: T) => {
+        if (event === "game:command") {
+          const code = (reply as { code?: string } | undefined)?.code;
+          trackDeviceLatency(start, Boolean(err) || code === "STORAGE_UNAVAILABLE");
+        }
+        if (err) reject(err);
+        else resolve(reply);
+      });
     });
   }
   let resolveInitial: (value: OnlineSession) => void;

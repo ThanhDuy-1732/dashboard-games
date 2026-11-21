@@ -1,3 +1,4 @@
+import type { TelemetryEvent } from "@nha-choi/protocol";
 import { createHash, randomBytes, randomInt, randomUUID } from "node:crypto";
 import { createGame } from "@nha-choi/game-core";
 import type { BoardSize, RandomSource, Token } from "@nha-choi/game-core";
@@ -39,6 +40,17 @@ interface Room {
 const hash = (value: string) =>
   createHash("sha256").update(value).digest("hex");
 export class Rooms {
+  private milestones: TelemetryEvent[] | null = null;
+
+  get activeGames() {
+    return (this.pendingCheckpoint ?? this.checkpoint()).filter((room) =>
+      room.closedAt === null && room.authority && room.authority.state.phase !== "finished").length;
+  }
+
+  private milestone(id: string, kind: "game_started" | "game_completed") {
+    this.milestones?.push({ id: id + ":" + kind, kind, occurredAt: new Date(this.now()).toISOString(), game: "ty-phu", mode: "online" });
+  }
+
   private pendingCheckpoint: RoomCheckpoint[] | null = null;
   private effects: (() => void)[] | null = null;
   private draining = false;
@@ -138,15 +150,16 @@ export class Rooms {
   }
   async durable<T>(
     work: () => T,
-    save: (records: RoomCheckpoint[]) => Promise<void>,
+    save: (records: RoomCheckpoint[], events: TelemetryEvent[]) => Promise<void>,
   ): Promise<T> {
     const before = this.checkpoint();
     this.pendingCheckpoint = before;
     this.effects = [];
+    this.milestones = [];
     let committed = false;
     try {
       const result = work();
-      await save(this.checkpoint());
+      await save(this.checkpoint(), this.milestones);
       committed = true;
       this.pendingCheckpoint = null;
       const effects = this.effects;
@@ -158,6 +171,7 @@ export class Rooms {
       this.effects = null;
       throw error;
     } finally {
+      this.milestones = null;
       this.pendingCheckpoint = null;
     }
   }
@@ -367,6 +381,7 @@ export class Rooms {
       this.random,
     );
     room.lastActivity = this.now();
+    this.milestone(room.id, "game_started");
     this.publish(room);
     return this.reply(room, member);
   }
@@ -443,6 +458,7 @@ export class Rooms {
     if (room.authority.snapshot().phase === "finished") {
       room.closedAt = this.now();
       room.reason = "Ván đấu đã kết thúc.";
+      if (reply.ok) this.milestone(room.id, "game_completed");
     }
     this.publish(room);
     return reply;

@@ -1,6 +1,9 @@
 import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { promisify } from "node:util";
+import { z } from "zod";
+import { cleanupFilter } from "./metrics-cleanup.js";
+import type { MetricWriter } from "./metrics.js";
 import { json, readJson } from "./http.js";
 
 const derive = promisify(scrypt);
@@ -59,5 +62,41 @@ export function createAdminHandler(options: AdminOptions, route?: AdminRoute) {
       return json(res, 200, { ok: true });
     if (route) return route(req, res, url, token);
     json(res, 404, { error: "NOT_FOUND" });
+  };
+}
+
+export function createCleanupHandler(metrics?: MetricWriter) {
+  const previews = new Map<string, { filter: z.infer<typeof cleanupFilter>; session: string; expires: number }>();
+  return async (req: IncomingMessage, res: ServerResponse, url: URL, session: string): Promise<boolean> => {
+    if (!["/api/admin/cleanup", "/api/admin/cleanup/preview"].includes(url.pathname)) return false;
+    const respond = (status: number, data: unknown) => {
+      json(res, status, data);
+      return true;
+    };
+    if (!metrics?.preview || !metrics.cleanup || !metrics.cleanupHistory)
+      return respond(503, { error: "METRICS_UNAVAILABLE" });
+    const time = Date.now();
+    for (const [key, preview] of previews) if (preview.expires <= time) previews.delete(key);
+    if (req.method === "POST" && url.pathname.endsWith("/preview")) {
+      if (previews.size >= 100) return respond(429, { error: "RATE_LIMITED" });
+      const filter = cleanupFilter.safeParse(await readJson(req, 2048));
+      if (!filter.success) return respond(400, { error: "FILTER" });
+      const preview = await metrics.preview(filter.data);
+      if (!preview) return respond(400, { error: "RETENTION" });
+      const previewToken = randomBytes(32).toString("base64url");
+      previews.set(previewToken, { filter: filter.data, session, expires: time + 600_000 });
+      return respond(200, { ...preview, previewToken, before: filter.data.before });
+    }
+    if (url.pathname.endsWith("/preview")) return respond(405, { error: "METHOD" });
+    if (req.method === "GET") return respond(200, await metrics.cleanupHistory());
+    if (req.method !== "POST") return respond(405, { error: "METHOD" });
+    const request = z.strictObject({ previewToken: z.string().length(43) }).safeParse(await readJson(req, 2048));
+    if (!request.success) return respond(400, { error: "TOKEN" });
+    const { previewToken } = request.data;
+    const preview = previews.get(previewToken);
+    if (!preview || preview.session !== session) return respond(409, { error: "PREVIEW_EXPIRED" });
+    const result = await metrics.cleanup(preview.filter);
+    if (!result.remaining) previews.delete(previewToken);
+    return respond(200, result);
   };
 }

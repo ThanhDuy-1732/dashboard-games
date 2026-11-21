@@ -1,0 +1,42 @@
+.admin-app {
+  max-width: 1120px;
+  margin-inline: auto;
+  padding: clamp(1rem, 4vw, 3rem);
+  color: #182c2a;
+}
+.admin-app h1 { margin: 0 0 1rem; font-size: clamp(1.8rem, 5vw, 3rem); }
+.admin-app h2 { margin: 0; }
+.admin-app button, .admin-app select, .admin-app input {
+  min-height: 2.75rem;
+  padding: .5rem .75rem;
+  border: 1px solid #667b71;
+  border-radius: .35rem;
+  background: #fffdf8;
+  color: #182c2a;
+  font: inherit;
+}
+.admin-app button { cursor: pointer; font-weight: 650; }
+.admin-app button:disabled { cursor: default; opacity: .6; }
+.admin-app form, .admin-actions { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; }
+.admin-app label { display: grid; gap: .25rem; }
+.admin-session { margin-bottom: 1rem; }
+.admin-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .35rem;
+  padding-block: .75rem;
+  border-block: 1px solid #b5c2ba;
+}
+.admin-nav a { color: #182c2a; padding: .55rem .9rem; border-radius: .35rem; }
+.admin-nav a[aria-current="page"] { background: #204c42; color: #fff; font-weight: 700; }
+.admin-toolbar { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: .75rem; margin-block: 1.5rem .75rem; }
+.admin-muted { color: #395950; }
+.admin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: .75rem; }
+.admin-stats div, .admin-preview { background: #fffdf8; padding: 1rem; border: 1px solid #b5c2ba; border-radius: .5rem; }
+.admin-stats dd { margin: .5rem 0 0; font-size: 1.55rem; font-weight: 700; }
+.admin-table { overflow-x: auto; margin-block: 1rem; }
+.admin-table table { width: 100%; border-collapse: collapse; background: #fffdf8; }
+.admin-table caption { padding: .5rem 0; text-align: start; font-weight: 700; }
+.admin-table th, .admin-table td { position: relative; isolation: isolate; padding: .65rem .8rem; border-bottom: 1px solid #b5c2ba; text-align: start; }
+.admin-bar { position: absolute; z-index: -1; inset: .25rem auto .25rem 0; background: #c8e4d4; border-radius: .15rem; }
+.admin-preview { margin-top: 1rem; }

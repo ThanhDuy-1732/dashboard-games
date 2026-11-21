@@ -1,4 +1,6 @@
+import { scryptSync } from "node:crypto";
 import { defineConfig, devices } from "@playwright/test";
+const testSalt = "00000000000000000000000000000000";
 export default defineConfig({
   testDir: "./apps/web/e2e",
   fullyParallel: false,
@@ -31,7 +33,10 @@ export default defineConfig({
     },
     {
       command: "npm run start --workspace @nha-choi/server",
-      env: { DATABASE_URL: "", NODE_ENV: "test" },
+      env: {
+        DATABASE_URL: "", NODE_ENV: "test", ADMIN_ORIGIN: "http://127.0.0.1:5173",
+        ADMIN_PASSWORD_HASH: testSalt + ":" + scryptSync("fixture-only", testSalt, 64).toString("hex"),
+      },
       url: "http://127.0.0.1:3001/health",
       reuseExistingServer: false,
     },

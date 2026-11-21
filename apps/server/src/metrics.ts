@@ -8,6 +8,10 @@ export interface MetricReceipt {
   expired: string[];
 }
 export interface MetricWriter {
+  preview?(filter: Parameters<typeof import("./metrics-cleanup.js").previewCleanup>[2]): ReturnType<typeof import("./metrics-cleanup.js").previewCleanup>;
+  cleanup?(filter: Parameters<typeof import("./metrics-cleanup.js").cleanupMetrics>[2]): ReturnType<typeof import("./metrics-cleanup.js").cleanupMetrics>;
+  cleanupHistory?(): ReturnType<typeof import("./metrics-cleanup.js").cleanupHistory>;
+  summary?(days: number, includeSystem: boolean): ReturnType<typeof import("./metrics-read.js").readMetrics>;
   record(source: Source, events: readonly TelemetryEvent[]): Promise<MetricReceipt>;
 }
 
@@ -25,7 +29,7 @@ export async function recordEvents(db: Queryable, scope: string, source: Source,
         AND occurred_at <= statement_timestamp() + interval '5 minutes'
     ), inserted AS (
       INSERT INTO nha_choi_metric_events(scope, source, id, occurred_at, kind, attributes)
-      SELECT $1, $2, id, occurred_at, kind, attributes FROM eligible
+      SELECT $1, $2, id, occurred_at, kind, attributes FROM eligible ORDER BY id
       ON CONFLICT DO NOTHING
       RETURNING occurred_at, kind, attributes
     ), grouped AS (
@@ -33,7 +37,7 @@ export async function recordEvents(db: Queryable, scope: string, source: Source,
         CASE WHEN kind = 'latency' THEN
           (attributes - 'durationMs') || jsonb_build_object('bucket',
             (ARRAY[10,25,50,100,200,400,800,1500,3000,6000,12000,30000,60000,120000])[
-              width_bucket((attributes->>'durationMs')::numeric,
+              width_bucket(ceil((attributes->>'durationMs')::numeric),
                 ARRAY[11,26,51,101,201,401,801,1501,3001,6001,12001,30001,60001]::numeric[]) + 1
             ])
         ELSE attributes - 'sessionId' END AS dimensions
@@ -42,6 +46,7 @@ export async function recordEvents(db: Queryable, scope: string, source: Source,
       INSERT INTO nha_choi_metric_days(scope, day, source, kind, dimensions, count)
       SELECT $1, day, $2, kind, dimensions, count(*) FROM grouped
       GROUP BY day, kind, dimensions
+      ORDER BY day, kind, dimensions
       ON CONFLICT (scope, day, source, kind, dimensions)
       DO UPDATE SET count = nha_choi_metric_days.count + EXCLUDED.count
     )

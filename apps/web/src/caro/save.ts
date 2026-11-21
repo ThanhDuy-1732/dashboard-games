@@ -5,6 +5,7 @@ const KEY = "nha-choi-caro-offline-v1";
 export type CaroLocalMode = "local" | CaroDifficulty;
 
 export interface CaroSave {
+  id?: string;
   mode: CaroLocalMode;
   firstMark: CaroMark;
   game: CaroGame;
@@ -20,7 +21,10 @@ export function readCaroSave(): CaroSave | null {
     )
       return null;
     const game = restoreCaro(data.moves);
-    return game ? { mode: data.mode, firstMark: data.firstMark, game } : null;
+    return game ? {
+      mode: data.mode, firstMark: data.firstMark, game,
+      ...(typeof data.id === "string" && /^[a-f0-9-]{36}$/.test(data.id) ? { id: data.id } : {}),
+    } : null;
   } catch {
     return null;
   }
@@ -31,6 +35,7 @@ export function writeCaroSave(save: CaroSave) {
     KEY,
     JSON.stringify({
       version: 1,
+      id: save.id,
       mode: save.mode,
       firstMark: save.firstMark,
       moves: save.game.moves,

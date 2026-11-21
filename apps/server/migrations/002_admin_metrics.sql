@@ -19,3 +19,19 @@ CREATE TABLE IF NOT EXISTS nha_choi_metric_days (
   count bigint NOT NULL,
   PRIMARY KEY (scope, day, source, kind, dimensions)
 );
+
+CREATE TABLE IF NOT EXISTS nha_choi_metric_sizes (
+  scope text NOT NULL,
+  day date NOT NULL,
+  bytes bigint NOT NULL,
+  PRIMARY KEY (scope, day)
+);
+
+CREATE TABLE IF NOT EXISTS nha_choi_metric_cleanup (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  scope text NOT NULL,
+  removed_at timestamptz NOT NULL DEFAULT statement_timestamp(),
+  cutoff timestamptz NOT NULL,
+  kinds text[] NOT NULL,
+  deleted integer NOT NULL
+);

@@ -1,6 +1,12 @@
 import "./compat.js";
 import { createRoot } from "react-dom/client";
-import { AdminApp } from "./admin/AdminApp.js";
+import { lazy, Suspense } from "react";
+import { isNative } from "./platform.js";
 import { App } from "./App.js";
 import "./styles.css";
-createRoot(document.getElementById("root")!).render(/^\/admin(?:\/|$)/.test(location.pathname) ? <AdminApp /> : <App />);
+const AdminApp = lazy(() => import("./admin/AdminApp.js").then(({ AdminApp }) => ({ default: AdminApp })));
+createRoot(document.getElementById("root")!).render(
+  !isNative() && /^\/admin(?:\/|$)/.test(location.pathname)
+    ? <Suspense fallback={<p role="status">Đang tải trang quản trị…</p>}><AdminApp /></Suspense>
+    : <App />,
+);

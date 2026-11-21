@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { Pool } from "pg";
 import { expect, test } from "vitest";
+import { readMetrics } from "../src/metrics-read.js";
 import { recordEvents } from "../src/metrics.js";
 
 test.skipIf(!process.env.ADMIN_TEST_PG_SOCKET)("counts unique events, applies local dates and rolls back aggregates", async () => {
@@ -26,6 +27,15 @@ test.skipIf(!process.env.ADMIN_TEST_PG_SOCKET)("counts unique events, applies lo
     await recordEvents(client, 'admin-fixture', "device", events);
     const query = "SELECT day::text, count::int FROM nha_choi_metric_days WHERE scope = 'admin-fixture' ORDER BY day";
     expect((await client.query(query)).rows.map((row) => row.count)).toEqual([1, 1]);
+    await recordEvents(client, "admin-fixture", "server", [{
+      id: "latency-example", occurredAt: new Date().toISOString(), kind: "latency",
+      metric: "backend", durationMs: 42, technicalError: false,
+    }]);
+    const summary = await readMetrics(client, "admin-fixture", 7, true);
+    expect(summary.days).toHaveLength(7);
+    expect(summary.system.latency).toContainEqual({ metric: "backend", samples: 1, errors: 0, p50: 50, p95: 50 });
+    expect(summary.system.latency).toContainEqual({ metric: "device", samples: 0, errors: 0, p50: null, p95: null });
+    expect(summary.system).toMatchObject({ storageHistory: [{ bytes: expect.any(Number) }] });
     await client.query("ROLLBACK");
     expect((await client.query(query)).rows).toEqual([]);
   } finally {

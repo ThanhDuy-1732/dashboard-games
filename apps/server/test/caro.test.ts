@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { expect, it } from "vitest";
 import type { Server, Socket } from "socket.io";
-import type { CaroRoomReply, CaroRoomView } from "@nha-choi/protocol";
+import type { CaroRoomReply, CaroRoomView, TelemetryEvent } from "@nha-choi/protocol";
 import { CaroRooms } from "../src/caro-rooms.js";
 
 class TestSocket {
@@ -41,9 +41,11 @@ function harness() {
     sockets: { sockets },
     to: (id: string) => sockets.get(id),
   } as unknown as Server;
-  const rooms = new CaroRooms(io, () => now);
+  const events: TelemetryEvent[] = [];
+  const rooms = new CaroRooms(io, () => now, (event) => events.push(event));
   return {
     rooms,
+    events,
     advance: (milliseconds: number) => {
       now += milliseconds;
     },
@@ -66,7 +68,7 @@ function accepted(result: CaroRoomReply) {
 }
 
 it("authorizes turns, restores a disconnected seat and swaps marks on mutual rematch", () => {
-  const { connect } = harness();
+  const { connect, events } = harness();
   const host = connect("host");
   const guest = connect("guest");
   const stranger = connect("stranger");
@@ -106,6 +108,7 @@ it("authorizes turns, restores a disconnected seat and swaps marks on mutual rem
     ({ room } = accepted(move(host, i + 1)));
   }
   expect(room.game.result).toMatchObject({ winner: "X" });
+  expect(events.filter((event) => event.kind !== "latency").map((event) => event.kind)).toEqual(["game_started", "game_completed"]);
 
   accepted(host.send("rematch", { round: 1 }));
   const next = accepted(returned.send("rematch", { round: 1 })).room;
