@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { AdminApiError, adminApi } from "./api.js";
 import type { MetricRow, Summary } from "./api.js";
+import { Deployments } from "./Deployments.js";
 
 const tabs = [
   ["", "Tổng quan"], ["traffic", "Truy cập"], ["games", "Ván chơi"], ["system", "Hệ thống"], ["cleanup", "Dọn dữ liệu"],
@@ -57,6 +58,7 @@ export function Dashboard({ onExpired }: { onExpired: () => void }) {
         <button onClick={() => refresh()}>Làm mới</button>
       </div>}
     </div>
+    {segment === "system" && <Deployments key={reload} onExpired={onExpired} />}
     {segment === "cleanup" ? <Cleanup onExpired={onExpired} /> : tab && <>
       {error ? <p role="alert">Chưa tải được số liệu. Hãy thử làm mới.</p>
         : !summary ? <p role="status">Đang tải số liệu…</p> : <>

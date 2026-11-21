@@ -12,3 +12,4 @@ export {
 export * from "./caro.js";
 export { telemetryEventSchema } from "./telemetry.js";
 export type { TelemetryEvent } from "./telemetry.js";
+export type { DeploymentOverview, ProviderDeployments } from "./deployments.js";

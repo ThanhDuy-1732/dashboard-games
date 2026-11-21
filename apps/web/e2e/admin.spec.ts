@@ -36,3 +36,30 @@ test("opens protected admin pages directly and shows the cleanup preview before 
   await page.getByLabel("Khoảng thời gian").selectOption("30d");
   await expect(page.getByRole("cell", { name: "Caro" }).first()).toBeVisible();
 });
+
+test("shows HTTP health separately from the latest production deploy", async ({ page }) => {
+  await page.route("**/api/admin/deployments", (route) => route.fulfill({
+    json: {
+      render: { status: "ok", latest: { state: "build_in_progress", sha: "b".repeat(40) } },
+      vercel: { status: "ok", latest: { state: "ERROR", sha: "c".repeat(40) } },
+      backend: { sha: "a".repeat(40), branch: "main", nodeVersion: "v24.11.0", cpu: 1, uptimeSeconds: 120 },
+    },
+  }));
+  await page.goto("/admin/system");
+  await page.getByLabel("Mật khẩu quản trị").fill("fixture-only");
+  await page.getByRole("button", { name: "Đăng nhập" }).click();
+  const render = page.getByRole("row").filter({ has: page.getByRole("rowheader", { name: "Render" }) });
+  const vercel = page.getByRole("row").filter({ has: page.getByRole("rowheader", { name: "Vercel" }) });
+  await expect(render).toContainText("Đang phản hồi");
+  await expect(render).toContainText("aaaaaaaaaaaa");
+  await expect(render).toContainText("Đang build");
+  await expect(render).toContainText("bbbbbbbbbbbb");
+  await expect(vercel).toContainText("Đang phản hồi");
+  await expect(vercel).toContainText("Triển khai thất bại");
+  await expect(vercel).toContainText("cccccccccccc");
+
+  await page.route("**/api/health", (route) => route.fulfill({ status: 503, json: { ok: false } }));
+  await page.getByRole("button", { name: "Làm mới" }).click();
+  await expect(render).toContainText("Không phản hồi hoặc chưa sẵn sàng");
+  await expect(vercel).toContainText("Đang phản hồi");
+});

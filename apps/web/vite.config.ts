@@ -2,6 +2,10 @@ import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 const native = process.env.NATIVE_BUILD === "1";
 const proxy = {
+  "^/api/health$": {
+    target: process.env.BACKEND_PROXY_URL || "http://127.0.0.1:3001",
+    rewrite: () => "/health",
+  },
   "/api": process.env.BACKEND_PROXY_URL || "http://127.0.0.1:3001",
   "/socket.io": {
     target: process.env.BACKEND_PROXY_URL || "http://127.0.0.1:3001",
@@ -11,7 +15,15 @@ const proxy = {
 export default defineConfig({
   server: { proxy },
   preview: { proxy },
-  define: { __BUILD_ID__: JSON.stringify(Date.now().toString()) },
+  define: {
+    __BUILD_ID__: JSON.stringify(Date.now().toString()),
+    __FRONTEND_DEPLOY__: JSON.stringify({
+      sha: process.env.VERCEL_GIT_COMMIT_SHA,
+      branch: process.env.VERCEL_GIT_COMMIT_REF,
+      environment: process.env.VERCEL_ENV,
+      builtAt: new Date().toISOString(),
+    }),
+  },
   build: { outDir: native ? "dist-native" : "dist", target:["safari15","chrome100"] },
   plugins: [
     VitePWA({

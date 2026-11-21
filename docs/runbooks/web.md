@@ -84,3 +84,7 @@ ADMIN_TEST_PG_SOCKET=/path/to/test/socket npm run test:admin-database
 ```
 
 Nếu reverse proxy gom lưu lượng về cùng địa chỉ kết nối, giới hạn `/api/telemetry` theo từng client tại proxy và đặt `TELEMETRY_PEER_LIMIT` phù hợp với lưu lượng từ proxy (mặc định 30 yêu cầu/phút, tối đa 1.000). Backend dùng địa chỉ kết nối trực tiếp, không tin header IP do client gửi.
+
+Trang **Hệ thống** kiểm tra phản hồi HTTP của frontend và backend khi mở hoặc bấm **Làm mới**. Quy tắc Vercel chuyển tiếp `/api/health` tới Render. Kết quả phản hồi được hiển thị riêng với trạng thái triển khai. Commit Vercel là commit của bản web đang mở; bật **Automatically expose System Environment Variables** trên Vercel để thấy commit, nhánh và môi trường của bản đó.
+
+Để hiển thị lượt build production mới nhất, đặt trên **backend Render** các biến `RENDER_API_KEY`, `VERCEL_API_TOKEN`, `VERCEL_PROJECT_ID` và `VERCEL_TEAM_ID` nếu dự án Vercel thuộc team. Render tự cấp `RENDER_SERVICE_ID`. Chỉ dùng quyền tối thiểu mà từng nền tảng cho phép. Hai khóa chỉ gửi đến API của nhà cung cấp tương ứng từ backend và giao diện chỉ nhận thông tin triển khai đã lọc. Nếu chưa cấp API token, mục trạng thái triển khai sẽ báo chưa cấu hình. Kiểm tra phản hồi HTTP và metadata bản đang mở vẫn hoạt động.

@@ -10,6 +10,7 @@ test("admin session requires a valid password and protects logout across origins
   try {
     const request = (path: string, options?: RequestInit) => fetch(app.url + "/api/admin/" + path, options);
     expect((await request("summary")).status).toBe(401);
+    expect((await request("deployments")).status).toBe(401);
     const login = await request("login", {
       method: "POST",
       headers: { Origin: origin, "Content-Type": "application/json" },

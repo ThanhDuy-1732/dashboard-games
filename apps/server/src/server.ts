@@ -1,3 +1,5 @@
+import { availableParallelism } from "node:os";
+import { readDeployments } from "./deployments.js";
 import { randomUUID } from "node:crypto";
 import type { TelemetryEvent } from "@nha-choi/protocol";
 import { createServer } from "node:http";
@@ -52,6 +54,19 @@ export async function createGameServer({
   const cleanup = createCleanupHandler(metrics);
   const adminHandler = admin && createAdminHandler(admin, async (req, res, url, session) => {
     if (await cleanup(req, res, url, session)) return;
+    if (req.method === "GET" && url.pathname === "/api/admin/deployments") {
+      const deployments = await readDeployments(process.env);
+      return json(res, 200, {
+        ...deployments,
+        backend: {
+          sha: revision && /^[a-f0-9]{40}$/.test(revision) ? revision : undefined,
+          branch: process.env.RENDER_GIT_BRANCH,
+          nodeVersion: process.version,
+          cpu: availableParallelism(),
+          uptimeSeconds: Math.floor(process.uptime()),
+        },
+      });
+    }
     if (req.method !== "GET" || !["/api/admin/summary", "/api/admin/system"].includes(url.pathname))
       return json(res, 404, { error: "NOT_FOUND" });
     if (!metrics?.summary) return json(res, 503, { error: "METRICS_UNAVAILABLE" });
