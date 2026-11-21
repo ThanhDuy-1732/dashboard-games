@@ -32,6 +32,7 @@ interface Options {
   store?: RoomStore;
   metrics?: MetricWriter;
   admin?: AdminOptions;
+  revision?: string;
   telemetryPeerLimit?: number;
 }
 export async function createGameServer({
@@ -43,6 +44,7 @@ export async function createGameServer({
   store,
   metrics,
   admin,
+  revision,
   telemetryPeerLimit = 30,
 }: Options = {}) {
   let healthy = true,
@@ -73,6 +75,7 @@ export async function createGameServer({
     }
     res.setHeader("Content-Type", "application/json");
     if (req.url === "/health") {
+      if (revision && /^[a-f0-9]{40}$/.test(revision)) res.setHeader("X-App-Revision", revision);
       res.writeHead(healthy && !closing ? 200 : 503);
       res.end(JSON.stringify({ ok: healthy && !closing }));
     } else {

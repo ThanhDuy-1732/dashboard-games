@@ -18,6 +18,8 @@ const origins = (
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
+const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH?.trim();
+const adminOrigin = process.env.ADMIN_ORIGIN?.trim();
 let app: Awaited<ReturnType<typeof createGameServer>>;
 try {
   const store = process.env.DATABASE_URL
@@ -30,10 +32,11 @@ try {
     store,
     metrics: store,
     telemetryPeerLimit,
-    admin: process.env.ADMIN_PASSWORD_HASH && process.env.ADMIN_ORIGIN ? {
-      origin: process.env.ADMIN_ORIGIN,
-      passwordHash: process.env.ADMIN_PASSWORD_HASH,
-      secure: process.env.NODE_ENV === "production" || process.env.ADMIN_ORIGIN.startsWith("https://"),
+    revision: process.env.RENDER_GIT_COMMIT,
+    admin: adminPasswordHash && adminOrigin ? {
+      origin: adminOrigin,
+      passwordHash: adminPasswordHash,
+      secure: process.env.NODE_ENV === "production" || adminOrigin.startsWith("https://"),
     } : undefined,
   });
 } catch (error) {
@@ -45,6 +48,9 @@ try {
   process.exit(1);
 }
 console.info(`Nhà Chơi server: ${app.url}`);
+if (!adminPasswordHash || !adminOrigin)
+  console.info("Admin chưa bật. Cần ADMIN_PASSWORD_HASH và ADMIN_ORIGIN.");
+else console.info("Admin đã bật.");
 console.info(
   process.env.DATABASE_URL
     ? "Đã bật lưu ván online bằng PostgreSQL."
