@@ -1,3 +1,4 @@
+import { adminConfigIssue } from "./admin.js";
 import { NeonRoomStore, RoomStoreError } from "./database.js";
 import { createGameServer } from "./server.js";
 if (process.env.NODE_ENV === "production" && !process.env.DATABASE_URL) {
@@ -20,6 +21,14 @@ const origins = (
   .filter(Boolean);
 const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH?.trim();
 const adminOrigin = process.env.ADMIN_ORIGIN?.trim();
+const admin = {
+  origin: adminOrigin ?? "",
+  passwordHash: adminPasswordHash ?? "",
+  secure: process.env.NODE_ENV === "production" || Boolean(adminOrigin?.startsWith("https://")),
+};
+const adminIssue = adminConfigIssue(admin);
+if (adminIssue)
+  console.info(`Admin chưa bật: ${adminIssue} thiếu hoặc sai định dạng.`);
 let app: Awaited<ReturnType<typeof createGameServer>>;
 try {
   const store = process.env.DATABASE_URL
@@ -33,24 +42,22 @@ try {
     metrics: store,
     telemetryPeerLimit,
     revision: process.env.RENDER_GIT_COMMIT,
-    admin: adminPasswordHash && adminOrigin ? {
-      origin: adminOrigin,
-      passwordHash: adminPasswordHash,
-      secure: process.env.NODE_ENV === "production" || adminOrigin.startsWith("https://"),
-    } : undefined,
+    admin: adminIssue ? undefined : admin,
   });
 } catch (error) {
+  const code = error instanceof Error && "code" in error ? error.code : undefined;
+  const safeCode = typeof code === "string" &&
+    /^(?:[0-9A-Z]{5}|ENOENT|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|EADDRINUSE|EACCES|CERT_HAS_EXPIRED|UNABLE_TO_VERIFY_LEAF_SIGNATURE|ERR_TLS_CERT_ALTNAME_INVALID)$/.test(code)
+    ? ` [${code}]` : "";
   console.error(
     error instanceof RoomStoreError
       ? `Không mở được dữ liệu online: ${error.code}`
-      : "Không khởi động được backend. Kiểm tra kết nối database, SSL và cấu hình cổng.",
+      : "Không khởi động được backend. Kiểm tra kết nối database, SSL và cấu hình cổng." + safeCode,
   );
   process.exit(1);
 }
 console.info(`Nhà Chơi server: ${app.url}`);
-if (!adminPasswordHash || !adminOrigin)
-  console.info("Admin chưa bật. Cần ADMIN_PASSWORD_HASH và ADMIN_ORIGIN.");
-else console.info("Admin đã bật.");
+if (!adminIssue) console.info("Admin đã bật.");
 console.info(
   process.env.DATABASE_URL
     ? "Đã bật lưu ván online bằng PostgreSQL."

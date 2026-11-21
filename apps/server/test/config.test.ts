@@ -31,3 +31,16 @@ it("reports the public deployment revision without changing the health response"
     await app.close();
   }
 });
+
+it("reports which admin variable is invalid without exposing its value", async () => {
+  const { adminConfigIssue } = await import("../src/admin.js");
+  const valid = {
+    origin: "https://dashboard-games-iota.vercel.app",
+    passwordHash: "a".repeat(32) + ":" + "b".repeat(128),
+    secure: true,
+  };
+  expect(adminConfigIssue(valid)).toBeUndefined();
+  expect(adminConfigIssue({ ...valid, origin: "not-a-url" })).toBe("ADMIN_ORIGIN");
+  expect(adminConfigIssue({ ...valid, origin: valid.origin + "/" })).toBe("ADMIN_ORIGIN");
+  expect(adminConfigIssue({ ...valid, passwordHash: "not-a-hash" })).toBe("ADMIN_PASSWORD_HASH");
+});

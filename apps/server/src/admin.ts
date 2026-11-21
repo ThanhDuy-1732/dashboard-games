@@ -15,11 +15,19 @@ export interface AdminOptions {
 }
 export type AdminRoute = (req: IncomingMessage, res: ServerResponse, url: URL, session: string) => Promise<void>;
 
+export function adminConfigIssue({ passwordHash, origin, secure }: AdminOptions) {
+  if (!/^[a-f0-9]{32}:[a-f0-9]{128}$/.test(passwordHash))
+    return "ADMIN_PASSWORD_HASH";
+  const url = URL.parse(origin);
+  if (!url || url.origin !== origin ||
+      (url.protocol !== "https:" && (secure || url.protocol !== "http:")))
+    return "ADMIN_ORIGIN";
+}
+
 export function createAdminHandler(options: AdminOptions, route?: AdminRoute) {
-  const [salt, hash] = options.passwordHash.split(":");
-  if (!salt || !/^[a-f0-9]{32}$/.test(salt) || !hash || !/^[a-f0-9]{128}$/.test(hash)
-      || options.passwordHash !== salt + ":" + hash || new URL(options.origin).origin !== options.origin)
-    throw new Error("Invalid admin configuration");
+  const issue = adminConfigIssue(options);
+  if (issue) throw new Error(`Invalid admin configuration: ${issue}`);
+  const [salt, hash] = options.passwordHash.split(":") as [string, string];
   const expected = Buffer.from(hash, "hex");
   const sessions = new Map<string, number>();
   const cookie = options.secure ? "__Host-nha_admin" : "nha_admin_dev";
