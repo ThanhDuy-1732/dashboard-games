@@ -26,6 +26,11 @@ try {
     origins,
     store,
     metrics: store,
+    admin: process.env.ADMIN_PASSWORD_HASH && process.env.ADMIN_ORIGIN ? {
+      origin: process.env.ADMIN_ORIGIN,
+      passwordHash: process.env.ADMIN_PASSWORD_HASH,
+      secure: process.env.NODE_ENV === "production" || process.env.ADMIN_ORIGIN.startsWith("https://"),
+    } : undefined,
   });
 } catch (error) {
   console.error(

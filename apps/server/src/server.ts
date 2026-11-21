@@ -17,6 +17,8 @@ import { Rooms } from "./rooms.js";
 import type { RoomStore } from "./database.js";
 import type { MetricWriter } from "./metrics.js";
 import { ingestTelemetry } from "./telemetry-http.js";
+import { createAdminHandler } from "./admin.js";
+import type { AdminOptions } from "./admin.js";
 import { json } from "./http.js";
 import { serverRandom } from "./random.js";
 interface Options {
@@ -27,6 +29,7 @@ interface Options {
   random?: RandomSource;
   store?: RoomStore;
   metrics?: MetricWriter;
+  admin?: AdminOptions;
 }
 export async function createGameServer({
   port = 3001,
@@ -36,10 +39,17 @@ export async function createGameServer({
   random = serverRandom,
   store,
   metrics,
+  admin,
 }: Options = {}) {
   let healthy = true,
     closing = false;
+  const adminHandler = admin && createAdminHandler(admin);
   const http = createServer((req, res) => {
+    if (req.url?.startsWith("/api/admin/") && adminHandler) {
+      void adminHandler(req, res, new URL(req.url, "http://localhost"))
+        .catch(() => { if (!res.headersSent) json(res, 503, { error: "ADMIN_UNAVAILABLE" }); });
+      return;
+    }
     if (req.url === "/api/telemetry") {
       void ingestTelemetry(req, res, origins, () =>
         consume(`telemetry:${req.socket.remoteAddress}`, 30, 60000), metrics,

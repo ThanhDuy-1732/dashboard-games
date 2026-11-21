@@ -17,7 +17,7 @@ registerRoute(
     }).catch(() => undefined);
     return latest?.ok ? latest : offlineNavigation(options);
   }, {
-    denylist: [/^\/socket\.io(?:\/|$)/],
+    denylist: [/^\/(?:admin|api)(?:\/|$)/, /^\/socket\.io(?:\/|$)/],
   }),
 );
 addRoute();
