@@ -10,3 +10,5 @@ export {
   BleFrameError,
 } from "./ble-frames.js";
 export * from "./caro.js";
+export { telemetryEventSchema } from "./telemetry.js";
+export type { TelemetryEvent } from "./telemetry.js";

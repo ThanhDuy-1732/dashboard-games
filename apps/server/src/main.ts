@@ -17,13 +17,15 @@ const origins = (
   .filter(Boolean);
 let app: Awaited<ReturnType<typeof createGameServer>>;
 try {
+  const store = process.env.DATABASE_URL
+    ? new NeonRoomStore(process.env.DATABASE_URL)
+    : undefined;
   app = await createGameServer({
     port,
     host: process.env.HOST ?? "127.0.0.1",
     origins,
-    store: process.env.DATABASE_URL
-      ? new NeonRoomStore(process.env.DATABASE_URL)
-      : undefined,
+    store,
+    metrics: store,
   });
 } catch (error) {
   console.error(

@@ -15,6 +15,9 @@ import type { RandomSource } from "@nha-choi/game-core";
 import { CaroRooms } from "./caro-rooms.js";
 import { Rooms } from "./rooms.js";
 import type { RoomStore } from "./database.js";
+import type { MetricWriter } from "./metrics.js";
+import { ingestTelemetry } from "./telemetry-http.js";
+import { json } from "./http.js";
 import { serverRandom } from "./random.js";
 interface Options {
   port?: number;
@@ -23,6 +26,7 @@ interface Options {
   now?: () => number;
   random?: RandomSource;
   store?: RoomStore;
+  metrics?: MetricWriter;
 }
 export async function createGameServer({
   port = 3001,
@@ -31,10 +35,17 @@ export async function createGameServer({
   now = Date.now,
   random = serverRandom,
   store,
+  metrics,
 }: Options = {}) {
   let healthy = true,
     closing = false;
   const http = createServer((req, res) => {
+    if (req.url === "/api/telemetry") {
+      void ingestTelemetry(req, res, origins, () =>
+        consume(`telemetry:${req.socket.remoteAddress}`, 30, 60000), metrics,
+      ).catch(() => { if (!res.headersSent) json(res, 400, { error: "REQUEST" }); });
+      return;
+    }
     res.setHeader("Content-Type", "application/json");
     if (req.url === "/health") {
       res.writeHead(healthy && !closing ? 200 : 503);

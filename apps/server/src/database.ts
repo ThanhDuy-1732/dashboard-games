@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { Pool } from "pg";
 import type { PoolClient } from "pg";
+import { recordEvents } from "./metrics.js";
+import type { MetricWriter } from "./metrics.js";
 import { roomCheckpointSchema } from "./room-checkpoint.js";
 import type { RoomCheckpoint } from "./room-checkpoint.js";
 export interface RoomStore {
@@ -22,7 +24,7 @@ export class RoomStoreError extends Error {
     this.name = "RoomStoreError";
   }
 }
-export class NeonRoomStore implements RoomStore {
+export class NeonRoomStore implements RoomStore, MetricWriter {
   private pool: Pool;
   private owner = randomUUID();
   private initialized = false;
@@ -68,6 +70,9 @@ export class NeonRoomStore implements RoomStore {
   needsReload() {
     return performance.now() - this.lastWrite >= 20000;
   }
+  record(...args: Parameters<MetricWriter["record"]>) {
+    return recordEvents(this.pool, this.scope, ...args);
+  }
   async load() {
     if (!this.initialized) {
       await this.pool.query(
@@ -75,6 +80,9 @@ export class NeonRoomStore implements RoomStore {
           new URL("../migrations/001_online_rooms.sql", import.meta.url),
           "utf8",
         ),
+      );
+      await this.pool.query(
+        await readFile(new URL("../migrations/002_admin_metrics.sql", import.meta.url), "utf8"),
       );
       this.initialized = true;
     }
