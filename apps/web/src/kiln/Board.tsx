@@ -5,7 +5,14 @@ import type { KilnGame, KilnMove, KilnPiece, KilnPlacement, KilnSlot, KilnTile }
 
 type Lift = { slot: KilnSlot; tile: number; gap: number };
 type Drag = Lift & { pointer: number; x: number; y: number; touch: boolean; moved: boolean };
-export type KilnBurst = { turn: number; tiles: ReadonlyMap<number, KilnTile["glaze"] | "gold"> };
+export type KilnBurst = {
+  turn: number;
+  anchor: number;
+  label: string;
+  points: number;
+  highlight: boolean;
+  tiles: ReadonlyMap<number, KilnTile["glaze"] | "gold">;
+};
 
 function positionLift(element: HTMLSpanElement | null, drag: Drag) {
   if (!element) return;
@@ -154,6 +161,9 @@ export function KilnBoard({ game, burst, onMove, onBurstEnd }: {
           const pickUp = preview?.collected.includes(index);
           const hint = game.level === 1 && game.turn === 0 && selection === 0 && row === 2 && column >= size - 1;
           const burstColor = burst?.tiles.get(index);
+          const distance = burst
+            ? Math.abs(row - 1 - Math.floor(burst.anchor / size)) + Math.abs(column - 1 - burst.anchor % size)
+            : 0;
           const className = [
             "kiln-cell",
             tile && `kiln-${tile.glaze}`,
@@ -200,17 +210,32 @@ export function KilnBoard({ game, burst, onMove, onBurstEnd }: {
                   key={burst.turn}
                   className={`kiln-burst is-${burstColor}`}
                   aria-hidden="true"
-                  onAnimationEnd={event => {
-                    if (event.target === event.currentTarget) onBurstEnd(burst.turn);
-                  }}
+                  style={{ "--kiln-wave-delay": `${Math.min(180, distance * 28)}ms` } as CSSProperties}
                 >
                   <span className="kiln-shard" /><span className="kiln-shard" />
                   <span className="kiln-shard" /><span className="kiln-shard" />
+                  {burstColor === "gold" && <span className="kiln-harvest kiln-vase" />}
                 </span>
               )}
             </button>
           );
         })}
+        {preview?.order?.outcome === "completed" && (
+          <span className="kiln-contract-preview">
+            {preview.collected.length > 0 && `Lấy ${preview.collected.length} bình · `}Hoàn thành đơn +{preview.order.bonus}
+          </span>
+        )}
+        {burst && (
+          <span
+            key={`result-${burst.turn}`}
+            className={`kiln-result${burst.highlight ? " kiln-result-highlight" : ""}`}
+            aria-hidden="true"
+            onAnimationEnd={event => { if (event.target === event.currentTarget) onBurstEnd(burst.turn); }}
+          >
+            <span>{burst.label}</span>
+            <strong>+{burst.points}</strong>
+          </span>
+        )}
       </div>
       <div className="kiln-tray" role="group" aria-label="Mảnh ghép">
         {game.tray.map((piece, index) => {

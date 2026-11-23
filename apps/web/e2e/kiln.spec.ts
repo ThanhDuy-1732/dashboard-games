@@ -262,3 +262,49 @@ test("plays endless offline and resumes each mode at its own size and score", as
   await expect(score(page)).toHaveText("62");
   await expect(turns(page)).toHaveText("11");
 });
+
+test("previews an order bonus, celebrates the harvest and saves the next order", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => new Promise<void>((resolve, reject) => {
+    const request = indexedDB.open("nha-choi-kiln-v1", 1);
+    request.onupgradeneeded = () => request.result.createObjectStore("saves");
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result;
+      const tx = db.transaction("saves", "readwrite");
+      const board = Array.from({ length: 64 }, (_, index) =>
+        index < 7 ? { glaze: "clay", placedAt: index === 3 ? 7 : null } : null);
+      tx.objectStore("saves").put({
+        revision: 1,
+        save: {
+          version: 1, unlocked: 1, active: { level: 1, moves: [] }, mode: "endless",
+          endless: { size: 8, board, turn: 8, score: 120, collected: 1, used: [0, 1],
+            order: { kind: "pots", progress: 1, remaining: 1 },
+          },
+        },
+      }, "current");
+      tx.oncomplete = () => { db.close(); resolve(); };
+      tx.onabort = () => { db.close(); reject(tx.error); };
+    };
+  }));
+  await enter(page);
+  const contract = kiln(page).getByRole("region", { name: "Đơn hàng hiện tại" });
+  await expect(contract.getByRole("heading")).toHaveText("Hai bình đúng hẹn");
+  await expect(contract).toContainText("Còn 1 lượt");
+
+  await cell(page, 7).hover();
+  await expect(kiln(page).locator(".kiln-contract-preview")).toHaveText("Lấy 1 bình · Hoàn thành đơn +60");
+  await cell(page, 7).click();
+  await expect(kiln(page).locator(".kiln-result")).toContainText("Hoàn thành đơn");
+  await expect(kiln(page).locator(".kiln-harvest")).toHaveCount(1);
+  await expect(score(page)).toHaveText("241");
+  await expect(kiln(page).getByRole("status")).toHaveText("Hoàn thành Hai bình đúng hẹn. Thưởng +60 điểm.");
+  await expect(contract.getByRole("heading")).toHaveText("Mẻ kép");
+  await expect(kiln(page).getByText("Đang lưu…")).toBeHidden();
+  await page.reload();
+  await enter(page);
+  await expect(contract.getByRole("heading")).toHaveText("Mẻ kép");
+  await expect(contract).toContainText("Còn 10 lượt");
+  await expect(score(page)).toHaveText("241");
+  await scan(page);
+});

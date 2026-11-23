@@ -1,6 +1,6 @@
 import { trackGame } from "../telemetry.js";
 import { useEffect, useRef, useState } from "react";
-import { createKilnGame, inspectKilnMove, KILN_LEVELS, KILN_SIZES, placeKilnPiece } from "@nha-choi/game-core";
+import { createKilnGame, inspectKilnMove, KILN_LEVELS, KILN_ORDERS, KILN_SIZES, placeKilnPiece } from "@nha-choi/game-core";
 import type { KilnGame, KilnLevelId, KilnMode, KilnMove, KilnSize } from "@nha-choi/game-core";
 import { Dialog } from "../components/Dialog.js";
 import { KilnBoard } from "./Board.js";
@@ -36,7 +36,7 @@ export function KilnRules() {
       <li>Mỗi nước hợp lệ làm lò nóng thêm một nhịp. Gốm mới cần hai lần đặt tiếp theo để chín và giữ độ chín trong hai lượt, tính cả lượt vừa chín.</li>
       <li>Xóa đường qua bình đang chín để lấy gốm. Mỗi ô đặt được 1 điểm, mỗi đường xóa được 10 điểm và mỗi bình chín được 50 điểm. Lấy hai bình trở lên trong một nước được thêm 25 điểm.</li>
       <li>Kéo mảnh lên bàn, hoặc chọn mảnh rồi chạm ô ứng với góc trên trái của mảnh. Với bàn phím, dùng phím mũi tên để di chuyển và Enter hoặc Space để đặt.</li>
-      <li>Ở chế độ Vô tận, bạn chơi đến khi hết chỗ đặt các mảnh còn lại.</li>
+      <li>Ở chế độ Vô tận, bạn chơi đến khi hết chỗ đặt. Hoàn thành đơn nhận điểm thưởng. Hết hạn thì nhận đơn tiếp theo.</li>
     </ol>
   );
 }
@@ -173,13 +173,19 @@ export function KilnScreen({ active, onHome, onRules, onInGame }: Props) {
       return;
     }
     const game = placeKilnPiece(before.game, move)!;
+    const completed = placement.order?.outcome === "completed";
+    const collected = placement.collected.length;
     if (placement.cleared.length) {
       const glaze = before.game.tray[move.slot]!.glaze;
       const tiles: KilnBurst["tiles"] = new Map(placement.cleared.map(index => [
         index,
         placement.collected.includes(index) ? "gold" : before.game.board[index]?.glaze ?? glaze,
       ]));
-      setBurst({ turn: game.turn, tiles });
+      const label = completed ? "Hoàn thành đơn" : collected ? `Lấy ${collected} bình` : `Xóa ${placement.lines} đường`;
+      setBurst({
+        turn: game.turn, anchor: move.anchor, tiles, label, points: placement.points,
+        highlight: completed || collected > 0 || placement.lines > 1,
+      });
     }
     const starting = before.game.turn === 0;
     const run = game.level === "endless" ? before.save.endless : before.save.active;
@@ -200,10 +206,15 @@ export function KilnScreen({ active, onHome, onRules, onInGame }: Props) {
     }
     if (starting) trackGame("kiln", id, "game_started", "solo");
     if (game.status !== "playing") trackGame("kiln", id, "game_completed", "solo", startedAt);
-    const collected = game.collected - before.game.collected;
-    setNotice(collected
-      ? `Đã lấy ${collected} món gốm chín. +${game.score - before.game.score} điểm.`
-      : "Lò đã nóng thêm một nhịp.");
+    if (completed) {
+      setNotice(`Hoàn thành ${KILN_ORDERS[before.game.order!.kind].name}. Thưởng +${placement.order!.bonus} điểm.`);
+    } else if (placement.order?.outcome === "expired") {
+      setNotice("Đơn đã hết hạn. Bạn có thể tiếp tục với đơn mới.");
+    } else if (collected) {
+      setNotice(`Đã lấy ${collected} món gốm chín. +${placement.points} điểm.`);
+    } else {
+      setNotice(placement.lines ? `Đã xóa ${placement.lines} đường. +${placement.points} điểm.` : "Lò đã nóng thêm một nhịp.");
+    }
     const next = { game, save };
     show(next);
     store(next);
@@ -232,6 +243,8 @@ export function KilnScreen({ active, onHome, onRules, onInGame }: Props) {
   if (!session) return active ? <p className="empty-message">Đang mở lò gốm…</p> : null;
   const { game, save } = session;
   const config = game.level === "endless" ? null : KILN_LEVELS[game.level];
+  const order = game.order;
+  const contract = order && KILN_ORDERS[order.kind];
   const playing = game.status === "playing";
   const nextLevel = game.level !== "endless" && game.status === "won" && game.level < 3 ? (game.level + 1) as KilnLevelId : null;
   const statusText = {
@@ -330,6 +343,19 @@ export function KilnScreen({ active, onHome, onRules, onInGame }: Props) {
             </>
           )}
         </div>
+      )}
+      {order && contract && (
+        <section className="kiln-contract" aria-label="Đơn hàng hiện tại">
+          <div>
+            <h2>{contract.name}</h2>
+            <p>{contract.description}</p>
+          </div>
+          <div className="kiln-contract-stats">
+            {order.kind !== "cross" && <span>{order.progress}/2 {order.kind === "pots" ? "bình" : "nước liên tiếp"}</span>}
+            {order.remaining !== null && <span>Còn {order.remaining} lượt</span>}
+            <strong>+{contract.bonus} điểm</strong>
+          </div>
+        </section>
       )}
       <div className="kiln-layout">
         <KilnBoard

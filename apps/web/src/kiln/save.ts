@@ -1,4 +1,4 @@
-import { createKilnGame, KILN_LEVELS, KILN_SIZES, placeKilnPiece, restoreKilnEndless } from "@nha-choi/game-core";
+import { createKilnGame, KILN_LEVELS, KILN_ORDER_KINDS, KILN_SIZES, placeKilnPiece, restoreKilnEndless } from "@nha-choi/game-core";
 import type { KilnEndlessState, KilnGame, KilnLevelId, KilnMove, KilnSize, KilnSlot } from "@nha-choi/game-core";
 import { z } from "zod";
 
@@ -34,6 +34,11 @@ const saveSchema = z.strictObject({
     score: z.int().nonnegative(),
     collected: z.int().nonnegative(),
     used: z.array(slot).max(2),
+    order: z.strictObject({
+      kind: z.enum(KILN_ORDER_KINDS),
+      progress: z.int().min(0).max(1),
+      remaining: z.int().positive().nullable(),
+    }).optional(),
   }).optional(),
 });
 const recordSchema = z.strictObject({ revision: z.int().positive(), save: saveSchema });
@@ -63,9 +68,9 @@ export function restoreKilnGame(save: KilnSave): KilnGame | null {
 }
 
 export function saveKilnEndless(save: KilnSave, game: KilnGame, timing: KilnRunTiming = {}): KilnSave {
-  const { board, size, turn, score, collected, tray } = game;
+  const { board, size, turn, score, collected, tray, order } = game;
   const used = tray.flatMap((piece, index) => piece ? [] : [index as KilnSlot]);
-  return { ...save, mode: "endless", endless: { board, size, turn, score, collected, used, ...timing } };
+  return { ...save, mode: "endless", endless: { board, size, turn, score, collected, used, ...(order ? { order } : {}), ...timing } };
 }
 
 function decode(raw: unknown): { save: KilnSave; revision: number } | null {

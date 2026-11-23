@@ -65,7 +65,25 @@
   align-items: start;
 }
 .kiln-play, .kiln-sidebar { min-width: 0; }
+.kiln-contract {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px 20px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border: 1px solid #79432d;
+  border-radius: 12px;
+  background: #584033;
+  color: #fff0dc;
+}
+.kiln-contract h2 { color: #fff0dc; font-size: clamp(20px, 3vw, 25px); }
+.kiln-contract p { margin-top: 4px; color: #f4dac2; font-size: 13px; }
+.kiln-contract-stats { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 11px; font-size: 13px; }
+.kiln-contract-stats strong { color: #ffe39d; }
 .kiln-board {
+  position: relative;
   display: grid;
   gap: clamp(2px, .55vw, 5px);
   padding: clamp(5px, 1.2vw, 12px);
@@ -155,7 +173,7 @@
   inset: 0;
   z-index: 2;
   pointer-events: none;
-  animation: kiln-burst-fade 460ms ease-out both;
+  animation: kiln-burst-fade 520ms ease-out var(--kiln-wave-delay) both;
 }
 .kiln-burst.is-green { --shard: #91b28b; --shard-face: #daebbd; }
 .kiln-burst.is-gold { --shard: #ffb74e; --shard-face: #fff1ac; }
@@ -165,7 +183,15 @@
   content: "";
   border-radius: 30%;
   background: radial-gradient(ellipse, #fff4cc 0%, var(--shard-face) 33%, transparent 72%);
-  animation: kiln-burst-flash 300ms ease-out both;
+  animation: kiln-burst-flash 340ms ease-out var(--kiln-wave-delay) both;
+}
+.kiln-burst::after {
+  position: absolute;
+  inset: 17%;
+  content: "";
+  border: 2px solid var(--shard-face);
+  border-radius: 50%;
+  animation: kiln-ember-ring 430ms ease-out var(--kiln-wave-delay) both;
 }
 .kiln-shard {
   position: absolute;
@@ -173,14 +199,15 @@
   height: 33%;
   background: linear-gradient(145deg, var(--shard-face) 0 25%, var(--shard) 26%);
   clip-path: polygon(5% 13%, 64% 0, 98% 56%, 30% 100%, 0 67%);
-  animation: kiln-shard-flight 460ms cubic-bezier(.15, .7, .3, 1) both;
+  animation: kiln-shard-flight 520ms cubic-bezier(.15, .7, .3, 1) var(--kiln-wave-delay) both;
 }
 .kiln-shard:nth-child(1) { left: 15%; top: 13%; --dx: -115%; --dy: -122%; --spin: -44deg; }
 .kiln-shard:nth-child(2) { right: 12%; top: 18%; --dx: 132%; --dy: -75%; --spin: 66deg; }
 .kiln-shard:nth-child(3) { right: 17%; bottom: 10%; --dx: 102%; --dy: 123%; --spin: 109deg; }
 .kiln-shard:nth-child(4) { left: 12%; bottom: 14%; --dx: -121%; --dy: 84%; --spin: -78deg; }
 @keyframes kiln-burst-fade {
-  0%, 28% { opacity: 1; }
+  0% { opacity: 0; }
+  12%, 33% { opacity: 1; }
   100% { opacity: 0; }
 }
 @keyframes kiln-burst-flash {
@@ -191,12 +218,74 @@
   from { transform: scale(.9); }
   to { transform: translate(var(--dx), var(--dy)) rotate(var(--spin)) scale(.42); }
 }
+@keyframes kiln-ember-ring {
+  0% { opacity: 0; transform: scale(.4); }
+  18% { opacity: .95; }
+  100% { opacity: 0; transform: scale(2); }
+}
+.kiln-burst .kiln-harvest {
+  position: absolute;
+  top: 12%;
+  left: 17%;
+  color: #ffe49a;
+  animation: kiln-harvest-rise 500ms ease-out var(--kiln-wave-delay) both;
+}
+@keyframes kiln-harvest-rise {
+  0% { opacity: 0; transform: translateY(10%) scale(.85); }
+  23% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-115%) scale(1.12); }
+}
+.kiln-result, .kiln-contract-preview {
+  position: absolute;
+  left: 50%;
+  z-index: 4;
+  width: max-content;
+  max-width: calc(100% - 18px);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.kiln-result {
+  top: 42%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 3px 9px;
+  padding: 6px 13px;
+  border: 1px solid #dfaa73;
+  border-radius: 9px;
+  background: #442b22;
+  box-shadow: 0 4px 14px #27140980;
+  color: #fff0db;
+  font-size: clamp(12px, 2.4vw, 17px);
+  font-weight: 750;
+  animation: kiln-result-rise 880ms ease-out both;
+}
+.kiln-result strong { color: #ffda8d; font-size: 1.2em; }
+.kiln-result-highlight { border-color: #ffeab0; box-shadow: 0 4px 16px #241709a0, 0 0 18px #ffd27b65; }
+.kiln-contract-preview {
+  bottom: 9px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: #ffe3a1;
+  color: #432718;
+  font-size: 12px;
+  font-weight: 750;
+  text-align: center;
+}
+@keyframes kiln-result-rise {
+  0% { opacity: 0; transform: translate(-50%, 13px) scale(.86); }
+  19% { opacity: 1; transform: translate(-50%, -4px) scale(1.03); }
+  69% { opacity: 1; transform: translate(-50%, -7px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -20px) scale(.98); }
+}
 @media (prefers-reduced-motion: reduce) {
   /* Keep a stationary fade despite the app-wide animation reset. */
   .kiln-burst { animation: kiln-burst-fade 150ms ease-out both !important; }
   .kiln-landed { animation: kiln-burst-fade 150ms ease-out both !important; }
   .kiln-burst::before { animation: none; opacity: .65; }
-  .kiln-shard { display: none; }
+  .kiln-shard, .kiln-burst::after, .kiln-harvest { display: none; }
+  .kiln-result { animation: kiln-burst-fade 500ms ease-out both !important; }
 }
 .kiln-screen button:focus-visible { outline: 3px solid #17646c; outline-offset: 2px; position: relative; z-index: 1; }
 .kiln-board button:focus-visible { outline-color: #f5f2cc; }

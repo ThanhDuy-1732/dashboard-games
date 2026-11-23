@@ -1,6 +1,6 @@
 # Nhà Chơi
 
-**Lò Gốm** có ba màn xếp khối và chế độ **Vô tận**, với bàn 8 × 8, 9 × 9 hoặc 10 × 10. Chế độ Vô tận chơi đến khi hết chỗ đặt và lưu ván riêng với ba màn. Chọn **Chơi Lò Gốm** ở trang Khám phá để bắt đầu hoặc tiếp tục. Bản PWA chơi offline sau khi đã tải đủ dữ liệu lần đầu.
+**Lò Gốm** có ba màn xếp khối và chế độ **Vô tận**, với bàn 8 × 8, 9 × 9 hoặc 10 × 10. Trong Vô tận, hoàn thành các đơn hàng luân phiên để nhận điểm thưởng. Chế độ này chơi đến khi hết chỗ đặt và lưu ván riêng với ba màn. Chọn **Chơi Lò Gốm** ở trang Khám phá để bắt đầu hoặc tiếp tục. Bản PWA chơi offline sau khi đã tải đủ dữ liệu lần đầu.
 
 Dashboard game với Cờ tỷ phú truyền thống, web/PWA trước rồi Android/iOS dùng chung lõi luật và giao diện.
 
