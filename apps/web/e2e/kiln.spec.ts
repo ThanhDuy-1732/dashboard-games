@@ -235,3 +235,30 @@ test("shows a moving piece, distinguishes blocked drops and marks the landed cel
   await expect(target.locator(".kiln-landed")).toHaveCount(0);
   await expect(turns(page)).toHaveText("11");
 });
+
+test("plays endless offline and resumes each mode at its own size and score", async ({ page, context }) => {
+  await page.goto("/");
+  await enter(page);
+  await expect(page.getByText("Đã sẵn sàng chơi với máy khi offline.", { exact: false })).toBeVisible();
+  await cell(page, 14).click();
+  await expect(score(page)).toHaveText("62");
+  await piece(page, "Vô tận").click();
+  await expect(kiln(page).getByRole("heading", { name: "Vô tận" })).toBeVisible();
+  await expect(kiln(page).getByText("Lượt đã chơi", { exact: true })).toBeVisible();
+  await expect(turns(page)).toHaveCount(0);
+  await piece(page, "10 × 10").click();
+  await cell(page, 0).click();
+  await expect(score(page)).toHaveText("4");
+  await expect(kiln(page).getByText("Đang lưu…")).toBeHidden();
+  await page.reload();
+  await context.setOffline(true);
+  await page.reload();
+  await enter(page);
+  await expect(kiln(page).getByRole("heading", { name: "Vô tận" })).toBeVisible();
+  await expect(piece(page, "10 × 10")).toHaveAttribute("aria-pressed", "true");
+  await expect(score(page)).toHaveText("4");
+  await piece(page, "Màn 1: Mẻ đầu tay").click();
+  await expect(piece(page, "8 × 8")).toHaveAttribute("aria-pressed", "true");
+  await expect(score(page)).toHaveText("62");
+  await expect(turns(page)).toHaveText("11");
+});

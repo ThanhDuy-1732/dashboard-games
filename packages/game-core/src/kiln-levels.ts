@@ -1,4 +1,4 @@
-import type { KilnLevelId, KilnPiece, KilnSize, KilnTile } from "./kiln.js";
+import type { KilnLevelId, KilnMode, KilnPiece, KilnSize, KilnTile } from "./kiln.js";
 
 type Batch = readonly [KilnPiece, KilnPiece, KilnPiece];
 
@@ -42,7 +42,8 @@ export function kilnOpening(level: KilnLevelId, size: KilnSize): (KilnTile | nul
   }));
 }
 
-export function kilnBatch(level: KilnLevelId, batch: number): Batch {
+export function kilnBatch(level: KilnMode, batch: number): Batch {
+  if (level === "endless") return laterBatches[batch % laterBatches.length]!;
   if (level !== 1) return [domino, single, corner];
   if (!batch) return [domino, corner, bar];
   return laterBatches[(batch - 1) % laterBatches.length]!;

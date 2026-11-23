@@ -249,6 +249,7 @@
 .kiln-sidebar { display: grid; gap: 10px; }
 .kiln-order { padding: 14px; background: var(--kiln-panel); border: 1px solid var(--kiln-line); border-radius: 14px; }
 .kiln-order p { color: var(--kiln-muted); margin-top: 5px; font-size: 14px; }
+.kiln-order .kiln-endless-intro { margin-bottom: 12px; }
 .kiln-shelf {
   display: flex;
   align-items: end;

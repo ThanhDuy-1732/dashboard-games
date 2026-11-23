@@ -1,11 +1,11 @@
 import { trackGame } from "../telemetry.js";
 import { useEffect, useRef, useState } from "react";
 import { createKilnGame, inspectKilnMove, KILN_LEVELS, KILN_SIZES, placeKilnPiece } from "@nha-choi/game-core";
-import type { KilnGame, KilnLevelId, KilnMove, KilnSize } from "@nha-choi/game-core";
+import type { KilnGame, KilnLevelId, KilnMode, KilnMove, KilnSize } from "@nha-choi/game-core";
 import { Dialog } from "../components/Dialog.js";
 import { KilnBoard } from "./Board.js";
 import type { KilnBurst } from "./Board.js";
-import { KilnSaveError, loadKilnSave, replaceCorruptKilnSave, restoreKilnGame, writeKilnSave } from "./save.js";
+import { KilnSaveError, loadKilnSave, replaceCorruptKilnSave, restoreKilnGame, saveKilnEndless, writeKilnSave } from "./save.js";
 import type { KilnSave } from "./save.js";
 import "./kiln.css";
 
@@ -36,6 +36,7 @@ export function KilnRules() {
       <li>Mỗi nước hợp lệ làm lò nóng thêm một nhịp. Gốm mới cần hai lần đặt tiếp theo để chín và giữ độ chín trong hai lượt, tính cả lượt vừa chín.</li>
       <li>Xóa đường qua bình đang chín để lấy gốm. Mỗi ô đặt được 1 điểm, mỗi đường xóa được 10 điểm và mỗi bình chín được 50 điểm. Lấy hai bình trở lên trong một nước được thêm 25 điểm.</li>
       <li>Kéo mảnh lên bàn, hoặc chọn mảnh rồi chạm ô ứng với góc trên trái của mảnh. Với bàn phím, dùng phím mũi tên để di chuyển và Enter hoặc Space để đặt.</li>
+      <li>Ở chế độ Vô tận, bạn chơi đến khi hết chỗ đặt các mảnh còn lại.</li>
     </ol>
   );
 }
@@ -44,7 +45,7 @@ export function KilnScreen({ active, onHome, onRules, onInGame }: Props) {
   const [session, setSession] = useState<Session | null>(null);
   const [issue, setIssue] = useState<StorageIssue | null>(null);
   const [notice, setNotice] = useState("");
-  const [restart, setRestart] = useState<{ level: KilnLevelId; size: KilnSize } | null>(null);
+  const [restart, setRestart] = useState<{ level: KilnMode; size: KilnSize } | null>(null);
   const [burst, setBurst] = useState<KilnBurst | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -180,17 +181,23 @@ export function KilnScreen({ active, onHome, onRules, onInGame }: Props) {
       ]));
       setBurst({ turn: game.turn, tiles });
     }
-    const unlocked = game.status === "won"
-      ? Math.max(before.save.unlocked, Math.min(game.level + 1, 3)) as KilnLevelId
-      : before.save.unlocked;
     const starting = before.game.turn === 0;
-    const id = before.save.active.id ?? crypto.randomUUID();
-    const startedAt = starting ? Date.now() : before.save.active.startedAt;
-    const save: KilnSave = {
-      version: 1, unlocked, active: { level: game.level, size: game.size, moves: [...before.save.active.moves, move],
-        id, ...(startedAt === undefined ? {} : { startedAt }),
-      },
-    };
+    const run = game.level === "endless" ? before.save.endless : before.save.active;
+    const id = run?.id ?? crypto.randomUUID();
+    const startedAt = starting ? Date.now() : run?.startedAt;
+    const timing = { id, ...(startedAt === undefined ? {} : { startedAt }) };
+    let save: KilnSave;
+    if (game.level === "endless") {
+      save = saveKilnEndless(before.save, game, timing);
+    } else {
+      const unlocked = game.status === "won"
+        ? Math.max(before.save.unlocked, Math.min(game.level + 1, 3)) as KilnLevelId
+        : before.save.unlocked;
+      save = {
+        ...before.save, unlocked,
+        active: { level: game.level, size: game.size, moves: [...before.save.active.moves, move], ...timing },
+      };
+    }
     if (starting) trackGame("kiln", id, "game_started", "solo");
     if (game.status !== "playing") trackGame("kiln", id, "game_completed", "solo", startedAt);
     const collected = game.collected - before.game.collected;
@@ -203,9 +210,7 @@ export function KilnScreen({ active, onHome, onRules, onInGame }: Props) {
     return placement;
   }
 
-  function start(level: KilnLevelId, size: KilnSize) {
-    if (!current.current || storageAction.current) return;
-    const next = newSession(level, current.current.save.unlocked, size);
+  function switchSession(next: Session) {
     setBoardKey(key => key + 1);
     setNotice("");
     setRestart(null);
@@ -214,21 +219,51 @@ export function KilnScreen({ active, onHome, onRules, onInGame }: Props) {
     store(next);
   }
 
+  function start(level: KilnMode, size: KilnSize) {
+    if (!current.current || storageAction.current) return;
+    const previous = current.current.save;
+    const game = createKilnGame(level, size);
+    const save: KilnSave = level === "endless"
+      ? saveKilnEndless(previous, game)
+      : { ...previous, mode: "campaign", active: { level, size, moves: [] } };
+    switchSession({ game, save });
+  }
+
   if (!session) return active ? <p className="empty-message">Đang mở lò gốm…</p> : null;
   const { game, save } = session;
-  const config = KILN_LEVELS[game.level];
+  const config = game.level === "endless" ? null : KILN_LEVELS[game.level];
   const playing = game.status === "playing";
-  const nextLevel = game.status === "won" && game.level < 3 ? (game.level + 1) as KilnLevelId : null;
+  const nextLevel = game.level !== "endless" && game.status === "won" && game.level < 3 ? (game.level + 1) as KilnLevelId : null;
   const statusText = {
-    playing: notice || (game.turn === 0 ? levelHint[game.level] : ""),
+    playing: notice || (game.turn === 0 && game.level !== "endless" ? levelHint[game.level] : ""),
     won: "Mẻ gốm thành công!",
     "lost-turns": "Đã hết lượt đặt.",
     "lost-space": "Hết chỗ đặt các mảnh còn lại.",
   }[game.status];
 
-  function chooseBoard(level: KilnLevelId, size = game.size) {
+  function chooseBoard(level: KilnMode, size = game.size) {
     if (playing && game.turn > 0) setRestart({ level, size });
     else start(level, size);
+  }
+
+  function openMode(level: KilnMode) {
+    if (storageAction.current) return;
+    if (level === "endless") {
+      if (!save.endless) {
+        start(level, game.size);
+      } else {
+        const nextSave: KilnSave = { ...save, mode: "endless" };
+        switchSession({ save: nextSave, game: restoreKilnGame(nextSave)! });
+      }
+    } else if (game.level === "endless") {
+      const nextSave: KilnSave = { ...save, mode: "campaign" };
+      const campaign = restoreKilnGame(nextSave)!;
+      if (level === campaign.level) switchSession({ save: nextSave, game: campaign });
+      else if (campaign.status === "playing" && campaign.turn > 0) setRestart({ level, size: campaign.size });
+      else start(level, campaign.size);
+    } else {
+      chooseBoard(level);
+    }
   }
 
   return (
@@ -253,11 +288,19 @@ export function KilnScreen({ active, onHome, onRules, onInGame }: Props) {
               aria-label={`Màn ${level.id}: ${level.name}`}
               aria-current={level.id === game.level ? "step" : undefined}
               disabled={working || level.id > save.unlocked || level.id === game.level}
-              onClick={() => chooseBoard(level.id)}
+              onClick={() => openMode(level.id)}
             >
               Màn {level.id}
             </button>
           ))}
+          <button
+            type="button"
+            aria-current={game.level === "endless" ? "true" : undefined}
+            disabled={working || game.level === "endless"}
+            onClick={() => openMode("endless")}
+          >
+            Vô tận
+          </button>
         </div>
         <div className="kiln-sizes" role="group" aria-label="Kích thước bàn">
           <span>Bàn</span>
@@ -298,16 +341,26 @@ export function KilnScreen({ active, onHome, onRules, onInGame }: Props) {
         />
         <aside className="kiln-sidebar">
           <div className="kiln-order">
-            <h2>{config.name}</h2>
-            <p>Lấy {config.target} món gốm chín trong {config.turnLimit} lượt.</p>
-            <div className="kiln-shelf" role="img" aria-label={`Đã lấy ${game.collected} trên ${config.target} món`}>
-              {Array.from({ length: config.target }, (_, index) => (
-                <span key={index} className={`kiln-vase${index < game.collected ? " kiln-fired" : ""}`} />
-              ))}
-            </div>
+            <h2>{config?.name ?? "Vô tận"}</h2>
+            {config ? (
+              <>
+                <p>Lấy {config.target} món gốm chín trong {config.turnLimit} lượt.</p>
+                <div className="kiln-shelf" role="img" aria-label={`Đã lấy ${game.collected} trên ${config.target} món`}>
+                  {Array.from({ length: config.target }, (_, index) => (
+                    <span key={index} className={`kiln-vase${index < game.collected ? " kiln-fired" : ""}`} />
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="kiln-endless-intro">Đặt khối và thu gốm đến khi hết chỗ.</p>
+            )}
             <div className="kiln-stats">
               <div><span>Điểm</span><strong data-kiln-score>{game.score}</strong></div>
-              <div><span>Lượt còn</span><strong data-kiln-left>{config.turnLimit - game.turn}</strong></div>
+              {config ? (
+                <div><span>Lượt còn</span><strong data-kiln-left>{config.turnLimit - game.turn}</strong></div>
+              ) : (
+                <div><span>Lượt đã chơi</span><strong>{game.turn}</strong></div>
+              )}
             </div>
           </div>
           <div className="kiln-state">

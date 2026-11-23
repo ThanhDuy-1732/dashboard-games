@@ -122,3 +122,31 @@ it("bursts cleared tiles and confirms a size change before replacing the current
   const restored = await screen.findByRole("group", { name: "Bàn xếp khối 10 × 10" });
   expect(restored.querySelectorAll(".kiln-burst")).toHaveLength(0);
 });
+
+it("opens endless play separately and restores both modes", async () => {
+  const view = render(<KilnScreen {...props} />);
+  await screen.findByRole("heading", { name: "Mẻ đầu tay" });
+  fireEvent.click(cell(2, 7));
+  fireEvent.click(screen.getByRole("button", { name: "Vô tận" }));
+  expect(screen.getByRole("heading", { name: "Vô tận" })).toBeTruthy();
+  expect(screen.queryByText("Lượt còn")).toBeNull();
+  expect(screen.getByText("Lượt đã chơi")).toBeTruthy();
+  fireEvent.click(cell(1, 1));
+  await waitFor(async () => expect((await loadKilnSave())?.save).toMatchObject({ mode: "endless", endless: { turn: 1 } }));
+  const saved = (await loadKilnSave())!.save;
+  const firstRun = { id: saved.endless?.id, startedAt: saved.endless?.startedAt };
+  expect(firstRun).toEqual({ id: expect.any(String), startedAt: expect.any(Number) });
+  expect(saved.active.id).not.toBe(firstRun.id);
+  view.unmount();
+  render(<KilnScreen {...props} />);
+  expect(await screen.findByRole("heading", { name: "Vô tận" })).toBeTruthy();
+  expect(screen.getByText("4", { selector: "[data-kiln-score]" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Màn 1: Mẻ đầu tay" }));
+  expect(screen.getByText("62", { selector: "[data-kiln-score]" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Vô tận" }));
+  expect(screen.getByText("4", { selector: "[data-kiln-score]" })).toBeTruthy();
+  fireEvent.click(cell(1, 3));
+  await waitFor(async () => expect((await loadKilnSave())?.save).toMatchObject({
+    mode: "endless", active: { id: saved.active.id }, endless: { turn: 2, ...firstRun },
+  }));
+});

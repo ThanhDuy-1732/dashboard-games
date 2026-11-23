@@ -102,3 +102,30 @@ it.each([9, 10] as const)("keeps all opening routes playable on a board of size 
   const cross = placeKilnPiece(createKilnGame(3, size), { slot: 0, anchor: 0 })!;
   expect(inspectKilnMove(cross, { slot: 1, anchor: 3 * size + 3 })?.cleared).toHaveLength(2 * size - 1);
 });
+
+it("continues endless play after the campaign's last turn and ends when the tray cannot fit", () => {
+  let game = createKilnGame("endless");
+  expect(game.board.every(tile => tile === null)).toBe(true);
+
+  for (let i = 0; i < 18; i++) {
+    const choices = game.tray.flatMap((_, slot) => game.board.flatMap((_, anchor) => {
+      const move = { slot: slot as KilnMove["slot"], anchor };
+      const result = inspectKilnMove(game, move);
+      return result ? [{ move, lines: result.lines }] : [];
+    }));
+    choices.sort((a, b) => b.lines - a.lines);
+    expect(choices.length).toBeGreaterThan(0);
+    game = placeKilnPiece(game, choices[0]!.move)!;
+  }
+  expect(game).toMatchObject({ turn: 18, batch: 6, status: "playing" });
+  const first = createKilnGame("endless");
+  expect(placeKilnPiece({ ...first, collected: 100 }, { slot: 0, anchor: 0 })?.status).toBe("playing");
+
+  const blocked = {
+    ...game,
+    tray: [createKilnGame(1).tray[0], null, single] as const,
+    board: game.board.map((_, i) => ((i + Math.floor(i / 8)) % 2 ? clay : null)),
+  };
+  const result = placeKilnPiece(blocked, { slot: 2, anchor: 0 });
+  expect(result?.status).toBe("lost-space");
+});

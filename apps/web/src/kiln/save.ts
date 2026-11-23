@@ -1,24 +1,40 @@
-import { createKilnGame, KILN_LEVELS, KILN_SIZES, placeKilnPiece } from "@nha-choi/game-core";
-import type { KilnGame, KilnLevelId, KilnMove, KilnSize } from "@nha-choi/game-core";
+import { createKilnGame, KILN_LEVELS, KILN_SIZES, placeKilnPiece, restoreKilnEndless } from "@nha-choi/game-core";
+import type { KilnEndlessState, KilnGame, KilnLevelId, KilnMove, KilnSize, KilnSlot } from "@nha-choi/game-core";
 import { z } from "zod";
+
+type KilnRunTiming = { id?: string; startedAt?: number };
 
 export type KilnSave = {
   version: 1;
   unlocked: KilnLevelId;
-  active: { level: KilnLevelId; size?: KilnSize; moves: KilnMove[]; id?: string; startedAt?: number };
+  active: { level: KilnLevelId; size?: KilnSize; moves: KilnMove[] } & KilnRunTiming;
+  mode?: "campaign" | "endless";
+  endless?: KilnEndlessState & KilnRunTiming;
 };
 
 const levelId = z.literal([1, 2, 3]);
+const slot = z.literal([0, 1, 2]);
+const size = z.literal(KILN_SIZES);
+const runTiming = { id: z.uuid().optional(), startedAt: z.int().nonnegative().optional() };
 const saveSchema = z.strictObject({
   version: z.literal(1),
   unlocked: levelId,
   active: z.strictObject({
     level: levelId,
-    size: z.literal(KILN_SIZES).optional(),
-    id: z.uuid().optional(),
-    startedAt: z.int().nonnegative().optional(),
-    moves: z.array(z.strictObject({ slot: z.literal([0, 1, 2]), anchor: z.int().min(0).max(KILN_SIZES[2] ** 2 - 1) })).max(12),
+    size: size.optional(),
+    ...runTiming,
+    moves: z.array(z.strictObject({ slot, anchor: z.int().min(0).max(KILN_SIZES[2] ** 2 - 1) })).max(12),
   }),
+  mode: z.enum(["campaign", "endless"]).optional(),
+  endless: z.strictObject({
+    size,
+    ...runTiming,
+    board: z.array(z.strictObject({ glaze: z.enum(["clay", "green"]), placedAt: z.int().positive().nullable() }).nullable()).max(KILN_SIZES[2] ** 2),
+    turn: z.int().nonnegative(),
+    score: z.int().nonnegative(),
+    collected: z.int().nonnegative(),
+    used: z.array(slot).max(2),
+  }).optional(),
 });
 const recordSchema = z.strictObject({ revision: z.int().positive(), save: saveSchema });
 
@@ -31,7 +47,7 @@ export class KilnSaveError extends Error {
 export function restoreKilnGame(save: KilnSave): KilnGame | null {
   const parsed = saveSchema.safeParse(save);
   if (!parsed.success) return null;
-  const { active, unlocked } = parsed.data;
+  const { active, unlocked, mode, endless } = parsed.data;
   if (active.level > unlocked || active.moves.length > KILN_LEVELS[active.level].turnLimit) return null;
 
   let game = createKilnGame(active.level, active.size);
@@ -41,7 +57,15 @@ export function restoreKilnGame(save: KilnSave): KilnGame | null {
     game = next;
   }
   if (game.status === "won" && unlocked < Math.min(3, active.level + 1)) return null;
-  return game;
+  const endlessGame = endless ? restoreKilnEndless(endless) : null;
+  if (endless && !endlessGame) return null;
+  return mode === "endless" ? endlessGame : game;
+}
+
+export function saveKilnEndless(save: KilnSave, game: KilnGame, timing: KilnRunTiming = {}): KilnSave {
+  const { board, size, turn, score, collected, tray } = game;
+  const used = tray.flatMap((piece, index) => piece ? [] : [index as KilnSlot]);
+  return { ...save, mode: "endless", endless: { board, size, turn, score, collected, used, ...timing } };
 }
 
 function decode(raw: unknown): { save: KilnSave; revision: number } | null {
