@@ -58,6 +58,7 @@ export function App() {
   const offline = session && "snapshot" in session ? session : null;
   const persistence = useOfflineSave(offline);
   const [lobby, setLobby] = useState<LobbyView | null>(null);
+  const joiningOnline = useRef<AbortController | null>(null);
   useEffect(() => {
     setLobby(null);
     if (online) return online.subscribeLobby(setLobby);
@@ -70,6 +71,8 @@ export function App() {
   }) {
     if (operation.current) return;
     operation.current = true;
+    const controller = new AbortController();
+    joiningOnline.current = controller;
     setPending(true);
     setError("");
     try {
@@ -78,15 +81,20 @@ export function App() {
           "Bản mobile này chưa cấu hình máy chủ HTTPS. Bạn vẫn có thể chơi với máy khi offline.",
         );
       const created = await (input
-        ? connectOnlineRoom({ serverUrl: ONLINE_URL!, ...input })
-        : resumeOnlineRoom());
+        ? connectOnlineRoom(
+            { serverUrl: ONLINE_URL!, ...input },
+            controller.signal,
+          )
+        : resumeOnlineRoom(controller.signal));
       setSession(created);
       setPage("game");
     } catch (reason) {
-      setError(
-        reason instanceof Error ? reason.message : "Không kết nối được phòng.",
-      );
+      if (!controller.signal.aborted)
+        setError(
+          reason instanceof Error ? reason.message : "Không kết nối được phòng.",
+        );
     } finally {
+      joiningOnline.current = null;
       operation.current = false;
       setPending(false);
     }
@@ -145,7 +153,8 @@ export function App() {
     document.documentElement.scrollTop = 0;
   }, [page]);
   const navigate = (next: Destination) => {
-    if (operation.current) return;
+    if (joiningOnline.current) joiningOnline.current.abort();
+    else if (operation.current) return;
     if (session) {
       setLeave(next);
       return;
@@ -507,6 +516,7 @@ export function App() {
             {page === "setup" && (
               <Setup
                 onOnline={(input) => void joinOnline(input)}
+                onCancelOnline={() => joiningOnline.current?.abort()}
                 onResumeOnline={
                   hasOnlineRoom() ? () => void joinOnline() : undefined
                 }

@@ -54,6 +54,7 @@ describe("purchases rent auctions and debt", () => {
     expect(s.board[6]!.owner).toBeNull();
     expect(s.auction).toBeNull();
     expect(s.phase).toBe("awaiting-end-turn");
+    expect(s.recentEvents.at(-1)?.text).toMatch(/kết thúc.*không có người trả giá/i);
   });
   it("equal_bid_is_rejected_without_changing_owner_or_cash", () => {
     let s = act(purchase(), "p1", { type: "decline-property" });

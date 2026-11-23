@@ -98,13 +98,16 @@ export function auctionAction(
       recordEvent(
         state,
         "auction",
-        `${playerById(state, auction.bidder).name} thắng đấu giá ${auction.kind === "property" ? boardFor(state.board.length)[auction.spaceId]!.name : "công trình"}.`,
+        `${playerById(state, auction.bidder).name} thắng đấu giá ${auction.kind === "property" ? boardFor(state.board.length)[auction.spaceId]!.name : "công trình"} với giá ${auction.bid}.`,
         {
           spaceId: auction.targets?.[auction.bidder] ?? auction.spaceId,
           amount: auction.bid,
         },
       );
-    }
+    } else
+      recordEvent(state, "auction", "Phiên đấu giá kết thúc vì không có người trả giá.", {
+        spaceId: auction.spaceId,
+      });
     state.auction = null;
     state.phase = "awaiting-end-turn";
     return true;

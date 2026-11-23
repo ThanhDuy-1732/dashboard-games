@@ -1,4 +1,5 @@
 import { afterEach, expect, it, vi } from "vitest";
+import { createServer } from "node:http";
 import { createGameServer } from "../../server/src/server.js";
 import { connectOnlineRoom, resumeOnlineRoom } from "../src/session/online.js";
 import type { SessionUpdate } from "@nha-choi/protocol";
@@ -15,6 +16,28 @@ function storage() {
     removeItem: (key: string) => data.delete(key),
   };
 }
+it("cancels_a_pending_room_and_keeps_the_previous_saved_session", async () => {
+  const server = createServer();
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  cleanup.push(async () => {
+    server.closeAllConnections();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+  });
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("Missing port");
+  const saved = storage();
+  saved.setItem("nha-choi-online-v1", "old proof");
+  vi.stubGlobal("sessionStorage", saved);
+  const controller = new AbortController();
+  const pending = connectOnlineRoom({
+    serverUrl: `http://127.0.0.1:${address.port}`,
+    name: "Bạn",
+    token: "car",
+  }, controller.signal);
+  controller.abort();
+  await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+  expect(saved.getItem("nha-choi-online-v1")).toBe("old proof");
+}, 3000);
 it("resumes_the_same_seat_and_latest_revision_after_refresh_without_replaying_a_command", async () => {
   const app = await createGameServer({ port: 0 });
   cleanup.push(app.close);

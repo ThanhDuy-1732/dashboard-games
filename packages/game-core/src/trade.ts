@@ -96,7 +96,7 @@ export function acceptTrade(
     state.resumePhase ??= previousPhase;
     state.phase = "mortgage-transfer";
   }
-  recordEvent(state, "trade", `${from.name} và ${to.name} hoàn tất giao dịch.`);
+  recordEvent(state, "trade", `${to.name} chấp nhận giao dịch với ${from.name}.`);
 }
 export function rejectTrade(
   state: GameState,
@@ -111,6 +111,14 @@ export function rejectTrade(
   requireRule(state.phase !== "auction" && state.phase !== "mortgage-transfer");
   if (state.phase === "debt") requireRule(trade.from === state.debt?.payer);
   state.trades = state.trades.filter((t) => t.id !== tradeId);
+  const name = playerById(state, actor).name;
+  recordEvent(
+    state,
+    "trade",
+    trade.to === actor
+      ? `${name} từ chối giao dịch với ${playerById(state, trade.from).name}.`
+      : `${name} rút đề nghị giao dịch với ${playerById(state, trade.to).name}.`,
+  );
 }
 export function resolveMortgageTransfer(
   state: GameState,

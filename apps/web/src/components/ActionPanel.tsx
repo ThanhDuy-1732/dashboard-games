@@ -34,7 +34,8 @@ export function ActionPanel({
   const self = view.players.find((p) => p.id === view.viewerId)!;
   const can = (type: GameAction["type"]) =>
     view.allowedActions.find((a) => a.type === type);
-  const bidSpaces = can("bid")?.spaceIds ?? [];
+  const bidHint = can("bid");
+  const bidSpaces = bidHint?.spaceIds ?? [];
   const target =
     bidTarget !== null && bidSpaces.includes(bidTarget)
       ? bidTarget
@@ -43,6 +44,7 @@ export function ActionPanel({
   const incoming = view.trades.filter(
     (t) => t.to === self.id && can("accept-trade")?.tradeIds?.includes(t.id),
   );
+  const outgoing = view.trades.filter((t) => t.from === self.id);
   const transfer = view.mortgageTransfers[0];
   const mortgageValue = transfer ? board[transfer.spaceId]!.mortgage! : 0;
   return (
@@ -95,6 +97,11 @@ export function ActionPanel({
           </div>
         </div>
       ))}
+      {outgoing.map((t) => (
+        <p className="help-text" key={t.id}>
+          Đang chờ {view.players.find((p) => p.id === t.to)?.name} phản hồi giao dịch.
+        </p>
+      ))}
       {view.phase === "awaiting-purchase" && view.turn.playerId === self.id && (
         <div className="decision-box">
           <LocationPhoto
@@ -132,19 +139,23 @@ export function ActionPanel({
                 ? "nhà cuối cùng"
                 : "khách sạn cuối cùng"}
           </h3>
-          <p>
-            Giá hiện tại: {view.auction!.bid}.{" "}
-            {view.auction!.bidder
-              ? `${view.players.find((p) => p.id === view.auction!.bidder)?.name} đang dẫn giá.`
-              : "Chưa có người trả giá."}
-          </p>
-          {can("bid") && (
+          <div role="status">
+            <p>
+              {view.auction!.bidder
+                ? `${view.players.find((p) => p.id === view.auction!.bidder)?.name} đang dẫn giá với ${view.auction!.bid}.`
+                : "Chưa có người trả giá. Giá mở là 1."}
+            </p>
+            {view.auction!.bidder === self.id && (
+              <p>Phiên tự kết thúc khi tất cả đối thủ còn lại bỏ giá.</p>
+            )}
+          </div>
+          {bidHint && (
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 onAction({
                   type: "bid",
-                  amount: Math.max(bid, can("bid")!.minimum!),
+                  amount: Math.max(bid, bidHint.minimum!),
                   ...(view.auction!.kind !== "property"
                     ? { spaceId: target }
                     : {}),
@@ -170,16 +181,16 @@ export function ActionPanel({
                 </>
               )}
               <label className="field-label" htmlFor="bid">
-                Giá bạn trả
+                Giá bạn trả (tối thiểu {bidHint.minimum})
               </label>
               <input
                 className="action-input"
                 id="bid"
                 type="number"
-                min={can("bid")!.minimum}
-                max={can("bid")!.maximum}
+                min={bidHint.minimum}
+                max={bidHint.maximum}
                 step={1}
-                value={Math.max(bid, can("bid")!.minimum!)}
+                value={Math.max(bid, bidHint.minimum!)}
                 onChange={(e) => setBid(Number(e.target.value))}
               />
               <button
@@ -197,7 +208,7 @@ export function ActionPanel({
               disabled={pending}
               onClick={() => onAction({ type: "pass-auction" })}
             >
-              Không tham gia tiếp
+              Bỏ giá
             </button>
           )}
         </div>
@@ -280,6 +291,9 @@ export function ActionPanel({
         >
           Trả 50 để ra tù
         </button>
+      )}
+      {can("roll") && view.turn.extraRoll && (
+        <p className="help-text">Bạn vừa tung đôi và được gieo thêm trong lượt này.</p>
       )}
       {can("roll") && (
         <button

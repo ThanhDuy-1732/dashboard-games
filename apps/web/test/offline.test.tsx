@@ -112,3 +112,39 @@ it("bots_answer_a_human_debtors_offer_before_waiting_for_the_debtor", async () =
     vi.useRealTimers();
   }
 });
+
+it.each([
+  { give: 0, receive: 10, outcome: "từ chối" },
+  { give: 10, receive: 0, outcome: "chấp nhận" },
+])("logs when Máy 1 answers a trade ($outcome)", async ({ give, receive, outcome }) => {
+  vi.useFakeTimers();
+  const state = makeState();
+  state.phase = "awaiting-end-turn";
+  const session = createOfflineSession(
+    { human: state.players[0]!, botCount: 1 },
+    makeSavedGame(state, "p1"),
+  );
+  try {
+    const reply = await session.send({
+      protocolVersion: 1,
+      gameId: state.gameId,
+      commandId: crypto.randomUUID(),
+      expectedRevision: state.revision,
+      action: {
+        type: "offer-trade",
+        to: "p2",
+        give: { cash: give, spaceIds: [], jailCards: [] },
+        receive: { cash: receive, spaceIds: [], jailCards: [] },
+      },
+    });
+    expect(reply.ok).toBe(true);
+    await vi.advanceTimersByTimeAsync(120);
+    const next = session.snapshot();
+    expect(next.trades).toHaveLength(0);
+    expect(next.phase).toBe("awaiting-end-turn");
+    expect(next.recentEvents.at(-1)?.text).toContain(`Máy 1 ${outcome}`);
+  } finally {
+    await session.close();
+    vi.useRealTimers();
+  }
+});

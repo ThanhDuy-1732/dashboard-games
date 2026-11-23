@@ -2,6 +2,41 @@ import { test, expect } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 import { TOKEN_NAMES } from "../src/components/TokenArt.js";
 import type { Token } from "@nha-choi/game-core";
+
+test("an unreachable room request can be cancelled, times out, and can be retried", async ({
+  page,
+  context,
+}) => {
+  await page.clock.install();
+  await page.goto("/");
+  await context.setOffline(true);
+  await page.getByRole("button", { name: "Chơi Cờ tỷ phú" }).click();
+  await page.getByRole("button", { name: /^Chơi online/ }).click();
+  const name = page.getByRole("textbox", { name: "Tên của bạn" });
+  await name.fill("Thử lại");
+  const create = page.getByRole("button", { name: "Tạo phòng", exact: true });
+  const cancel = page.getByRole("button", { name: "Hủy kết nối" });
+
+  await create.click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Đang kết nối phòng" }),
+  ).toBeVisible();
+  await cancel.click();
+  await expect(create).toBeEnabled();
+  await expect(name).toHaveValue("Thử lại");
+
+  await create.click();
+  await expect(cancel).toBeVisible();
+  await page.clock.fastForward(31000);
+  await expect(page.getByRole("alert")).toHaveText(/Máy chủ chưa phản hồi/);
+  await expect(create).toBeEnabled();
+
+  await page.routeWebSocket("**/socket.io/**", (socket) => socket.close());
+  await context.setOffline(false);
+  await create.click();
+  await expect(page.getByTestId("room-code")).toBeVisible();
+});
+
 async function setup(page: Page, name: string, token: Token, code?: string, size = 40) {
   await page.goto(code ? `/?room=${code}` : "/");
   const onlineConnection = page.waitForEvent("websocket", {

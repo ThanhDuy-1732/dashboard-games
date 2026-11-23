@@ -7,6 +7,7 @@ import {
   screen,
   fireEvent,
   act,
+  within,
 } from "@testing-library/react";
 import { ActionPanel } from "../src/components/ActionPanel.js";
 import { AssetsDialog } from "../src/components/AssetsDialog.js";
@@ -67,6 +68,38 @@ it("shows_the_location_photo_and_real_purchase_action", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Mua đất · 100" }));
   expect(actions).toEqual([{ type: "buy-property" }]);
   expect(screen.getAllByText("Tranh minh họa Nhà Chơi")).toHaveLength(1);
+});
+
+it.each([
+  { dice: [1, 2], next: /Kết thúc lượt/, absent: /Gieo xúc xắc|Gieo thêm lượt đôi/ },
+  { dice: [3, 3], next: /Gieo thêm lượt đôi/, absent: /Kết thúc lượt|Gieo xúc xắc/ },
+])("preserves turn actions after buying and closing dialogs ($dice)", async ({ dice, next, absent }) => {
+  const { Game } = await import("../src/screens/Game.js");
+  const { applyAction } = await import("@nha-choi/game-core");
+  const { randomTape } =
+    await import("../../../packages/game-core/test/fixtures/random-tape.js");
+  let state = makeState();
+  state.turn.number = 6;
+  const send = vi.fn((action: Parameters<typeof applyAction>[2]) => {
+    const result = applyAction(state, "p1", action, randomTape(dice));
+    if (!result.ok) throw new Error(result.code);
+    state = result.state;
+    game.rerender(renderGame());
+  });
+  const renderGame = () => (
+    <Game view={projectGame(state, "p1")} pending={false} onAction={send} onLeave={() => {}} />
+  );
+  const game = render(renderGame());
+  fireEvent.click(screen.getByRole("button", { name: "Gieo xúc xắc" }));
+  fireEvent.click(screen.getByRole("button", { name: /Mua đất/ }));
+  for (const name of ["Tài sản", "Giao dịch"]) {
+    fireEvent.click(screen.getByRole("button", { name, exact: true }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Đóng" }));
+    expect(screen.getByRole("button", { name: next })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: absent })).toBeNull();
+    expect(screen.getByText("Lượt 6")).toBeTruthy();
+  }
+  expect(send.mock.calls.map(([action]) => action.type)).toEqual(["roll", "buy-property"]);
 });
 it("asks_before_replacing_an_unfinished_saved_game", async () => {
   const { createSaveStore } = await import("../src/storage/save.js");
@@ -154,6 +187,46 @@ it("submits_the_selected_building_auction_street", () => {
   });
   fireEvent.click(screen.getByRole("button", { name: "Trả giá", exact: true }));
   expect(send).toHaveBeenCalledWith({ type: "bid", amount: 1, spaceId: 9 });
+});
+
+it("shows the bid minimum, explains the leading state and displays the winning price", async () => {
+  const { Game } = await import("../src/screens/Game.js");
+  const { applyAction } = await import("@nha-choi/game-core");
+  const { randomTape } =
+    await import("../../../packages/game-core/test/fixtures/random-tape.js");
+  let state = makeState();
+  state.phase = "auction";
+  state.auction = {
+    kind: "property",
+    spaceId: 6,
+    bid: 1,
+    bidder: "p2",
+    participants: ["p1", "p2"],
+  };
+  function dispatch(actor: string, action: Parameters<typeof applyAction>[2]) {
+    const result = applyAction(state, actor, action, randomTape([]));
+    if (!result.ok) throw new Error(result.code);
+    state = result.state;
+    game.rerender(renderGame());
+  }
+  const renderGame = () => (
+    <Game
+      view={projectGame(state, "p1")}
+      pending={false}
+      onAction={(action) => dispatch("p1", action)}
+      onLeave={() => {}}
+    />
+  );
+  const game = render(renderGame());
+  expect(screen.getByRole("spinbutton", { name: "Giá bạn trả (tối thiểu 2)" })
+    .getAttribute("min")).toBe("2");
+  fireEvent.click(screen.getByRole("button", { name: "Trả giá", exact: true }));
+  expect(screen.getByText(/Phiên tự kết thúc/)).toBeTruthy();
+  expect(screen.queryByRole("button", { name: "Trả giá", exact: true })).toBeNull();
+  dispatch("p2", { type: "pass-auction" });
+  const log = screen.getByRole("list", { name: "Nhật ký ván chơi" });
+  expect(within(log).getByText(/thắng đấu giá .* với giá 2/)).toBeTruthy();
+  expect(screen.getByRole("button", { name: /Kết thúc lượt/ })).toBeTruthy();
 });
 it("explains_unconfigured_native_online_before_creating_a_room", async () => {
   const { Capacitor } = await import("@capacitor/core");

@@ -50,7 +50,7 @@ export const hasOnlineRoom = () => stored() !== null;
 function createSocket(serverUrl: string) {
   return io(serverUrl, {
     autoConnect: false,
-    transports: ["websocket", "polling"],
+    transports: ["polling", "websocket"],
     tryAllTransports: true,
     auth: {
       protocolVersion: 1,
@@ -81,19 +81,24 @@ export interface OnlineSession extends RoomSession {
   readonly selfId: string;
   leaveRoom(discard?: boolean): Promise<void>;
 }
-export async function resumeOnlineRoom(): Promise<OnlineSession> {
+export async function resumeOnlineRoom(
+  signal?: AbortSignal,
+): Promise<OnlineSession> {
   const saved = stored();
   if (!saved)
     throw new Error("Không có phòng online để tiếp tục trong tab này.");
-  return connect(saved.serverUrl, { resumeToken: saved.resumeToken }, true);
+  return connect(saved.serverUrl, { resumeToken: saved.resumeToken }, true, signal);
 }
-export function connectOnlineRoom(input: {
-  serverUrl: string;
-  name: string;
-  token: Token;
-  code?: string;
-  boardSize?: BoardSize;
-}): Promise<OnlineSession> {
+export function connectOnlineRoom(
+  input: {
+    serverUrl: string;
+    name: string;
+    token: Token;
+    code?: string;
+    boardSize?: BoardSize;
+  },
+  signal?: AbortSignal,
+): Promise<OnlineSession> {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   const resumeToken = btoa(String.fromCharCode(...bytes))
     .replaceAll("+", "-")
@@ -111,6 +116,7 @@ export function connectOnlineRoom(input: {
       resumeToken,
     },
     false,
+    signal,
   );
 }
 async function connect(
@@ -123,7 +129,10 @@ async function connect(
     boardSize?: BoardSize;
   },
   resuming: boolean,
+  signal?: AbortSignal,
 ): Promise<OnlineSession> {
+  const cancellation = new DOMException("Đã hủy kết nối phòng.", "AbortError");
+  if (signal?.aborted) throw cancellation;
   if (isNative() && !onlineServerUrl(serverUrl))
     throw new Error(
       "Chơi online cần địa chỉ máy chủ HTTPS được cấu hình cho bản ứng dụng này. Chơi với máy vẫn hoạt động offline.",
@@ -188,19 +197,14 @@ async function connect(
     resolveInitial = resolve;
     rejectInitial = reject;
   });
-  const initialTimeout = setTimeout(
-    () => {
-      if (!selfId) {
-        void session.close();
-        rejectInitial(
-          new Error("Máy chủ chưa phản hồi. Hãy thử lại sau ít giây."),
-        );
-      }
-    },
-    /^https:\/\/[^/]+\.onrender\.com(?:[:/]|$)/i.test(serverUrl)
-      ? 70000
-      : 20000,
-  );
+  function failInitial(error: Error) {
+    rejectInitial(error);
+    void session.close();
+  }
+  const cancel = () => failInitial(cancellation);
+  const initialTimeout = setTimeout(() => {
+    failInitial(new Error("Máy chủ chưa phản hồi sau 30 giây. Hãy thử lại."));
+  }, 30000);
   const session: OnlineSession = {
     async setActive(foreground) {
       if (!active || update.connection === "closed") return;
@@ -284,6 +288,7 @@ async function connect(
       if (!active) return;
       active = false;
       clearTimeout(initialTimeout);
+      signal?.removeEventListener("abort", cancel);
       authenticated = false;
       socket.disconnect();
       publish({ ...update, connection: "closed" });
@@ -368,6 +373,7 @@ async function connect(
         else if (!reply.room.started && !reply.room.closed)
           publish({ connection: "connected", view: null });
         clearTimeout(initialTimeout);
+        signal?.removeEventListener("abort", cancel);
         resolveInitial(session);
       } catch {
         if (active) socket.io.engine?.close();
@@ -403,6 +409,7 @@ async function connect(
       rejectInitial(new Error(roomError(error.message)));
     }
   });
+  signal?.addEventListener("abort", cancel, { once: true });
   if (socket.connected) enterRoom();
   else socket.connect();
   return initial;

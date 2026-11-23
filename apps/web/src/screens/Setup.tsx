@@ -14,6 +14,7 @@ export function Setup({
   onStart,
   onBack,
   onOnline,
+  onCancelOnline,
   onResumeOnline,
   busy = false,
 }: {
@@ -25,6 +26,7 @@ export function Setup({
     code?: string;
     boardSize?: BoardSize;
   }) => void;
+  onCancelOnline?: () => void;
   onResumeOnline?: () => void;
   busy?: boolean;
 }) {
@@ -96,6 +98,7 @@ export function Setup({
               key={item.id}
               className={`mode-card ${mode === item.id ? "selected" : ""}`}
               aria-pressed={mode === item.id}
+              disabled={busy}
               onClick={() => setMode(item.id)}
             >
               <span className={`mode-icon ${item.color}`}>
@@ -115,6 +118,7 @@ export function Setup({
           noValidate
           onSubmit={(event) => {
             event.preventDefault();
+            if (busy) return;
             if (!name.trim() || name.trim().length > 20) {
               setError("Nhập tên của bạn, từ 1 đến 20 ký tự.");
               return;
@@ -299,10 +303,20 @@ export function Setup({
             </p>
           )}
           {busy && mode === "online" && (
-            <p className="info-note" role="status">
-              Đang kết nối phòng. Máy chủ có thể mất thêm thời gian khi vừa khởi
-              động.
-            </p>
+            <>
+              <p className="info-note" role="status">
+                Đang kết nối phòng. Máy chủ có thể cần thời gian để khởi động.
+              </p>
+              {onCancelOnline && (
+                <button
+                  type="button"
+                  className="text-button full"
+                  onClick={onCancelOnline}
+                >
+                  Hủy kết nối
+                </button>
+              )}
+            </>
           )}
           <div className="form-footer">
             <div className="small-rule">
