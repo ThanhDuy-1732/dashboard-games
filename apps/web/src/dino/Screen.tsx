@@ -1,12 +1,13 @@
 import { trackGame } from "../telemetry.js";
 import { App as CapacitorApp } from "@capacitor/app";
 import { createDinoRun, DINO_STEP_SECONDS, stepDinoRun } from "@nha-choi/game-core";
-import type { DinoLane, DinoRun } from "@nha-choi/game-core";
+import type { DinoLane, DinoMap, DinoRun } from "@nha-choi/game-core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isNative } from "../platform.js";
 import { createDinoScene } from "./scene.js";
 import type { DinoScene, DinoView } from "./scene.js";
 import { readDinoBest, saveDinoBest } from "./save.js";
+import { DINO_MAP_IDS, DINO_MAPS } from "./maps.js";
 import "./dino.css";
 
 type Phase = "ready" | "running" | "paused" | "finished" | "unavailable";
@@ -26,9 +27,9 @@ function armorHud(run: DinoRun) {
   return null;
 }
 
-function localBest() {
+function localBest(map: DinoMap) {
   try {
-    return readDinoBest(window.localStorage);
+    return readDinoBest(window.localStorage, map);
   } catch {
     return 0;
   }
@@ -60,7 +61,8 @@ export function DinoScreen({
   const [effects, setEffects] = useState(() => effectHud(run.current));
   const [fireReady, setFireReady] = useState(false);
   const [armor, setArmor] = useState<ReturnType<typeof armorHud>>(null);
-  const [best, setBest] = useState(localBest);
+  const [map, setMap] = useState<DinoMap>("volcano");
+  const [best, setBest] = useState(() => localBest("volcano"));
   const [webglMessage, setWebglMessage] = useState("Thiết bị này cần hỗ trợ WebGL 2 để hiển thị game.");
 
   const changePhase = useCallback((next: Phase) => {
@@ -85,7 +87,7 @@ export function DinoScreen({
     const id = crypto.randomUUID();
     telemetry.current = { id, startedAt: Date.now() };
     trackGame("dino", id, "game_started", "solo");
-    run.current = createDinoRun(Math.floor(Math.random() * 0x100000000));
+    run.current = createDinoRun(Math.floor(Math.random() * 0x100000000), map);
     setDistance(0);
     setAirborne(false);
     setLane(0);
@@ -93,6 +95,13 @@ export function DinoScreen({
     setFireReady(false);
     setArmor(null);
     changePhase("running");
+  }
+
+  function chooseMap(next: DinoMap) {
+    if (next !== map) setBest(localBest(next));
+    run.current = createDinoRun(0, next);
+    setMap(next);
+    changePhase("ready");
   }
 
   useEffect(() => {
@@ -105,7 +114,7 @@ export function DinoScreen({
     if (!surface) return;
     let scene: DinoScene;
     try {
-      scene = createDinoScene(surface);
+      scene = createDinoScene(surface, map);
     } catch {
       changePhase("unavailable");
       return;
@@ -155,7 +164,7 @@ export function DinoScreen({
           telemetry.current = null;
           let record = meters;
           try {
-            record = saveDinoBest(window.localStorage, meters);
+            record = saveDinoBest(window.localStorage, meters, next.map);
           } catch {
             // Storage can be disabled for this origin.
           }
@@ -225,7 +234,7 @@ export function DinoScreen({
       scene.dispose();
       onInGameChange(false);
     };
-  }, [changePhase, onInGameChange, toggleView]);
+  }, [changePhase, map, onInGameChange, toggleView]);
 
   const running = phase === "running";
   return (
@@ -235,6 +244,7 @@ export function DinoScreen({
       ref={stage}
       tabIndex={-1}
       data-phase={phase}
+      data-map={map}
       data-view={view}
       data-airborne={airborne}
       data-lane={lane}
@@ -244,6 +254,7 @@ export function DinoScreen({
       {(running || phase === "paused") && (
         <div className="dino-hud">
           <div className="dino-score">
+            <span className="dino-map-label">{DINO_MAPS[map].title}</span>
             <strong aria-label="Quãng đường">{distance} m</strong>
             <span>Kỷ lục {best} m</span>
           </div>
@@ -331,7 +342,18 @@ export function DinoScreen({
             {phase === "ready" && (
               <>
                 <h1>Thằn Lằn<br /> Núi Lửa</h1>
-                <p>Nhặt lửa để phá đá lăn. Nhảy qua khe dung nham và thân cây đổ, đổi làn để né cột đá.</p>
+                <fieldset className="dino-map-picker">
+                  <legend>Bản đồ</legend>
+                  <div>
+                    {DINO_MAP_IDS.map((id) => (
+                      <label key={id} data-course={id}>
+                        <input type="radio" name="dino-map" checked={map === id} onChange={() => chooseMap(id)} />
+                        <span>{DINO_MAPS[id].title}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+                <p>Nhặt lửa để phá đá lăn. Nhảy qua khe và thân cây đổ, đổi làn để né cột đá.</p>
                 <p className="dino-hint">
                   <span><kbd>←</kbd><kbd>→</kbd> Đổi làn</span>
                   <span><kbd>Space</kbd> Nhảy</span>
@@ -352,6 +374,7 @@ export function DinoScreen({
             {phase === "finished" && (
               <>
                 <h1>Kết thúc lượt</h1>
+                <p>{DINO_MAPS[map].title}</p>
                 <dl className="dino-results">
                   <div><dt>Quãng đường</dt><dd>{distance} m</dd></div>
                   <div><dt>Kỷ lục</dt><dd>{best} m</dd></div>
@@ -374,6 +397,7 @@ export function DinoScreen({
                   {phase === "ready" ? "Chơi" : phase === "paused" ? "Tiếp tục" : "Chơi lại"}
                 </button>
               )}
+              {phase === "finished" && <button className="dino-back" onClick={() => chooseMap(map)}>Đổi bản đồ</button>}
               <button className="dino-back" ref={phase === "unavailable" ? primary : undefined} onClick={onBack}>Về Nhà Chơi</button>
             </div>
           </div>

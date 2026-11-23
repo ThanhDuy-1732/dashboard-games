@@ -210,3 +210,30 @@ test("gives a way back when WebGL 2 is unavailable", async ({ page }) => {
   await page.getByRole("button", { name: "Về Nhà Chơi" }).click();
   await expect(page.getByRole("button", { name: "Chơi Thằn Lằn Núi Lửa" })).toBeVisible();
 });
+
+test("the sidebar opens the offline map picker and allows changing maps after a run", async ({ page, context, browserName }) => {
+  test.skip(browserName !== "chromium", "Production service-worker offline run.");
+  await page.setViewportSize({ width: 960, height: 630 });
+  await page.goto("/");
+  await expect(page.getByText("Đã sẵn sàng chơi với máy khi offline.")).toBeVisible();
+  await page.reload();
+  await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
+  await context.setOffline(true);
+  await page.reload();
+  await page.locator(".sidebar-game").getByRole("button", { name: "Thằn Lằn Núi Lửa", exact: true }).click();
+  const volcano = game(page).getByRole("radio", { name: "Núi lửa", exact: true });
+  const ice = game(page).getByRole("radio", { name: "Hẻm núi băng" });
+  const forest = game(page).getByRole("radio", { name: "Rừng cổ đại" });
+  await expect(volcano).toBeChecked();
+  await ice.check();
+  await expect(game(page)).toHaveAttribute("data-map", "ice");
+  await play(page).click();
+  await expect(game(page).locator(".dino-map-label")).toHaveText("Hẻm núi băng");
+  await expect(game(page).getByRole("heading", { name: "Kết thúc lượt" })).toBeVisible({ timeout: 12000 });
+  await game(page).getByRole("button", { name: "Đổi bản đồ" }).click();
+  await forest.check();
+  await play(page).click();
+  await expect(game(page)).toHaveAttribute("data-map", "forest");
+  await expect(game(page).locator(".dino-map-label")).toHaveText("Rừng cổ đại");
+  await expect(game(page)).toHaveAttribute("data-armor", "ready");
+});

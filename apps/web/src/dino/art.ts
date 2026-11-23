@@ -4,7 +4,8 @@ import {
   MeshStandardMaterial, OctahedronGeometry, PlaneGeometry, SphereGeometry, SRGBColorSpace, TorusGeometry,
 } from "three";
 
-const basalt = [0x555667, 0x53545f, 0x666171, 0x595664, 0x393742] as const;
+import type { DinoMap } from "@nha-choi/game-core";
+import { DINO_MAPS } from "./maps.js";
 const standard = (color: number) => new MeshStandardMaterial({ color, roughness: 0.92 });
 
 function rockTexture() {
@@ -40,17 +41,18 @@ function rockTexture() {
   return texture;
 }
 
-export function createDinoSky() {
+export function createDinoSky(map: DinoMap) {
+  const stops = DINO_MAPS[map].sky;
   const canvas = document.createElement("canvas");
   canvas.width = 4;
   canvas.height = 256;
   const context = canvas.getContext("2d");
   if (!context) return null;
   const sky = context.createLinearGradient(0, 0, 0, canvas.height);
-  sky.addColorStop(0, "#65768f");
-  sky.addColorStop(0.36, "#d2a198");
-  sky.addColorStop(0.57, "#ffd1a0");
-  sky.addColorStop(1, "#d9a69b");
+  sky.addColorStop(0, stops[0]);
+  sky.addColorStop(0.36, stops[1]);
+  sky.addColorStop(0.57, stops[2]);
+  sky.addColorStop(1, stops[3]);
   context.fillStyle = sky;
   context.fillRect(0, 0, canvas.width, canvas.height);
   const texture = new CanvasTexture(canvas);
@@ -58,22 +60,25 @@ export function createDinoSky() {
   return texture;
 }
 
-export function createDinoArt() {
+export function createDinoArt(map: DinoMap) {
+  const theme = DINO_MAPS[map];
+  const terrain = theme.terrain;
   const stone = [
-    standard(basalt[0]), standard(basalt[1]), standard(basalt[2]),
-    standard(basalt[3]), standard(basalt[4]),
+    standard(terrain[0]), standard(terrain[1]), standard(terrain[2]),
+    standard(terrain[3]), standard(terrain[4]),
   ] as const;
   const rockMaterial = (index: number) => stone[index % stone.length] ?? stone[0];
   const rockMap = rockTexture();
-  const pavement = basalt.map((color) => new MeshStandardMaterial({ color, map: rockMap, roughness: 1 }));
+  const pavement = terrain.map((color) => new MeshStandardMaterial({ color, map: rockMap, roughness: 1 }));
   const green = standard(0x71944e);
   const belly = standard(0xb6be73);
   const darkGreen = standard(0x405735);
   const eye = new MeshBasicMaterial({ color: 0x181517 });
-  const lava = new MeshStandardMaterial({ color: 0xe94b12, emissive: 0xff3608, emissiveIntensity: 0.65 });
+  const floorMaterial = new MeshStandardMaterial({ color: theme.floor, emissive: theme.floorGlow, emissiveIntensity: map === "volcano" ? 0.65 : 0.28 });
   const flare = new MeshBasicMaterial({ color: 0xffa23e });
+  const rim = new MeshBasicMaterial({ color: theme.rim });
   const dustMaterial = new MeshBasicMaterial({ color: 0xcf9370, transparent: true, opacity: 0, depthWrite: false });
-  const ashMaterial = new MeshBasicMaterial({ color: 0xffbf78, transparent: true, opacity: 0.65 });
+  const ashMaterial = new MeshBasicMaterial({ color: theme.particles, transparent: true, opacity: 0.65 });
   const itemMaterial = new MeshBasicMaterial({ color: 0xffc064 });
   const cube = new BoxGeometry();
   const plane = new PlaneGeometry();
@@ -98,24 +103,33 @@ export function createDinoArt() {
     return shape;
   }
 
-  mesh(world, cube, lava, 0, -1.6, -42, 130, 0.4, 150);
-  mesh(world, cone, stone[4], -16, 9, -88, 25, 28, 21);
-  mesh(world, cone, stone[1], -6, 10, -96, 16, 31, 16);
-  mesh(world, column, lava, -6, 24.65, -96, 2.7, 1.2, 2.7);
-  const lavaFlow = mesh(world, cube, flare, -3.3, 17.4, -87.35, 0.52, 14.7, 0.25);
-  lavaFlow.rotation.z = 0.36;
-  lavaFlow.rotation.x = 0.76;
-  const smokeMaterial = standard(0x564555);
-  const smoke = Array.from({ length: 7 }, (_, index) => {
-    const size = 1.7 + index * 0.45;
-    const puff = mesh(world, facet, smokeMaterial, -6 + index * 1.72, 26 + index * 1.28, -96 + (index % 3), size, size * 0.72, size);
-    puff.rotation.y = index * 0.74;
-    return puff;
-  });
+  mesh(world, cube, floorMaterial, 0, -1.6, -42, 130, 0.4, 150);
+  const smoke = [];
+  if (map === "volcano") {
+    mesh(world, cone, stone[4], -16, 9, -88, 25, 28, 21);
+    mesh(world, cone, stone[1], -6, 10, -96, 16, 31, 16);
+    mesh(world, column, floorMaterial, -6, 24.65, -96, 2.7, 1.2, 2.7);
+    const lavaFlow = mesh(world, cube, flare, -3.3, 17.4, -87.35, 0.52, 14.7, 0.25);
+    lavaFlow.rotation.z = 0.36;
+    lavaFlow.rotation.x = 0.76;
+    const smokeMaterial = standard(0x564555);
+    for (let index = 0; index < 7; index++) {
+      const size = 1.7 + index * 0.45;
+      const puff = mesh(world, facet, smokeMaterial, -6 + index * 1.72, 26 + index * 1.28, -96 + (index % 3), size, size * 0.72, size);
+      puff.rotation.y = index * 0.74;
+      smoke.push(puff);
+    }
+  }
+  const accent = map === "forest" ? standard(0x2f6e47) : stone[2];
+  const accentTip = map === "forest" ? standard(0x4c9355) : standard(0xc4ebf7);
+  const trunk = map === "forest" ? standard(0x65402a) : stone[4];
   for (const side of [-1, 1]) {
     for (let index = 0; index < 5; index++) {
       const hill = mesh(world, cone, rockMaterial(index + 2), side * (31 + index * 5), 2, -52 - index * 9, 13, 10 + (index % 3) * 4, 15);
       hill.rotation.y = index;
+      if (map === "ice") {
+        mesh(world, cone, accentTip, hill.position.x, 7.7 + (index % 3) * 3, hill.position.z, 6.5, 9, 7.5).rotation.y = index;
+      }
     }
   }
 
@@ -139,6 +153,16 @@ export function createDinoArt() {
       const pillar = mesh(bank, column, rockMaterial(index + (side === 1 ? 2 : 0)), side * (4.6 + (index % 3) * 0.45), height / 2 - 0.85, 0, 2.05, height, 3.25);
       pillar.rotation.y = index * 0.73;
       mesh(bank, rock, rockMaterial(index + 2), side * 7.5, height / 2 - 0.6, 0.6, 2.6, height * 0.7, 2).rotation.y = index;
+      if (map === "forest") {
+        const x = side * (5.4 + (index % 3) * 0.5);
+        mesh(bank, column, trunk, x, 1.8, 0.4, 0.48, 5.2, 0.48);
+        mesh(bank, cone, accent, x, 4.55, 0.4, 2.1, 3.4, 1.92).rotation.y = index;
+        mesh(bank, cone, accentTip, x, 6.0, 0.4, 1.45, 2.6, 1.35).rotation.y = index * 0.6;
+      } else if (map === "ice") {
+        const x = side * (5.2 + (index % 3) * 0.65);
+        mesh(bank, crystal, accentTip, x, height * 0.72 + 0.25, -0.5, 0.52, 1.35, 0.55).rotation.z = side * -0.2;
+        mesh(bank, crystal, accent, x + side * 0.7, height * 0.52, 0.18, 0.44, 0.9, 0.46).rotation.z = side * -0.4;
+      }
     }
     return bank;
   });
@@ -154,9 +178,9 @@ export function createDinoArt() {
   const gaps = Array.from({ length: 6 }, () => {
     const group = new Group();
     world.add(group);
-    mesh(group, cube, flare, 0, -0.66, 0, 5.65, 0.045, 1);
-    mesh(group, cube, lava, 0, -0.065, -0.49, 5.46, 0.15, 0.025);
-    mesh(group, cube, lava, 0, -0.065, 0.49, 5.46, 0.15, 0.025);
+    mesh(group, cube, floorMaterial, 0, -0.66, 0, 5.65, 0.045, 1);
+    mesh(group, cube, rim, 0, -0.065, -0.49, 5.46, 0.15, 0.025);
+    mesh(group, cube, rim, 0, -0.065, 0.49, 5.46, 0.15, 0.025);
     return group;
   });
   const bark = standard(0x4e2a22);
@@ -248,7 +272,7 @@ export function createDinoArt() {
   );
   return {
     world, dino, legs, tail, road, banks, boulders, gaps, logs, pillars, items, evolutionCrest, green,
-    smoke, shadow, dust, dustMaterial, ash, lava, rockMap, flames, debris,
+    smoke, shadow, dust, dustMaterial, ash, floorMaterial, rockMap, flames, debris,
     shield, shieldMaterial, pickupShapes: { fire: cone, armor: rock, gem: crystal },
   };
 }

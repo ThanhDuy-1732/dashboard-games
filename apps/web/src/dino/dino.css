@@ -71,6 +71,11 @@
   color: #f2e2d7;
 }
 
+.dino-score .dino-map-label {
+  color: #ffd7b8;
+  margin-bottom: 3px;
+}
+
 .dino-stage [data-kind="speed-up"] { --item-color: #ffc064; }
 .dino-stage [data-kind="slow-down"] { --item-color: #79dbff; }
 .dino-stage [data-kind="evolution"] { --item-color: #f6abff; }
@@ -274,6 +279,57 @@
 .dino-panel p {
   margin: 10px 0 0;
   color: #f1dfd2;
+}
+.dino-map-picker {
+  min-width: 0;
+  margin: 16px 0;
+  padding: 0;
+  border: 0;
+}
+.dino-map-picker legend {
+  margin-bottom: 7px;
+  font-size: 13px;
+  font-weight: 750;
+}
+.dino-map-picker > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+.dino-map-picker label {
+  position: relative;
+  min-width: 0;
+  cursor: pointer;
+}
+.dino-map-picker input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.dino-map-picker span {
+  display: grid;
+  min-height: 45px;
+  height: 100%;
+  place-items: center;
+  padding: 6px 4px;
+  border: 1px solid #ffffff29;
+  border-radius: 8px;
+  color: #fff5ed;
+  background: #4d302e;
+  font-size: 12px;
+  line-height: 1.2;
+  text-align: center;
+}
+.dino-map-picker [data-course="forest"] span { background: #284839; }
+.dino-map-picker [data-course="ice"] span { background: #324c65; }
+.dino-map-picker input:checked + span {
+  border-color: #ffd19e;
+  box-shadow: inset 0 0 0 1px #ffd19e;
+}
+.dino-map-picker input:focus-visible + span {
+  outline: 2px solid #fff6e7;
+  outline-offset: 2px;
 }
 .dino-hint {
   display: flex;

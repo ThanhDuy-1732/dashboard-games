@@ -26,3 +26,12 @@ it("leaves the current record visible when storage cannot write", () => {
   };
   expect(saveDinoBest(storage, 25)).toBe(25);
 });
+
+it("keeps map records separate and reads the existing volcano record", () => {
+  localStorage.setItem(DINO_BEST_KEY, "248");
+  expect(readDinoBest(localStorage, "volcano")).toBe(248);
+  expect(readDinoBest(localStorage, "forest")).toBe(0);
+  expect(saveDinoBest(localStorage, 320, "forest")).toBe(320);
+  expect(readDinoBest(localStorage, "ice")).toBe(0);
+  expect(readDinoBest(localStorage)).toBe(248);
+});

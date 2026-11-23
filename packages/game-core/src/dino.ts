@@ -5,6 +5,7 @@ export const DINO_FIRE_RANGE_M = 9;
 export const DINO_FIRE_BURST_TICKS = 18;
 export const DINO_ARMOR_FLASH_TICKS = 24;
 export type DinoLane = -1 | 0 | 1;
+export type DinoMap = "volcano" | "forest" | "ice";
 export type DinoItemKind = "speed-up" | "slow-down" | "evolution" | "fire" | "armor";
 
 const LANES = [-1, 0, 1] as const;
@@ -15,7 +16,11 @@ const ITEMS = [
   { kind: "slow-down", lane: 1 },
   { kind: "evolution", lane: 0 },
 ] as const;
-const OBSTACLE_KINDS = ["boulder", "gap", "log", "pillar"] as const;
+const COURSES = {
+  volcano: { order: ["boulder", "gap", "log", "pillar"], firstItem: 0 },
+  forest: { order: ["log", "boulder", "pillar", "gap"], firstItem: 1 },
+  ice: { order: ["gap", "pillar", "boulder", "log"], firstItem: 3 },
+} as const;
 const BOULDER_SIDE_CLEARANCE = 0.7;
 const LANE_CHANGE_METERS_PER_SECOND = 8;
 
@@ -33,7 +38,7 @@ export interface DinoSpeedEffect {
 
 export interface DinoObstacle {
   id: number;
-  kind: (typeof OBSTACLE_KINDS)[number];
+  kind: (typeof COURSES.volcano.order)[number];
   startM: number;
   lengthM: number;
   clearanceM: number;
@@ -49,6 +54,7 @@ interface DinoFireBurst {
 
 export interface DinoRun {
   seed: number;
+  map: DinoMap;
   distanceM: number;
   speedMps: number;
   lane: DinoLane;
@@ -79,15 +85,16 @@ export function dinoBoulderOffsetM(obstacle: DinoObstacle, distanceM: number): n
   return slide * (side * 3.8 - dinoObstacleCenterX(obstacle));
 }
 
-function nextObstacle(seed: number, previous?: DinoObstacle): DinoObstacle {
+function nextObstacle(seed: number, map: DinoMap, previous?: DinoObstacle): DinoObstacle {
   const id = previous ? previous.id + 1 : 0;
   const mixed = Math.imul((seed + id) ^ 0x9e3779b9, 0x85ebca6b);
   const random = (mixed ^ (mixed >>> 16)) >>> 0;
+  const { order } = COURSES[map];
   const startM = previous
-    ? Math.ceil(previous.startM + previous.lengthM) + 22 + (id < OBSTACLE_KINDS.length ? 1 : random % 12)
+    ? Math.ceil(previous.startM + previous.lengthM) + 22 + (id < order.length ? 1 : random % 12)
     : 24;
-  const kind = OBSTACLE_KINDS[id % OBSTACLE_KINDS.length];
-  const lane = id < OBSTACLE_KINDS.length ? 0 : (LANES[(random >>> 4) % LANES.length] ?? 0);
+  const kind = order[id % order.length];
+  const lane = id < order.length ? 0 : (LANES[(random >>> 4) % LANES.length] ?? 0);
   switch (kind) {
     case "gap": return { id, kind, startM, lengthM: 1.8, clearanceM: 0.3 };
     case "log": return { id, kind, startM, lengthM: 0.9, clearanceM: 0.55, lane: lane < 0 ? -1 : 0 };
@@ -96,22 +103,23 @@ function nextObstacle(seed: number, previous?: DinoObstacle): DinoObstacle {
   }
 }
 
-function itemBefore(obstacle: DinoObstacle): DinoItem {
-  const item = ITEMS[obstacle.id % ITEMS.length] ?? ITEMS[0];
-  return { id: obstacle.id, ...item, atM: obstacle.startM - 12 };
+function itemBefore(obstacle: DinoObstacle, map: DinoMap): DinoItem {
+  const slot = (obstacle.id + COURSES[map].firstItem) % ITEMS.length;
+  const item = ITEMS[slot] ?? ITEMS[0];
+  return { id: obstacle.id, kind: item.kind, lane: obstacle.id === 0 ? 0 : item.lane, atM: obstacle.startM - 12 };
 }
 
-export function createDinoRun(seed: number): DinoRun {
-  let next = nextObstacle(seed);
+export function createDinoRun(seed: number, map: DinoMap = "volcano"): DinoRun {
+  let next = nextObstacle(seed, map);
   const obstacles = [next];
   while (next.startM < 120) {
-    next = nextObstacle(seed, next);
+    next = nextObstacle(seed, map, next);
     obstacles.push(next);
   }
   return {
-    seed, distanceM: 0, speedMps: 8, lane: 0, xM: 0,
+    seed, map, distanceM: 0, speedMps: 8, lane: 0, xM: 0,
     heightM: 0, verticalSpeedMps: 0, status: "running", obstacles,
-    items: obstacles.map(itemBefore), speedEffect: null, evolutionTicks: 0,
+    items: obstacles.map((obstacle) => itemBefore(obstacle, map)), speedEffect: null, evolutionTicks: 0,
     hasFire: false, fireBurst: null, hasArmor: false, absorbedObstacleId: null, armorFlashTicks: 0,
   };
 }
@@ -225,9 +233,9 @@ export function stepDinoRun(run: DinoRun, jumpPressed: boolean, move: DinoLane =
   }
   const last = obstacles.at(-1);
   if (last && last.startM < distanceM + 120) {
-    const next = nextObstacle(run.seed, last);
+    const next = nextObstacle(run.seed, run.map, last);
     obstacles = [...obstacles, next];
-    items = [...items, itemBefore(next)];
+    items = [...items, itemBefore(next, run.map)];
   }
   return {
     ...run, distanceM, speedMps, lane, xM, heightM, obstacles, items, speedEffect, evolutionTicks,

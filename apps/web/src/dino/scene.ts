@@ -3,12 +3,13 @@ import {
   PerspectiveCamera, Scene, WebGLRenderer,
 } from "three";
 import type { Material } from "three";
-import type { DinoRun } from "@nha-choi/game-core";
+import type { DinoMap, DinoRun } from "@nha-choi/game-core";
 import {
   DINO_ARMOR_FLASH_TICKS, DINO_BOULDER_ROLL_M, DINO_FIRE_BURST_TICKS,
   DINO_FIRE_RANGE_M, DINO_LANE_WIDTH, dinoBoulderOffsetM, dinoObstacleCenterX,
 } from "@nha-choi/game-core";
 import { createDinoArt, createDinoSky } from "./art.js";
+import { DINO_MAPS } from "./maps.js";
 
 export type DinoView = "first" | "third";
 const ITEM_COLORS = {
@@ -20,17 +21,18 @@ export interface DinoScene {
   dispose(): void;
 }
 
-export function createDinoScene(canvas: HTMLCanvasElement): DinoScene {
+export function createDinoScene(canvas: HTMLCanvasElement, map: DinoMap): DinoScene {
   const renderer = new WebGLRenderer({ canvas, antialias: true });
   const scene = new Scene();
   const camera = new PerspectiveCamera(59, 1, 0.07, 145);
-  const sky = createDinoSky();
-  scene.background = sky ?? new Color(0xd3a299);
-  scene.fog = new Fog(0xd3a299, 28, 142);
-  const sun = new DirectionalLight(0xffddae, 2.25);
+  const theme = DINO_MAPS[map];
+  const sky = createDinoSky(map);
+  scene.background = sky ?? new Color(theme.mist);
+  scene.fog = new Fog(theme.mist, 28, 142);
+  const sun = new DirectionalLight(theme.sun, 2.25);
   sun.position.set(-7, 12, -4);
-  scene.add(new HemisphereLight(0xffe7d7, 0x765869, 1.55), new AmbientLight(0xffad85, 0.16), sun);
-  const art = createDinoArt();
+  scene.add(new HemisphereLight(theme.sun, 0x765869, 1.55), new AmbientLight(0xffad85, 0.16), sun);
+  const art = createDinoArt(map);
   scene.add(art.world);
 
   let redraw = () => {};
@@ -222,7 +224,9 @@ export function createDinoScene(canvas: HTMLCanvasElement): DinoScene {
       art.smoke.forEach((puff, index) => {
         puff.position.x = -6 + index * 1.72 + (reducedMotion ? 0 : Math.sin(distance * 0.11 + index) * 0.75);
       });
-      art.lava.emissiveIntensity = 0.65 + (reducedMotion ? 0 : Math.sin(distance * 0.28) * 0.12);
+      if (map === "volcano" && !reducedMotion) {
+        art.floorMaterial.emissiveIntensity = 0.65 + Math.sin(distance * 0.28) * 0.12;
+      }
       redraw();
     },
     dispose() {

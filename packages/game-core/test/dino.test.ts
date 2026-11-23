@@ -195,3 +195,23 @@ describe("Dino armor and additional obstacles", () => {
     }
   });
 });
+
+describe("Dino maps", () => {
+  it("keeps the original course and gives the two new courses distinct openings", () => {
+    const order = (map: Parameters<typeof createDinoRun>[1]) =>
+      createDinoRun(9, map).obstacles.slice(0, 4).map(({ kind }) => kind);
+    expect(order(undefined)).toEqual(["boulder", "gap", "log", "pillar"]);
+    expect(order("forest")).toEqual(["log", "boulder", "pillar", "gap"]);
+    expect(order("ice")).toEqual(["gap", "pillar", "boulder", "log"]);
+  });
+
+  it("keeps the chosen map while recycling terrain and produces the same layouts from the same seed", () => {
+    for (const map of ["forest", "ice"] as const) {
+      const start = createDinoRun(5, map);
+      expect(start).toEqual(createDinoRun(5, map));
+      const continued = stepDinoRun({ ...start, distanceM: 14 }, false);
+      expect(continued.map).toBe(map);
+      expect(continued.obstacles.at(-1)?.id).toBe((start.obstacles.at(-1)?.id ?? 0) + 1);
+    }
+  });
+});

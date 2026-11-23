@@ -390,6 +390,15 @@ export function App() {
               <span>Lò Gốm<small>Xếp khối · Offline</small></span>
               <span className="tiny-arrow" aria-hidden="true">↗</span>
             </button>
+            <button
+              onClick={() => navigate("dino")}
+              aria-label="Thằn Lằn Núi Lửa"
+              aria-current={page === "dino" ? "page" : undefined}
+            >
+              <span className="mini-game dino-nav-icon" aria-hidden="true">🦖</span>
+              <span>Thằn Lằn Núi Lửa<small>Chạy 3D · Offline</small></span>
+              <span className="tiny-arrow" aria-hidden="true">↗</span>
+            </button>
           </div>
           <div className="sidebar-bottom">
             <div className="little-dice">⚄</div>
