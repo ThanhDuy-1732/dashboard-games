@@ -1,5 +1,5 @@
 import rulebook from "../../../docs/rules/classic-v1.md?raw";
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import type { LobbyView } from "@nha-choi/protocol";
 import {
   connectOnlineRoom,
@@ -44,7 +44,8 @@ const ERROR_TEXT: Record<string, string> = {
     "Hành động không còn hợp lệ. Hãy kiểm tra tiền, tài sản và lượt hiện tại.",
   PAUSED: "Ván đang tạm dừng. Hãy đợi kết nối hoặc thử mở lại ván đã lưu.",
 };
-type Destination = "home" | "setup" | "caro" | "kiln";
+const DinoScreen = lazy(async () => ({ default: (await import("./dino/Screen.js")).DinoScreen }));
+type Destination = "home" | "setup" | "caro" | "kiln" | "dino";
 
 export function App() {
   const [page, setPage] = useState<Destination | "game">(() =>
@@ -53,6 +54,7 @@ export function App() {
   const [resumeCaro, setResumeCaro] = useState(false);
   const [caroInGame, setCaroInGame] = useState(false);
   const [kilnInGame, setKilnInGame] = useState(false);
+  const [dinoInGame, setDinoInGame] = useState(false);
   const [session, setSession] = useState<OfflineSession | OnlineSession | null>(
     null,
   );
@@ -144,7 +146,7 @@ export function App() {
   );
 
   useEffect(() => {
-    document.getElementById("main")?.focus({ preventScroll: true });
+    if (page !== "dino") document.getElementById("main")?.focus({ preventScroll: true });
     document.documentElement.scrollTop = 0;
   }, [page]);
   const navigate = (next: Destination) => {
@@ -310,12 +312,13 @@ export function App() {
     update?.view?.phase === "finished" || Boolean(online && lobby?.closed);
   const telemetryScreen = page === "game" ? finished ? "results" : online && !lobby?.started ? "lobby" : "game" : page;
   useEffect(() => {
-    if (telemetryScreen !== "kiln") trackScreen(telemetryScreen);
+    if (telemetryScreen !== "kiln" && telemetryScreen !== "dino") trackScreen(telemetryScreen);
   }, [telemetryScreen]);
   useEffect(startTelemetry, []);
+  const hubStyle = page === "dino" ? { display: "none" } : undefined;
   return (
     <>
-      <div className="app-shell">
+      <div className="app-shell" style={hubStyle}>
         <aside className="sidebar">
           <a
             className="brand"
@@ -446,7 +449,7 @@ export function App() {
             </div>
           </header>
           <main id="main" tabIndex={-1}>
-            <PwaStatus inGame={Boolean(session) || caroInGame || kilnInGame} />
+            <PwaStatus inGame={Boolean(session) || caroInGame || kilnInGame || dinoInGame} />
             {persistence.notice && (
               <div className="app-error">
                 {persistence.notice}
@@ -515,6 +518,7 @@ export function App() {
             {page === "home" && (
               <Home
                 onKiln={() => navigate("kiln")}
+                onDino={() => navigate("dino")}
                 onCaro={() => openCaro()}
                 onResumeCaro={readCaroSave() ? () => openCaro(true) : undefined}
                 onPlay={() => navigate("setup")}
@@ -576,7 +580,7 @@ export function App() {
           </footer>
         </div>
       </div>
-      <nav className="mobile-nav" aria-label="Điều hướng điện thoại">
+      <nav className="mobile-nav" aria-label="Điều hướng điện thoại" style={hubStyle}>
         <button onClick={() => navigate("home")}>
           <Icon name="grid" />
           Khám phá
@@ -590,6 +594,13 @@ export function App() {
           Luật chơi
         </button>
       </nav>
+      {page === "dino" && (
+        <main id="dino-main">
+          <Suspense fallback={<p className="empty-message" role="status">Đang mở Thằn Lằn Núi Lửa…</p>}>
+            <DinoScreen onBack={() => navigate("home")} onInGameChange={setDinoInGame} />
+          </Suspense>
+        </main>
+      )}
       {rules && page === "caro" && (
         <Dialog title="Luật chơi Cờ Caro" onClose={() => setRules(false)}>
           <h2>Luật chơi Cờ Caro</h2>

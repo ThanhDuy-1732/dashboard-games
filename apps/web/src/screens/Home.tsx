@@ -4,6 +4,7 @@ import type { SavedGame } from "../storage/save-schema.js";
 export function Home({
   onPlay,
   onKiln,
+  onDino,
   onCaro,
   onResumeCaro,
   onRules,
@@ -13,6 +14,7 @@ export function Home({
 }: {
   onPlay: () => void;
   onKiln: () => void;
+  onDino: () => void;
   onCaro: () => void;
   onResumeCaro?: () => void;
   onRules: () => void;
@@ -161,6 +163,20 @@ export function Home({
           <p>Xếp khối, canh lửa và lấy gốm đúng lúc trong ba màn chơi offline.</p>
         </div>
         <button className="button secondary" onClick={onKiln}>Chơi Lò Gốm<Icon name="arrow" /></button>
+      </article>
+      <article className="game-card">
+        <div className="game-cover" aria-hidden="true">🦖</div>
+        <div className="game-description">
+          <div className="tags">
+            <span className="tag green">Chạy vô tận 3D</span>
+            <span className="tag">Chơi offline</span>
+          </div>
+          <h3>Thằn Lằn Núi Lửa</h3>
+          <p>Nhảy qua khe dung nham và đá lăn với hai góc nhìn.</p>
+        </div>
+        <button className="button secondary" onClick={onDino}>
+          Chơi Thằn Lằn Núi Lửa <Icon name="arrow" />
+        </button>
       </article>
       <div className="home-bottom">
         <div className="start-tip">
