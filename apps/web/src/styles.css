@@ -355,42 +355,73 @@ h1 > span {
   color: var(--green);
 }
 .hero {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  min-height: 356px;
+  padding: clamp(16px, 3vw, 34px);
   background: #f3e6cd;
   border: 1px solid #d0bc98;
   border-radius: var(--radius);
-  overflow: hidden;
-  position: relative;
-}
-.hero-copy {
-  padding: 33px 22px 30px 36px;
-  z-index: 1;
-}
-.game-label {
-  font-size: 11px;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--muted);
-}
-.game-label svg {
-  width: 15px;
-  height: 15px;
 }
 .hero h2 {
-  font-size: clamp(36px, 3.6vw, 58px);
-  line-height: 1.12;
-  letter-spacing: -2.4px;
-  margin-top: 15px;
-  font-weight: 800;
+  margin-bottom: 16px;
+  font-size: clamp(1.4rem, 2.4vw, 2rem);
+  line-height: 1.15;
 }
-.hero-copy > p {
-  font-size: 12px;
-  line-height: 1.9;
+.hero-games {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 126px), 1fr));
+  gap: 10px;
+}
+.hero-game {
+  display: grid;
+  min-width: 0;
+  grid-template-rows: auto 1fr auto;
+  gap: 6px;
+  padding: 7px 7px 12px;
+  border: 1px solid #cdbb98;
+  border-radius: var(--radius);
+  color: var(--ink);
+  background: var(--white);
+  text-align: left;
+  box-shadow: 0 2px 0 #d8c5a2;
+}
+.hero-game:hover {
+  border-color: var(--green);
+  background: #fffdf5;
+}
+.hero-game-art {
+  display: grid;
+  place-items: center;
+  min-height: 68px;
+  border-radius: 4px;
+  color: var(--banner-ink);
+  background: var(--banner-paper);
+  font: 700 1.9rem / 1 var(--display-font);
+}
+.hero-game-art svg {
+  width: 34px;
+  height: 34px;
+}
+.hero-game-title,
+.hero-game-genre {
+  margin-inline: 4px;
+}
+.hero-game-title {
+  align-self: center;
+  font-weight: 750;
+  line-height: 1.25;
+}
+.hero-game-genre {
   color: var(--muted);
-  margin-top: 15px;
+  font-size: 0.75rem;
+}
+.hero-game-ty-phu { --banner-paper: #285143; --banner-ink: #f3e6cd; }
+.hero-game-caro { --banner-paper: #e1eadb; --banner-ink: #285b46; }
+.hero-game-kiln { --banner-paper: #923e29; --banner-ink: #ffdf9f; }
+.hero-game-dino { --banner-paper: #f2dbb5; --banner-ink: #69452d; }
+.hero-game-kiln .kiln-vase { width: 26px; height: 32px; }
+@media (max-width: 520px) {
+  .hero-games {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 .button {
   display: inline-flex;
@@ -425,49 +456,6 @@ h1 > span {
 }
 .secondary:hover {
   background: #f4e8cf;
-}
-.hero-location {
-  display: grid;
-  align-items: center;
-  min-width: 0;
-  padding: 22px;
-  background:
-    repeating-linear-gradient(0deg, #9a7f671d 0 1px, transparent 1px 22px),
-    repeating-linear-gradient(90deg, #9a7f671d 0 1px, transparent 1px 22px);
-}
-.hero-location .location-figure {
-  margin: 0;
-  padding: 8px 8px 0;
-  border: 1px solid #cdbb98;
-  background: var(--white);
-  box-shadow: 3px 4px 0 #80604026;
-}
-.hero-location .location-photo {
-  height: clamp(200px, 30vw, 380px);
-  max-height: none;
-  object-position: center 57%;
-}
-.hero-location .photo-credit {
-  padding: 8px 5px 10px;
-}
-.hero .button {
-  margin-top: 22px;
-}
-.hero-meta {
-  display: flex;
-  gap: 18px;
-  font-size: 10px;
-  color: var(--muted);
-  margin-top: 18px;
-}
-.hero-meta span {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.hero-meta svg {
-  width: 13px;
-  height: 13px;
 }
 .section-title {
   display: flex;
@@ -1543,18 +1531,6 @@ dialog > .button {
   display: none;
 }
 @media (min-width: 1550px) {
-  .hero {
-    min-height: 390px;
-  }
-  .hero-copy {
-    padding-top: 38px;
-  }
-  .hero-copy > p {
-    font-size: 14px;
-  }
-  .hero h2 {
-    font-size: 60px;
-  }
   .game-cover {
     width: 240px;
   }
@@ -1581,18 +1557,6 @@ dialog > .button {
   }
   .topbar {
     margin: 0 28px;
-  }
-  .hero-copy {
-    padding-left: 27px;
-  }
-  .hero h2 {
-    font-size: 43px;
-  }
-  .hero-copy > p {
-    font-size: 11px;
-  }
-  .hero {
-    min-height: 350px;
   }
   .game-card {
     gap: 18px;
@@ -1706,12 +1670,6 @@ dialog > .button {
     margin-left: 76px;
     width: calc(100% - 76px);
   }
-  .hero h2 {
-    font-size: 42px;
-  }
-  .hero-copy {
-    padding-left: 27px;
-  }
   .game-cover {
     width: 175px;
   }
@@ -1804,40 +1762,6 @@ dialog > .button {
   .welcome {
     font-size: 11px;
     margin-bottom: 8px;
-  }
-  .hero {
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    border-radius: var(--radius);
-  }
-  .hero-location {
-    padding: 15px 20px 20px;
-  }
-  .hero-location .location-photo {
-    height: 210px;
-  }
-  .hero-copy {
-    padding: 27px 25px 0;
-  }
-  .hero h2 {
-    font-size: 45px;
-    letter-spacing: -1.9px;
-  }
-  .game-label {
-    font-size: 10px;
-  }
-  .hero-copy > p {
-    font-size: 11px;
-    margin-top: 13px;
-  }
-  .hero .button {
-    margin-top: 20px;
-    font-size: 12px;
-  }
-  .hero-meta {
-    margin-top: 17px;
-    font-size: 9px;
   }
   .section-title {
     margin-top: 25px;

@@ -1,5 +1,4 @@
 import { Icon } from "../components/Icon.js";
-import { LocationPhoto } from "../components/LocationDetails.js";
 import type { SavedGame } from "../storage/save-schema.js";
 export function Home({
   onPlay,
@@ -22,6 +21,36 @@ export function Home({
   onResume?: () => void;
   busy?: boolean;
 }) {
+  const games = [
+    {
+      id: "ty-phu",
+      title: "Cờ tỷ phú",
+      genre: "Chiến thuật",
+      art: <Icon name="dice" />,
+      play: onPlay,
+    },
+    {
+      id: "caro",
+      title: "Cờ Caro",
+      genre: "Đấu cờ",
+      art: <span>×○</span>,
+      play: onCaro,
+    },
+    {
+      id: "kiln",
+      title: "Lò Gốm",
+      genre: "Xếp khối",
+      art: <span className="kiln-vase" />,
+      play: onKiln,
+    },
+    {
+      id: "dino",
+      title: "Thằn Lằn Núi Lửa",
+      genre: "Chạy 3D",
+      art: <span>🦖</span>,
+      play: onDino,
+    },
+  ];
   return (
     <section className="screen">
       <div className="page-heading">
@@ -59,33 +88,24 @@ export function Home({
           </button>
         </section>
       )}
-      <section className="hero">
-        <div className="hero-copy">
-          <span className="game-label">
-            <Icon name="spark" />
-            Cờ tỷ phú
-          </span>
-          <h2>Đi một vòng Việt Nam</h2>
-          <p>
-            Từ thác Bản Giốc đến chợ Bến Thành, khám phá các tỉnh thành Việt Nam
-            qua từng lượt gieo xúc xắc.
-          </p>
-          <button className="button primary" onClick={onPlay}>
-            Chơi Cờ tỷ phú <Icon name="arrow" />
-          </button>
-          <div className="hero-meta">
-            <span>
-              <Icon name="users" />
-              2–6 người
-            </span>
-            <span>
-              <Icon name="bot" />
-              Có thể đấu máy
-            </span>
-          </div>
-        </div>
-        <div className="hero-location">
-          <LocationPhoto spaceId={1} />
+      <section className="hero" aria-labelledby="home-games-title">
+        <h2 id="home-games-title">Chọn trò để chơi</h2>
+        <div className="hero-games">
+          {games.map(({ id, title, genre, art, play }) => (
+            <button
+              key={id}
+              type="button"
+              className={`hero-game hero-game-${id}`}
+              aria-label={title}
+              onClick={play}
+            >
+              <span className="hero-game-art" aria-hidden="true">
+                {art}
+              </span>
+              <span className="hero-game-title">{title}</span>
+              <span className="hero-game-genre">{genre}</span>
+            </button>
+          ))}
         </div>
       </section>
       <div className="section-title">
@@ -118,7 +138,7 @@ export function Home({
           </div>
         </div>
         <button className="button secondary" onClick={onPlay}>
-          Vào chơi <Icon name="arrow" />
+          Chơi Cờ tỷ phú <Icon name="arrow" />
         </button>
       </article>
       <article className="game-card caro-home-card">
