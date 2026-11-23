@@ -1,6 +1,6 @@
 import { trackGame } from "../telemetry.js";
 import { App as CapacitorApp } from "@capacitor/app";
-import { createDinoRun, DINO_STEP_SECONDS, stepDinoRun } from "@nha-choi/game-core";
+import { createDinoRun, DINO_FALL_WARNING_M, DINO_PIT_REVEAL_M, DINO_STEP_SECONDS, stepDinoRun } from "@nha-choi/game-core";
 import type { DinoLane, DinoMap, DinoRun } from "@nha-choi/game-core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isNative } from "../platform.js";
@@ -8,16 +8,30 @@ import { createDinoScene } from "./scene.js";
 import type { DinoScene, DinoView } from "./scene.js";
 import { readDinoBest, saveDinoBest } from "./save.js";
 import { DINO_MAP_IDS, DINO_MAPS } from "./maps.js";
+import { DINO_FORM_IDS, DINO_FORMS, DINO_RUNNER_IDS, DINO_RUNNERS } from "./runners.js";
+import type { DinoRunner } from "./runners.js";
 import "./dino.css";
 
 type Phase = "ready" | "running" | "paused" | "finished" | "unavailable";
-const itemLabels = { "speed-up": "Tăng tốc", "slow-down": "Giảm tốc", evolution: "Tiến hóa" } as const;
+const itemLabels = { "speed-up": "Tăng tốc", "slow-down": "Giảm tốc" } as const;
+const laneLabels = { "-1": "làn trái", 0: "làn giữa", 1: "làn phải" };
+
+function dangerLabel(run: DinoRun): string {
+  const hazard = run.obstacles.find(({ kind, startM, broken }) => {
+    const remaining = startM - run.distanceM;
+    return !broken && remaining >= 0 &&
+      ((kind === "falling-rock" && remaining <= DINO_FALL_WARNING_M) ||
+        (kind === "pit" && remaining <= DINO_PIT_REVEAL_M));
+  });
+  return hazard ? `${hazard.kind === "pit" ? "Hố mở" : "Đá rơi"} · ${laneLabels[hazard.lane ?? 0]}` : "";
+}
 
 function effectHud(run: DinoRun) {
   return {
     speed: run.speedEffect?.kind ?? null,
     paceSeconds: Math.ceil((run.speedEffect?.ticksLeft ?? 0) * DINO_STEP_SECONDS),
-    evolutionSeconds: Math.ceil(run.evolutionTicks * DINO_STEP_SECONDS),
+    evolution: run.evolution?.kind ?? null,
+    evolutionSeconds: Math.ceil((run.evolution?.ticksLeft ?? 0) * DINO_STEP_SECONDS),
   };
 }
 
@@ -61,7 +75,9 @@ export function DinoScreen({
   const [effects, setEffects] = useState(() => effectHud(run.current));
   const [fireReady, setFireReady] = useState(false);
   const [armor, setArmor] = useState<ReturnType<typeof armorHud>>(null);
+  const [danger, setDanger] = useState("");
   const [map, setMap] = useState<DinoMap>("volcano");
+  const [runner, setRunner] = useState<DinoRunner>("lizard");
   const [best, setBest] = useState(() => localBest("volcano"));
   const [webglMessage, setWebglMessage] = useState("Thiết bị này cần hỗ trợ WebGL 2 để hiển thị game.");
 
@@ -94,6 +110,7 @@ export function DinoScreen({
     setEffects(effectHud(run.current));
     setFireReady(false);
     setArmor(null);
+    setDanger("");
     changePhase("running");
   }
 
@@ -114,7 +131,7 @@ export function DinoScreen({
     if (!surface) return;
     let scene: DinoScene;
     try {
-      scene = createDinoScene(surface, map);
+      scene = createDinoScene(surface, map, runner);
     } catch {
       changePhase("unavailable");
       return;
@@ -152,11 +169,15 @@ export function DinoScreen({
         if (next.lane !== before.lane) setLane(next.lane);
         if (next.hasFire !== before.hasFire) setFireReady(next.hasFire);
         if (armorHud(next) !== armorHud(before)) setArmor(armorHud(next));
-        if (next.speedEffect !== before.speedEffect || next.evolutionTicks !== before.evolutionTicks) {
+        if (next !== before) {
+          const warning = dangerLabel(next);
+          if (warning !== dangerLabel(before)) setDanger(warning);
+        }
+        if (next.speedEffect !== before.speedEffect || next.evolution !== before.evolution) {
           const previous = effectHud(before);
           const current = effectHud(next);
           if (previous.speed !== current.speed || previous.paceSeconds !== current.paceSeconds ||
-            previous.evolutionSeconds !== current.evolutionSeconds) setEffects(current);
+            previous.evolution !== current.evolution || previous.evolutionSeconds !== current.evolutionSeconds) setEffects(current);
         }
         if (next.status === "crashed") {
           const recorded = telemetry.current;
@@ -234,7 +255,7 @@ export function DinoScreen({
       scene.dispose();
       onInGameChange(false);
     };
-  }, [changePhase, map, onInGameChange, toggleView]);
+  }, [changePhase, map, onInGameChange, runner, toggleView]);
 
   const running = phase === "running";
   return (
@@ -245,6 +266,8 @@ export function DinoScreen({
       tabIndex={-1}
       data-phase={phase}
       data-map={map}
+      data-runner={runner}
+      data-evolution={effects.evolution ?? undefined}
       data-view={view}
       data-airborne={airborne}
       data-lane={lane}
@@ -264,9 +287,9 @@ export function DinoScreen({
                 <span>{itemLabels[effects.speed]}</span><span>{effects.paceSeconds} s</span>
               </div>
             )}
-            {effects.evolutionSeconds > 0 && (
-              <div className="dino-effect" data-kind="evolution">
-                <span>{itemLabels.evolution}</span><span>{effects.evolutionSeconds} s</span>
+            {effects.evolution && (
+              <div className="dino-effect" data-kind={effects.evolution}>
+                <span>{DINO_FORMS[effects.evolution].title}</span><span>{effects.evolutionSeconds} s</span>
               </div>
             )}
             {armor && (
@@ -274,6 +297,7 @@ export function DinoScreen({
                 {armor === "ready" ? "Giáp · Chặn 1 va chạm" : "Giáp đã chặn va chạm"}
               </div>
             )}
+            {danger && <div className="dino-effect dino-danger" role="status">{danger}</div>}
           </div>
         </div>
       )}
@@ -342,7 +366,7 @@ export function DinoScreen({
             {phase === "ready" && (
               <>
                 <h1>Thằn Lằn<br /> Núi Lửa</h1>
-                <fieldset className="dino-map-picker">
+                <fieldset className="dino-picker">
                   <legend>Bản đồ</legend>
                   <div>
                     {DINO_MAP_IDS.map((id) => (
@@ -353,21 +377,17 @@ export function DinoScreen({
                     ))}
                   </div>
                 </fieldset>
-                <p>Nhặt lửa để phá đá lăn. Nhảy qua khe và thân cây đổ, đổi làn để né cột đá.</p>
-                <p className="dino-hint">
-                  <span><kbd>←</kbd><kbd>→</kbd> Đổi làn</span>
-                  <span><kbd>Space</kbd> Nhảy</span>
-                  <span><kbd>F</kbd> Phun lửa</span>
-                  <span><kbd>V</kbd> Đổi góc nhìn</span>
-                </p>
-                <p className="dino-touch-hint">Dùng hai mũi tên để đổi làn.</p>
-                <ul className="dino-item-legend">
-                  <li data-kind="fire">Phun lửa · 1 lần</li>
-                  <li data-kind="armor">Giáp · Chặn 1 va chạm</li>
-                  <li data-kind="speed-up">Tăng tốc</li>
-                  <li data-kind="slow-down">Giảm tốc</li>
-                  <li data-kind="evolution">Tiến hóa · Nhảy cao hơn</li>
-                </ul>
+                <fieldset className="dino-picker">
+                  <legend>Nhân vật</legend>
+                  <div>
+                    {DINO_RUNNER_IDS.map((id) => (
+                      <label key={id} data-runner-option={id}>
+                        <input type="radio" name="dino-runner" checked={runner === id} onChange={() => setRunner(id)} />
+                        <span>{DINO_RUNNERS[id].title}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
               </>
             )}
             {phase === "paused" && <h1>Tạm dừng</h1>}
@@ -400,6 +420,30 @@ export function DinoScreen({
               {phase === "finished" && <button className="dino-back" onClick={() => chooseMap(map)}>Đổi bản đồ</button>}
               <button className="dino-back" ref={phase === "unavailable" ? primary : undefined} onClick={onBack}>Về Nhà Chơi</button>
             </div>
+            {phase === "ready" && (
+              <details className="dino-guide">
+                <summary>Cách chơi và tiến hóa</summary>
+                <p>Nhặt lửa để phá đá. Nhảy qua khe và thân cây đổ. Khi có báo đá rơi hoặc hố mở, đổi sang làn an toàn.</p>
+                <p className="dino-hint">
+                  <span><kbd>←</kbd><kbd>→</kbd> Đổi làn</span>
+                  <span><kbd>Space</kbd> Nhảy</span>
+                  <span><kbd>F</kbd> Phun lửa</span>
+                  <span><kbd>V</kbd> Đổi góc nhìn</span>
+                </p>
+                <p className="dino-touch-hint">Dùng hai mũi tên để đổi làn.</p>
+                <ul className="dino-item-legend">
+                  <li data-kind="fire">Phun lửa · 1 lần</li>
+                  <li data-kind="armor">Giáp · Chặn 1 va chạm</li>
+                  <li data-kind="speed-up">Tăng tốc</li>
+                  <li data-kind="slow-down">Giảm tốc</li>
+                </ul>
+                <ul className="dino-item-legend">
+                  {DINO_FORM_IDS.map((kind) => (
+                    <li key={kind} data-kind={kind}>{DINO_FORMS[kind].title} · {DINO_FORMS[kind].detail}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
           </div>
         </div>
       )}

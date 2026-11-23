@@ -118,9 +118,9 @@ describe("Dino lanes and pickups", () => {
 
   it("combines evolution with a speed effect and launches a higher jump", () => {
     const base = createDinoRun(1);
-    const item = { id: 1, kind: "evolution" as const, lane: 0 as const, atM: 0.1 };
+    const item = { id: 1, kind: "winged" as const, lane: 0 as const, atM: 0.1 };
     const boosted = stepDinoRun({ ...base, items: [item], speedEffect: { kind: "speed-up", ticksLeft: 360 } }, false);
-    expect(boosted.evolutionTicks).toBe(600);
+    expect(boosted.evolution).toEqual({ kind: "winged", ticksLeft: 600 });
     expect(boosted.speedEffect?.kind).toBe("speed-up");
     expect(stepDinoRun(boosted, true).verticalSpeedMps).toBeGreaterThan(stepDinoRun(base, true).verticalSpeedMps);
   });
@@ -203,6 +203,10 @@ describe("Dino maps", () => {
     expect(order(undefined)).toEqual(["boulder", "gap", "log", "pillar"]);
     expect(order("forest")).toEqual(["log", "boulder", "pillar", "gap"]);
     expect(order("ice")).toEqual(["gap", "pillar", "boulder", "log"]);
+    expect(order("desert")).toEqual(["pillar", "boulder", "gap", "log"]);
+    expect(order("swamp")).toEqual(["gap", "log", "pillar", "boulder"]);
+    expect(createDinoRun(9, "desert").items[0]?.kind).toBe("swift");
+    expect(createDinoRun(9, "swamp").items[0]?.kind).toBe("winged");
   });
 
   it("keeps the chosen map while recycling terrain and produces the same layouts from the same seed", () => {
@@ -213,5 +217,63 @@ describe("Dino maps", () => {
       expect(continued.map).toBe(map);
       expect(continued.obstacles.at(-1)?.id).toBe((start.obstacles.at(-1)?.id ?? 0) + 1);
     }
+  });
+});
+
+describe("Dino evolution forms", () => {
+  it("smashes a log as a giant without using armor", () => {
+    const log = { ...obstacle("boulder"), kind: "log" as const, lane: 0 as const, clearanceM: 0.55 };
+    const start = { ...createDinoRun(0), obstacles: [log], items: [], hasArmor: true };
+    const before = approach(start, 23);
+    const giant = { ...before, evolution: { kind: "giant" as const, ticksLeft: 600 } };
+    const after = approach(giant, 24.5);
+    expect(after).toMatchObject({ hasArmor: true, status: "running" });
+    expect(after.obstacles[0]?.broken).toBe(true);
+    expect(after.crushed?.ticksLeft).toBeGreaterThan(0);
+  });
+
+  it("runs and changes lanes faster in the swift form and returns to normal when it expires", () => {
+    const start = createDinoRun(0);
+    const regular = stepDinoRun(start, false, 1);
+    const faster = stepDinoRun({ ...start, evolution: { kind: "swift", ticksLeft: 1 } }, false, 1);
+    expect(faster.distanceM).toBeGreaterThan(regular.distanceM);
+    expect(faster.xM).toBeGreaterThan(regular.xM);
+    expect(faster.evolution).toBeNull();
+  });
+
+  it("descends more slowly with wings after entering the falling phase", () => {
+    const falling = { ...createDinoRun(0), heightM: 1.1, verticalSpeedMps: -2 };
+    const winged = { ...falling, evolution: { kind: "winged" as const, ticksLeft: 600 } };
+    expect(stepDinoRun(winged, false).heightM).toBeGreaterThan(stepDinoRun(falling, false).heightM);
+  });
+});
+
+describe("single-lane hazards", () => {
+  it("introduces a falling rock and a pit with seeded lanes after the first four obstacles", () => {
+    const lanes = new Set<number>();
+    for (let seed = 0; seed < 12; seed++) {
+      let run = createDinoRun(seed);
+      run = stepDinoRun({ ...run, distanceM: 28 }, false);
+      const hazards = run.obstacles.filter(({ kind }) => kind === "falling-rock" || kind === "pit");
+      expect(new Set(hazards.map(({ kind }) => kind))).toEqual(new Set(["falling-rock", "pit"]));
+      for (const hazard of hazards) lanes.add(hazard.lane ?? 0);
+    }
+    expect(lanes).toEqual(new Set([-1, 0, 1]));
+  });
+
+  it("dodges or jumps over a single-lane pit, and armor cannot prevent a fall", () => {
+    const pit = { ...obstacle("gap"), kind: "pit" as const, lane: 0 as const };
+    const start = { ...createDinoRun(0), obstacles: [pit], hasArmor: true };
+    expect(approach(start, 27)).toMatchObject({ status: "crashed", hasArmor: true });
+    expect(approach(stepDinoRun(start, false, 1), 27).status).toBe("running");
+    expect(canClear(start, pit).status).toBe("running");
+  });
+
+  it("hits only the lane of a falling rock and armor can absorb it", () => {
+    const rock = { ...obstacle("boulder"), kind: "falling-rock" as const, lane: 0 as const };
+    const start = { ...createDinoRun(0), obstacles: [rock] };
+    expect(approach(start, 27).status).toBe("crashed");
+    expect(approach(stepDinoRun(start, false, -1), 27).status).toBe("running");
+    expect(approach({ ...start, hasArmor: true }, 27)).toMatchObject({ status: "running", hasArmor: false });
   });
 });

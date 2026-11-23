@@ -237,3 +237,45 @@ test("the sidebar opens the offline map picker and allows changing maps after a 
   await expect(game(page).locator(".dino-map-label")).toHaveText("Rừng cổ đại");
   await expect(game(page)).toHaveAttribute("data-armor", "ready");
 });
+
+test("new maps, runners and a winged form work offline in both views", async ({ page, context, browserName }) => {
+  test.skip(browserName !== "chromium", "The 3D suite uses the Chromium WebGL test runner.");
+  await page.goto("/");
+  await expect(page.getByText("Đã sẵn sàng chơi với máy khi offline.")).toBeVisible();
+  await page.reload();
+  await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
+  await context.setOffline(true);
+  await page.reload();
+  await openGame(page);
+  await expect(game(page).getByRole("radio", { name: "Thằn lằn", exact: true })).toBeChecked();
+  await game(page).getByRole("radio", { name: "Sa mạc đỏ" }).check();
+  await game(page).getByRole("radio", { name: "Raptor" }).check();
+  await expect(game(page)).toHaveAttribute("data-map", "desert");
+  await expect(game(page)).toHaveAttribute("data-runner", "raptor");
+
+  await game(page).getByRole("radio", { name: "Đầm lầy sương" }).check();
+  await game(page).getByRole("radio", { name: "Tam giác long" }).check();
+  await play(page).click();
+  await keyAtDistance(page, 20, "Space");
+  await expect(game(page)).toHaveAttribute("data-map", "swamp");
+  await expect(game(page)).toHaveAttribute("data-runner", "triceratops");
+  await expect(game(page)).toHaveAttribute("data-view", "third");
+  await expect(game(page)).toHaveAttribute("data-evolution", "winged");
+  await page.keyboard.press("v");
+  await expect(game(page)).toHaveAttribute("data-view", "first");
+  await expect(game(page).getByText("Có cánh", { exact: true })).toBeVisible();
+});
+
+test("a seeded run warns about a pit and a falling rock in different lanes", async ({ page, browserName }) => {
+  test.skip(browserName !== "chromium", "The 3D suite uses the Chromium WebGL test runner.");
+  test.setTimeout(45000);
+  await page.goto("/");
+  await openGame(page);
+  await page.evaluate(() => { Math.random = () => 0; });
+  await play(page).click();
+  await page.keyboard.press("ArrowLeft");
+  await keyAtDistance(page, 46, "Space");
+  await expect(game(page).getByText("Hố mở · làn phải")).toBeVisible({ timeout: 22000 });
+  await expect(game(page).getByText("Đá rơi · làn giữa")).toBeVisible({ timeout: 7000 });
+  await expect.poll(async () => Number.parseInt(await score(page).innerText(), 10)).toBeGreaterThan(167);
+});

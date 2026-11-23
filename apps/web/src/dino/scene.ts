@@ -6,14 +6,18 @@ import type { Material } from "three";
 import type { DinoMap, DinoRun } from "@nha-choi/game-core";
 import {
   DINO_ARMOR_FLASH_TICKS, DINO_BOULDER_ROLL_M, DINO_FIRE_BURST_TICKS,
-  DINO_FIRE_RANGE_M, DINO_LANE_WIDTH, dinoBoulderOffsetM, dinoObstacleCenterX,
+  DINO_FIRE_RANGE_M, DINO_LANE_WIDTH, DINO_FALL_WARNING_M, DINO_FALL_START_M,
+  DINO_FALL_LAND_M, DINO_PIT_REVEAL_M, dinoBoulderOffsetM, dinoObstacleCenterX,
 } from "@nha-choi/game-core";
 import { createDinoArt, createDinoSky } from "./art.js";
 import { DINO_MAPS } from "./maps.js";
+import { DINO_FORMS, DINO_RUNNERS } from "./runners.js";
+import type { DinoRunner } from "./runners.js";
 
 export type DinoView = "first" | "third";
 const ITEM_COLORS = {
-  "speed-up": 0xffc064, "slow-down": 0x79dbff, evolution: 0xf6abff, fire: 0xff6d36, armor: 0x68ffbf,
+  "speed-up": 0xffc064, "slow-down": 0x79dbff, fire: 0xff6d36, armor: 0x68ffbf,
+  giant: DINO_FORMS.giant.color, swift: DINO_FORMS.swift.color, winged: DINO_FORMS.winged.color,
 };
 
 export interface DinoScene {
@@ -21,7 +25,7 @@ export interface DinoScene {
   dispose(): void;
 }
 
-export function createDinoScene(canvas: HTMLCanvasElement, map: DinoMap): DinoScene {
+export function createDinoScene(canvas: HTMLCanvasElement, map: DinoMap, runner: DinoRunner): DinoScene {
   const renderer = new WebGLRenderer({ canvas, antialias: true });
   const scene = new Scene();
   const camera = new PerspectiveCamera(59, 1, 0.07, 145);
@@ -32,7 +36,7 @@ export function createDinoScene(canvas: HTMLCanvasElement, map: DinoMap): DinoSc
   const sun = new DirectionalLight(theme.sun, 2.25);
   sun.position.set(-7, 12, -4);
   scene.add(new HemisphereLight(theme.sun, 0x765869, 1.55), new AmbientLight(0xffad85, 0.16), sun);
-  const art = createDinoArt(map);
+  const art = createDinoArt(map, runner);
   scene.add(art.world);
 
   let redraw = () => {};
@@ -65,7 +69,8 @@ export function createDinoScene(canvas: HTMLCanvasElement, map: DinoMap): DinoSc
       }
       lastDistance = distance;
       lastHeight = run.heightM;
-      const phase = distance * 4.6;
+      const form = run.evolution?.kind;
+      const phase = distance * (form === "swift" ? 6.3 : 4.6);
       const air = run.heightM > 0;
       const bob = air ? 0 : Math.abs(Math.sin(phase)) * 0.024;
       const landing = distance - landedAt;
@@ -75,17 +80,34 @@ export function createDinoScene(canvas: HTMLCanvasElement, map: DinoMap): DinoSc
       art.dino.rotation.x = air ? -run.verticalSpeedMps * 0.025 : 0;
       const laneOffset = run.lane * DINO_LANE_WIDTH - run.xM;
       art.dino.rotation.z = reducedMotion ? 0 : -Math.max(-0.15, Math.min(0.15, laneOffset * 0.17));
-      art.dino.scale.y = 1 - Math.max(0, 1 - landing * 2) * 0.12;
-      const evolved = run.evolutionTicks > 0;
-      art.evolutionCrest.visible = evolved;
-      art.green.color.setHex(evolved ? 0x9362df : 0x71944e);
+      const size = form === "giant" ? 1.52 : 1;
+      const landingSquash = 1 - Math.max(0, 1 - landing * 2) * 0.12;
+      art.dino.scale.set(size, size * landingSquash, size);
+      art.giantCrest.visible = form === "giant";
+      art.green.color.setHex(form ? DINO_FORMS[form].color : DINO_RUNNERS[runner].color);
+      art.wings.forEach((wing, index) => {
+        wing.visible = form === "winged";
+        const flap = reducedMotion ? 0 : Math.sin(phase * 0.7) * (air ? 0.38 : 0.16);
+        wing.rotation.z = (index ? 1 : -1) * (flap + (air ? 0 : 0.24));
+      });
+      art.speedTrails.forEach((trail, index) => {
+        trail.visible = form === "swift" && !reducedMotion;
+        if (!trail.visible) return;
+        const side = index % 2 === 0 ? -1 : 1;
+        const drift = (index * 0.97 + distance * 2) % 5;
+        trail.position.set(run.xM + side * (0.65 + (index % 3) * 0.34), 0.22 + (index % 4) * 0.2, drift - 5);
+      });
       art.tail.rotation.y = Math.sin(phase * 0.56) * 0.22;
       art.legs.forEach(({ leg, foot }, index) => {
         leg.rotation.x = air ? -0.6 + index * 0.25 : Math.sin(phase + index * Math.PI) * 0.7;
         foot.rotation.x = air ? 0.35 : 0;
       });
-      art.shadow.visible = view === "third" && !run.obstacles.some(({ kind, startM, lengthM }) =>
-        kind === "gap" && distance >= startM && distance <= startM + lengthM,
+      const openings = run.obstacles.filter(({ kind, startM }) =>
+        kind === "gap" || (kind === "pit" && startM - distance <= DINO_PIT_REVEAL_M),
+      );
+      art.shadow.visible = view === "third" && !openings.some((opening) =>
+        distance >= opening.startM && distance <= opening.startM + opening.lengthM &&
+        (opening.kind === "gap" || Math.abs(run.xM - dinoObstacleCenterX(opening)) <= DINO_LANE_WIDTH / 2),
       );
       art.shadow.position.x = run.xM;
 
@@ -93,13 +115,13 @@ export function createDinoScene(canvas: HTMLCanvasElement, map: DinoMap): DinoSc
       const shieldFlash = run.armorFlashTicks / DINO_ARMOR_FLASH_TICKS;
       art.shield.visible = third && (run.hasArmor || shieldFlash > 0);
       art.shield.position.x = run.xM;
-      art.shield.position.y = run.heightM + 0.59;
+      art.shield.position.y = run.heightM + 0.59 * size;
+      art.shield.scale.set(0.63 * size, 0.78 * size, 0.87 * size);
       art.shieldMaterial.opacity = run.hasArmor ? 0.33 : shieldFlash * 0.76;
-      camera.position.set(third ? run.xM * 0.6 + 0.65 : run.xM, (third ? 2.2 : 1.15) + run.heightM + (reducedMotion ? 0 : bob), third ? 3.75 : -0.64);
+      camera.position.set(third ? run.xM * 0.6 + 0.65 : run.xM, (third ? 2.2 + (size - 1) : (art.mouthY + 0.32) * size) + run.heightM + (reducedMotion ? 0 : bob), third ? 3.75 + (size - 1) * 1.2 : -0.64 * size);
       camera.lookAt(third ? run.xM * 0.3 : run.xM * 0.28, third ? 0.65 + run.heightM * 0.42 : 0.48 + run.heightM * 0.72, third ? -5 : -12);
 
-      const gaps = run.obstacles.filter(({ kind }) => kind === "gap");
-      function placeSlab(slab: (typeof art.road)[number][number] | undefined, start: number, end: number) {
+      function placeSlab(slab: (typeof art.road)[number][number][number] | undefined, start: number, end: number) {
         if (!slab) return;
         slab.visible = end - start >= 0.015;
         if (!slab.visible) return;
@@ -112,12 +134,12 @@ export function createDinoScene(canvas: HTMLCanvasElement, map: DinoMap): DinoSc
         const start = tile * 2.4;
         const end = start + 2.4;
         const slot = ((tile % art.road.length) + art.road.length) % art.road.length;
-        const pair = art.road[slot];
-        if (!pair) continue;
-        const [front, back] = pair;
-        const gap = gaps.find(({ startM, lengthM }) => startM < end && startM + lengthM > start);
-        placeSlab(front, start, gap?.startM ?? end);
-        placeSlab(back, gap ? gap.startM + gap.lengthM : end, end);
+        const opening = openings.find(({ startM, lengthM }) => startM < end && startM + lengthM > start);
+        art.road[slot]?.forEach(([front, back], laneIndex) => {
+          const cutsLane = opening && (opening.kind === "gap" || opening.lane === laneIndex - 1);
+          placeSlab(front, start, cutsLane ? opening.startM : end);
+          placeSlab(back, cutsLane ? opening.startM + opening.lengthM : end, end);
+        });
       }
       const firstBank = Math.floor(distance / 4.2) - 2;
       const firstBankSlot = ((firstBank % art.banks.length) + art.banks.length) % art.banks.length;
@@ -125,34 +147,47 @@ export function createDinoScene(canvas: HTMLCanvasElement, map: DinoMap): DinoSc
         const offset = (index - firstBankSlot + art.banks.length) % art.banks.length;
         bank.position.z = distance - (firstBank + offset) * 4.2;
       });
-      art.gaps.forEach((glow, index) => {
-        const gap = gaps[index];
+      art.gaps.forEach(({ group: glow, sides }, index) => {
+        const gap = openings[index];
         glow.visible = Boolean(gap);
         if (!gap) return;
         glow.position.z = distance - gap.startM - gap.lengthM / 2;
+        glow.position.x = gap.kind === "pit" ? dinoObstacleCenterX(gap) : 0;
         glow.scale.z = gap.lengthM;
+        glow.scale.x = gap.kind === "pit" ? 1 / 3 : 1;
+        sides.forEach((bar) => { bar.visible = gap.kind === "pit"; });
       });
 
-      const rocks = run.obstacles.filter(({ kind, broken }) => kind === "boulder" && !broken);
-      art.boulders.forEach(({ group, stoneBall, pebbles }, index) => {
+      const rocks = run.obstacles.filter(({ kind, broken }) => (kind === "boulder" || kind === "falling-rock") && !broken);
+      art.boulders.forEach(({ group, stoneBall, warning, pebbles }, index) => {
         const obstacle = rocks[index];
         group.visible = Boolean(obstacle);
         if (!obstacle) return;
         const remaining = obstacle.startM - distance;
+        const falls = obstacle.kind === "falling-rock";
+        const fallProgress = Math.max(0, Math.min(1, (DINO_FALL_START_M - remaining) / (DINO_FALL_START_M - DINO_FALL_LAND_M)));
         const laneX = dinoObstacleCenterX(obstacle);
         const rollOffset = dinoBoulderOffsetM(obstacle, distance);
         group.position.x = laneX;
         group.position.z = -remaining - obstacle.lengthM / 2;
         stoneBall.position.x = rollOffset;
-        stoneBall.rotation.z = rollOffset * 2;
+        stoneBall.position.y = 0.37 + (falls ? 7 * (1 - fallProgress * fallProgress) : 0);
+        stoneBall.visible = !falls || remaining <= DINO_FALL_START_M;
+        stoneBall.rotation.z = falls ? (reducedMotion ? 0 : fallProgress * 2) : rollOffset * 2;
+        warning.visible = falls && remaining <= DINO_FALL_WARNING_M && remaining > DINO_FALL_LAND_M;
+        warning.scale.setScalar(0.62 * (reducedMotion ? 1 : 1 + Math.sin(distance * 3) * 0.13));
         pebbles.forEach((pebble, pebbleIndex) => {
-          pebble.visible = !reducedMotion && rollOffset !== 0 && remaining < DINO_BOULDER_ROLL_M + 4;
-          pebble.position.x = rollOffset * (0.75 - pebbleIndex * 0.18);
+          const landingProgress = (DINO_FALL_LAND_M - remaining) / 2.3;
+          pebble.visible = !reducedMotion && (falls
+            ? landingProgress >= 0 && landingProgress < 1
+            : rollOffset !== 0 && remaining < DINO_BOULDER_ROLL_M + 4);
+          pebble.position.x = falls ? (pebbleIndex - 1) * (0.32 + landingProgress * 0.4) : rollOffset * (0.75 - pebbleIndex * 0.18);
+          pebble.position.y = falls && pebble.visible ? 0.08 + Math.sin(Math.PI * landingProgress) * 0.24 : 0.08;
           pebble.rotation.z = distance + pebbleIndex;
         });
       });
       for (const [kind, pool] of [["log", art.logs], ["pillar", art.pillars]] as const) {
-        const obstacles = run.obstacles.filter((obstacle) => obstacle.kind === kind);
+        const obstacles = run.obstacles.filter((obstacle) => obstacle.kind === kind && !obstacle.broken);
         pool.forEach((model, index) => {
           const obstacle = obstacles[index];
           model.visible = Boolean(obstacle);
@@ -166,9 +201,10 @@ export function createDinoScene(canvas: HTMLCanvasElement, map: DinoMap): DinoSc
       const hit = burst?.hit;
       const age = burst ? 1 - burst.ticksLeft / DINO_FIRE_BURST_TICKS : 0;
       const reach = hit ? hit.atM - distance : DINO_FIRE_RANGE_M;
-      const mouthY = run.heightM + 0.82;
+      const mouthY = run.heightM + art.mouthY * size;
+      const mouthZ = 0.84 * size;
       art.flames.forEach((flame, index) => {
-        flame.visible = Boolean(burst) && reach > 0.85 && (!reducedMotion || index < 7);
+        flame.visible = Boolean(burst) && reach > mouthZ && (!reducedMotion || index < 7);
         if (!flame.visible) return;
         const progress = index / (reducedMotion ? 6 : 12);
         const endX = hit?.xM ?? run.xM;
@@ -178,22 +214,24 @@ export function createDinoScene(canvas: HTMLCanvasElement, map: DinoMap): DinoSc
         flame.position.set(
           run.xM + (endX - run.xM) * progress + Math.sin(flutter) * spread * progress,
           mouthY + (endY - mouthY) * progress + Math.cos(flutter) * spread * progress,
-          -0.84 - (reach - 0.84) * progress,
+          -mouthZ - (reach - mouthZ) * progress,
         );
         flame.scale.set(spread, spread * 0.9, Math.max(spread, reach / 13) * (1 - age * 0.45));
         flame.rotation.z = flutter;
       });
+      const impact = run.crushed ?? hit;
+      const impactAge = run.crushed ? 1 - run.crushed.ticksLeft / DINO_FIRE_BURST_TICKS : age;
       art.debris.forEach((fragment, index) => {
-        fragment.visible = Boolean(hit) && (!reducedMotion || index < 4);
-        if (!hit || !fragment.visible) return;
+        fragment.visible = Boolean(impact) && (!reducedMotion || index < 4);
+        if (!impact || !fragment.visible) return;
         const angle = index * 2.4;
-        const spread = 0.05 + (reducedMotion ? 0.35 : age * 1.35);
+        const spread = 0.05 + (reducedMotion ? 0.35 : impactAge * 1.35);
         fragment.position.set(
-          hit.xM + Math.cos(angle) * spread,
-          0.35 + Math.sin(Math.PI * age) * (0.35 + index * 0.06),
-          distance - hit.atM + Math.sin(angle) * spread,
+          impact.xM + Math.cos(angle) * spread,
+          0.35 + Math.sin(Math.PI * impactAge) * (0.35 + index * 0.06),
+          distance - impact.atM + Math.sin(angle) * spread,
         );
-        fragment.scale.setScalar(0.14 * (1 - 0.75 * age));
+        fragment.scale.setScalar(0.14 * (1 - 0.75 * impactAge));
       });
 
       art.items.forEach(({ group, gem, material }, index) => {

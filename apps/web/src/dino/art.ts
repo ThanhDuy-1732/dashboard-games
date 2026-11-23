@@ -1,11 +1,15 @@
 import {
   BoxGeometry, BufferGeometry, CanvasTexture, ConeGeometry, CylinderGeometry,
-  DodecahedronGeometry, Group, IcosahedronGeometry, Mesh, MeshBasicMaterial,
-  MeshStandardMaterial, OctahedronGeometry, PlaneGeometry, SphereGeometry, SRGBColorSpace, TorusGeometry,
+  DodecahedronGeometry, DoubleSide, Group, IcosahedronGeometry, Mesh, MeshBasicMaterial,
+  MeshStandardMaterial, OctahedronGeometry, PlaneGeometry, Shape, ShapeGeometry,
+  SphereGeometry, SRGBColorSpace, TorusGeometry,
 } from "three";
 
+import { DINO_LANE_WIDTH } from "@nha-choi/game-core";
 import type { DinoMap } from "@nha-choi/game-core";
 import { DINO_MAPS } from "./maps.js";
+import { DINO_RUNNERS } from "./runners.js";
+import type { DinoRunner } from "./runners.js";
 const standard = (color: number) => new MeshStandardMaterial({ color, roughness: 0.92 });
 
 function rockTexture() {
@@ -60,7 +64,7 @@ export function createDinoSky(map: DinoMap) {
   return texture;
 }
 
-export function createDinoArt(map: DinoMap) {
+export function createDinoArt(map: DinoMap, runner: DinoRunner) {
   const theme = DINO_MAPS[map];
   const terrain = theme.terrain;
   const stone = [
@@ -70,7 +74,7 @@ export function createDinoArt(map: DinoMap) {
   const rockMaterial = (index: number) => stone[index % stone.length] ?? stone[0];
   const rockMap = rockTexture();
   const pavement = terrain.map((color) => new MeshStandardMaterial({ color, map: rockMap, roughness: 1 }));
-  const green = standard(0x71944e);
+  const green = standard(DINO_RUNNERS[runner].color);
   const belly = standard(0xb6be73);
   const darkGreen = standard(0x405735);
   const eye = new MeshBasicMaterial({ color: 0x181517 });
@@ -133,18 +137,19 @@ export function createDinoArt(map: DinoMap) {
     }
   }
 
-  const road = Array.from({ length: 40 }, (_, index) => [0, 1].map(() => {
-    const slab = new Group();
-    world.add(slab);
-    mesh(slab, cube, stone[4], 0, -0.31, 0, 5.5, 0.61, 1);
-    for (let lane = 0; lane < 3; lane++) {
+  const road = Array.from({ length: 40 }, (_, index) => [-1, 0, 1].map((lane) =>
+    [0, 1].map(() => {
+      const slab = new Group();
+      slab.position.x = lane * DINO_LANE_WIDTH;
+      world.add(slab);
+      mesh(slab, cube, stone[4], 0, -0.31, 0, DINO_LANE_WIDTH, 0.61, 1);
       const material = pavement[(index * 7 + lane * 3) % pavement.length] ?? stone[0];
-      const top = mesh(slab, plane, material, (lane - 1) * 1.81, 0.001, 0, 1.79, 0.99, 1);
+      const top = mesh(slab, plane, material, 0, 0.001, 0, DINO_LANE_WIDTH - 0.02, 0.99, 1);
       top.rotation.x = -Math.PI / 2;
       if ((lane + index) % 3 === 0) top.rotation.z = Math.PI;
-    }
-    return slab;
-  }));
+      return slab;
+    }),
+  ));
   const banks = Array.from({ length: 26 }, (_, index) => {
     const bank = new Group();
     world.add(bank);
@@ -162,18 +167,30 @@ export function createDinoArt(map: DinoMap) {
         const x = side * (5.2 + (index % 3) * 0.65);
         mesh(bank, crystal, accentTip, x, height * 0.72 + 0.25, -0.5, 0.52, 1.35, 0.55).rotation.z = side * -0.2;
         mesh(bank, crystal, accent, x + side * 0.7, height * 0.52, 0.18, 0.44, 0.9, 0.46).rotation.z = side * -0.4;
+      } else if (map === "desert") {
+        const x = side * 8.1;
+        mesh(bank, column, stone[3], x, height * 0.8, 1.1, 2.35, height * 1.6, 2.3).rotation.y = index;
+        mesh(bank, rock, stone[0], x, height * 1.55, 1.1, 1.18, 0.34, 1.15);
+      } else if (map === "swamp") {
+        const x = side * 6.2;
+        mesh(bank, column, stone[4], x, 2.8, 0.6, 0.62, 5.7, 0.66).rotation.z = side * 0.1;
+        mesh(bank, rock, accent, x + side * 0.75, 5, 0.6, 2.5, 0.73, 1.8).rotation.y = index;
+        mesh(bank, rock, accent, x - side * 0.8, 4.4, 0.75, 1.84, 0.55, 1.5);
       }
     }
     return bank;
   });
-  const boulders = Array.from({ length: 6 }, () => {
+  const warningMaterial = new MeshBasicMaterial({ color: 0xffa833 });
+  const boulders = Array.from({ length: 7 }, () => {
     const group = new Group();
     world.add(group);
     const stoneBall = mesh(group, rock, stone[1], 0, 0.37, 0, 0.45, 0.4, 0.59);
+    const warning = mesh(group, ring, warningMaterial, 0, 0.025, 0, 0.62, 0.62, 0.62);
+    warning.rotation.x = -Math.PI / 2;
     const pebbles = [0, 1, 2].map((index) =>
       mesh(group, facet, rockMaterial(index + 1), 0, 0.08, (index - 1) * 0.36, 0.11, 0.11, 0.11),
     );
-    return { group, stoneBall, pebbles };
+    return { group, stoneBall, warning, pebbles };
   });
   const gaps = Array.from({ length: 6 }, () => {
     const group = new Group();
@@ -181,7 +198,9 @@ export function createDinoArt(map: DinoMap) {
     mesh(group, cube, floorMaterial, 0, -0.66, 0, 5.65, 0.045, 1);
     mesh(group, cube, rim, 0, -0.065, -0.49, 5.46, 0.15, 0.025);
     mesh(group, cube, rim, 0, -0.065, 0.49, 5.46, 0.15, 0.025);
-    return group;
+    const sides = [-1, 1].map((side) => mesh(group, cube, rim, side * 2.7, -0.065, 0, 0.075, 0.15, 1));
+    sides.forEach((bar) => { bar.visible = false; });
+    return { group, sides };
   });
   const bark = standard(0x4e2a22);
   const wood = standard(0xb37443);
@@ -217,19 +236,32 @@ export function createDinoArt(map: DinoMap) {
 
   const dino = new Group();
   world.add(dino);
-  mesh(dino, round, green, 0, 0.56, 0.08, 0.3, 0.33, 0.48);
+  const horned = runner === "triceratops";
+  const sleek = runner === "raptor";
+  const headY = horned ? 0.65 : sleek ? 0.99 : 0.94;
+  const mouthY = headY - 0.11;
+  mesh(dino, round, green, 0, 0.56, 0.08, horned ? 0.45 : sleek ? 0.24 : 0.3, 0.33, horned ? 0.65 : 0.48);
   mesh(dino, round, belly, 0, 0.48, -0.16, 0.25, 0.24, 0.28);
-  mesh(dino, round, green, 0, 0.78, -0.27, 0.23, 0.31, 0.25);
-  mesh(dino, round, green, 0, 0.94, -0.46, 0.3, 0.245, 0.38);
-  mesh(dino, round, belly, 0, 0.835, -0.64, 0.258, 0.105, 0.246);
+  mesh(dino, round, green, 0, (headY + 0.56) / 2, -0.27, 0.23, 0.31, 0.25);
+  mesh(dino, round, green, 0, headY, -0.46, horned ? 0.34 : sleek ? 0.205 : 0.3, 0.245, sleek ? 0.43 : 0.38);
+  mesh(dino, round, belly, 0, mouthY, -0.64, sleek ? 0.17 : 0.258, 0.105, 0.246);
+  const ivory = standard(0xffda96);
+  if (horned) {
+    mesh(dino, round, darkGreen, 0, 0.79, -0.3, 0.48, 0.41, 0.12).rotation.x = -0.38;
+    mesh(dino, cone, ivory, 0, 0.81, -0.8, 0.085, 0.22, 0.09).rotation.x = -0.46;
+  }
   for (const side of [-1, 1]) {
-    mesh(dino, round, eye, side * 0.266, 1, -0.5, 0.058, 0.063, 0.063);
-    const arm = mesh(dino, round, green, side * 0.22, 0.55, -0.38, 0.075, 0.085, 0.17);
-    arm.rotation.x = 0.28;
+    mesh(dino, round, eye, side * (sleek ? 0.18 : 0.266), headY + 0.06, -0.5, 0.058, 0.063, 0.063);
+    if (horned) {
+      mesh(dino, cone, ivory, side * 0.23, 1.02, -0.55, 0.13, 0.39, 0.13).rotation.x = -0.8;
+    } else {
+      mesh(dino, round, green, side * 0.22, 0.55, -0.38, 0.075, 0.085, 0.17).rotation.x = 0.28;
+    }
   }
 
   const tail = new Group();
   tail.position.set(0, 0.52, 0.36);
+  tail.scale.z = horned ? 0.62 : sleek ? 1.4 : 1;
   dino.add(tail);
   mesh(tail, round, green, 0, 0.015, 0.22, 0.178, 0.164, 0.39).rotation.x = -0.14;
   mesh(tail, round, green, 0, 0.08, 0.64, 0.096, 0.09, 0.26).rotation.x = -0.25;
@@ -237,22 +269,47 @@ export function createDinoArt(map: DinoMap) {
     const ridge = mesh(dino, cone, darkGreen, 0, 0.87 - index * 0.025, index * 0.112 - 0.13, 0.11 - index * 0.009, 0.16, 0.1);
     ridge.rotation.x = 0.3;
   }
-  const evolutionCrest = new Group();
-  dino.add(evolutionCrest);
-  const crestMaterial = new MeshBasicMaterial({ color: 0xf0c0ff });
+  if (sleek) {
+    for (let index = 0; index < 4; index++) {
+      mesh(tail, cone, ivory, 0, 0.14, 0.32 + index * 0.13, 0.09, 0.24, 0.10).rotation.x = 0.42;
+    }
+  }
+  const giantCrest = new Group();
+  dino.add(giantCrest);
+  const crestMaterial = new MeshBasicMaterial({ color: 0xffc384 });
   for (let index = 0; index < 5; index++) {
-    const spike = mesh(evolutionCrest, cone, crestMaterial, 0, 1.07 - index * 0.065, -0.39 + index * 0.18, 0.095, 0.26 - index * 0.025, 0.095);
+    const spike = mesh(giantCrest, cone, crestMaterial, 0, headY + 0.13 - index * 0.046, -0.39 + index * 0.18, 0.095, 0.26 - index * 0.025, 0.095);
     spike.rotation.x = 0.42;
   }
 
-  const legs = [-1, 1].map((side) => {
+  const limbPositions = horned ? [[-0.3, 0.27], [0.3, 0.27], [0.3, -0.42], [-0.3, -0.42]] : [[-0.22, 0.13], [0.22, 0.13]];
+  const legs = limbPositions.map(([x = 0, z = 0]) => {
     const leg = new Group();
     dino.add(leg);
-    leg.position.set(side * 0.22, 0.53, 0.13);
+    leg.position.set(x, 0.53, z);
     mesh(leg, round, green, 0, -0.19, 0.035, 0.15, 0.25, 0.165);
     const foot = mesh(leg, round, darkGreen, 0, -0.456, -0.07, 0.138, 0.074, 0.21);
     return { leg, foot };
   });
+  const wingShape = new Shape();
+  wingShape.moveTo(0, 0);
+  wingShape.lineTo(0.37, 0.24);
+  wingShape.lineTo(1.07, 0.16);
+  wingShape.lineTo(0.73, -0.07);
+  wingShape.lineTo(0.54, -0.03);
+  wingShape.lineTo(0.33, -0.22);
+  wingShape.closePath();
+  const wingGeometry = new ShapeGeometry(wingShape);
+  const membrane = new MeshBasicMaterial({ color: 0xb786fa, side: DoubleSide });
+  const wings = [-1, 1].map((side) => {
+    const joint = new Group();
+    joint.position.set(side * 0.22, 0.72, 0.05);
+    dino.add(joint);
+    mesh(joint, wingGeometry, membrane, 0, 0, 0, side, 1, 1).rotation.x = -0.48;
+    return joint;
+  });
+  const trailMaterial = new MeshBasicMaterial({ color: 0xffdc69, transparent: true, opacity: 0.65, depthWrite: false });
+  const speedTrails = Array.from({ length: 10 }, () => mesh(world, cube, trailMaterial, 0, 0, 0, 0.022, 0.022, 0.7));
   const shadow = mesh(world, round, new MeshBasicMaterial({ color: 0x241923, transparent: true, opacity: 0.32, depthWrite: false }), 0, 0.007, 0.08, 0.36, 0.005, 0.58);
   const shieldMaterial = new MeshBasicMaterial({
     color: 0x68ffbf, wireframe: true, transparent: true, opacity: 0.33, depthWrite: false,
@@ -271,7 +328,8 @@ export function createDinoArt(map: DinoMap) {
     mesh(world, facet, index % 3 === 0 ? flare : rockMaterial(index), 0, 0, 0, 0.14, 0.14, 0.14),
   );
   return {
-    world, dino, legs, tail, road, banks, boulders, gaps, logs, pillars, items, evolutionCrest, green,
+    world, dino, legs, tail, road, banks, boulders, gaps, logs, pillars, items,
+    giantCrest, wings, speedTrails, green, mouthY,
     smoke, shadow, dust, dustMaterial, ash, floorMaterial, rockMap, flames, debris,
     shield, shieldMaterial, pickupShapes: { fire: cone, armor: rock, gem: crystal },
   };

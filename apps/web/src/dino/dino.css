@@ -78,7 +78,20 @@
 
 .dino-stage [data-kind="speed-up"] { --item-color: #ffc064; }
 .dino-stage [data-kind="slow-down"] { --item-color: #79dbff; }
-.dino-stage [data-kind="evolution"] { --item-color: #f6abff; }
+.dino-stage [data-kind="giant"] { --item-color: #ffb16b; }
+.dino-stage [data-kind="swift"] { --item-color: #ffed86; }
+.dino-stage [data-kind="winged"] { --item-color: #c9a5ff; }
+
+.dino-stage[data-evolution="giant"] { --evolution-glow: #ff9e5663; }
+.dino-stage[data-evolution="swift"] { --evolution-glow: #ffe88869; }
+.dino-stage[data-evolution="winged"] { --evolution-glow: #b786fa66; }
+.dino-stage[data-evolution][data-phase="running"][data-view="first"]::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 38px var(--evolution-glow);
+  content: "";
+}
 .dino-stage [data-kind="fire"] { --item-color: #ff9b68; }
 .dino-stage [data-kind="armor"] { --item-color: #86ffce; }
 
@@ -108,6 +121,7 @@
   font-size: 13px;
   font-weight: 700;
 }
+.dino-danger { --item-color: #ffd38d; }
 
 .dino-tools {
   top: var(--dino-top);
@@ -280,34 +294,34 @@
   margin: 10px 0 0;
   color: #f1dfd2;
 }
-.dino-map-picker {
+.dino-picker {
   min-width: 0;
   margin: 16px 0;
   padding: 0;
   border: 0;
 }
-.dino-map-picker legend {
+.dino-picker legend {
   margin-bottom: 7px;
   font-size: 13px;
   font-weight: 750;
 }
-.dino-map-picker > div {
+.dino-picker > div {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 5px;
 }
-.dino-map-picker label {
+.dino-picker label {
   position: relative;
   min-width: 0;
   cursor: pointer;
 }
-.dino-map-picker input {
+.dino-picker input {
   position: absolute;
   width: 1px;
   height: 1px;
   opacity: 0;
 }
-.dino-map-picker span {
+.dino-picker span {
   display: grid;
   min-height: 45px;
   height: 100%;
@@ -321,15 +335,31 @@
   line-height: 1.2;
   text-align: center;
 }
-.dino-map-picker [data-course="forest"] span { background: #284839; }
-.dino-map-picker [data-course="ice"] span { background: #324c65; }
-.dino-map-picker input:checked + span {
+.dino-picker [data-course="forest"] span { background: #284839; }
+.dino-picker [data-course="ice"] span { background: #324c65; }
+.dino-picker [data-course="desert"] span { background: #714939; }
+.dino-picker [data-course="swamp"] span { background: #315152; }
+.dino-picker [data-runner-option="lizard"] span { background: #354a34; }
+.dino-picker [data-runner-option="raptor"] span { background: #244e56; }
+.dino-picker [data-runner-option="triceratops"] span { background: #5e3f35; }
+.dino-picker input:checked + span {
   border-color: #ffd19e;
   box-shadow: inset 0 0 0 1px #ffd19e;
 }
-.dino-map-picker input:focus-visible + span {
+.dino-picker input:focus-visible + span {
   outline: 2px solid #fff6e7;
   outline-offset: 2px;
+}
+.dino-guide {
+  margin-top: 12px;
+  color: #f1dfd2;
+  font-size: 13px;
+}
+.dino-guide summary {
+  width: fit-content;
+  min-height: 28px;
+  padding: 4px 0;
+  cursor: pointer;
 }
 .dino-hint {
   display: flex;
