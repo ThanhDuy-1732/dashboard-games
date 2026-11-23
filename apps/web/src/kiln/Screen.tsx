@@ -1,3 +1,4 @@
+import { trackGame } from "../telemetry.js";
 import { useEffect, useRef, useState } from "react";
 import { createKilnGame, inspectKilnMove, KILN_LEVELS, KILN_SIZES, placeKilnPiece } from "@nha-choi/game-core";
 import type { KilnGame, KilnLevelId, KilnMove, KilnSize } from "@nha-choi/game-core";
@@ -182,7 +183,16 @@ export function KilnScreen({ active, onHome, onRules, onInGame }: Props) {
     const unlocked = game.status === "won"
       ? Math.max(before.save.unlocked, Math.min(game.level + 1, 3)) as KilnLevelId
       : before.save.unlocked;
-    const save: KilnSave = { version: 1, unlocked, active: { level: game.level, size: game.size, moves: [...before.save.active.moves, move] } };
+    const starting = before.game.turn === 0;
+    const id = before.save.active.id ?? crypto.randomUUID();
+    const startedAt = starting ? Date.now() : before.save.active.startedAt;
+    const save: KilnSave = {
+      version: 1, unlocked, active: { level: game.level, size: game.size, moves: [...before.save.active.moves, move],
+        id, ...(startedAt === undefined ? {} : { startedAt }),
+      },
+    };
+    if (starting) trackGame("kiln", id, "game_started", "solo");
+    if (game.status !== "playing") trackGame("kiln", id, "game_completed", "solo", startedAt);
     const collected = game.collected - before.game.collected;
     setNotice(collected
       ? `Đã lấy ${collected} món gốm chín. +${game.score - before.game.score} điểm.`

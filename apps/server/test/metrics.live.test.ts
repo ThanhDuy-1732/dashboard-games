@@ -9,6 +9,7 @@ test.skipIf(!process.env.ADMIN_TEST_PG_SOCKET)("counts unique events, applies lo
   const client = await pool.connect();
   try {
     await client.query(await readFile(new URL("../migrations/002_admin_metrics.sql", import.meta.url), "utf8"));
+    await client.query(await readFile(new URL("../migrations/003_game_duration.sql", import.meta.url), "utf8"));
     await client.query("BEGIN");
     await client.query("SET LOCAL TIME ZONE 'UTC'");
     const [{ yesterday, today }] = (await client.query(`
@@ -33,6 +34,26 @@ test.skipIf(!process.env.ADMIN_TEST_PG_SOCKET)("counts unique events, applies lo
     }]);
     const summary = await readMetrics(client, "admin-fixture", 7, true);
     expect(summary.days).toHaveLength(7);
+    const timed = {
+      kind: "game_completed" as const, game: "caro" as const, mode: "offline" as const,
+      playMode: "bot" as const, occurredAt: new Date().toISOString(),
+    };
+    const measured = { ...timed, id: "duration-1", durationMs: 120_000 };
+    await recordEvents(client, "admin-fixture", "device", [
+      measured, { ...timed, id: "duration-2", durationMs: 240_000 },
+      { ...timed, id: "duration-legacy" },
+      { ...timed, id: "duration-same-device", playMode: "same-device", durationMs: 600_000 },
+    ]);
+    await recordEvents(client, "admin-fixture", "device", [measured]);
+    const timedRows = (await readMetrics(client, "admin-fixture", 7, false)).games
+      .filter(({ kind }) => kind === "game_completed");
+    expect(timedRows).toHaveLength(2);
+    expect(timedRows).toEqual(expect.arrayContaining([
+      expect.objectContaining({ dimensions: { game: "caro", mode: "offline", playMode: "bot" },
+        count: 3, durationMs: 360_000, durationSamples: 2 }),
+      expect.objectContaining({ dimensions: { game: "caro", mode: "offline", playMode: "same-device" },
+        count: 1, durationMs: 600_000, durationSamples: 1 }),
+    ]));
     expect(summary.system.latency).toContainEqual({ metric: "backend", samples: 1, errors: 0, p50: 50, p95: 50 });
     expect(summary.system.latency).toContainEqual({ metric: "device", samples: 0, errors: 0, p50: null, p95: null });
     expect(summary.system).toMatchObject({ storageHistory: [{ bytes: expect.any(Number) }] });

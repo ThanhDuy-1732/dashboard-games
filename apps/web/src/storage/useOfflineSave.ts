@@ -50,7 +50,7 @@ export function useOfflineSave(session: OfflineSession | null) {
     if (discarded.current === active) return;
     const state = active.snapshot();
     const human = state.players.find((p) => p.kind === "human")!;
-    const value = makeSavedGame(state, human.id);
+    const value = makeSavedGame(state, human.id, active.startedAt);
     await (replace ? store.replace(value) : store.save(value));
     if (
       discarded.current !== active &&

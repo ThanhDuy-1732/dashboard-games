@@ -40,15 +40,18 @@ export async function recordEvents(db: Queryable, scope: string, source: Source,
               width_bucket(ceil((attributes->>'durationMs')::numeric),
                 ARRAY[11,26,51,101,201,401,801,1501,3001,6001,12001,30001,60001]::numeric[]) + 1
             ])
-        ELSE attributes - 'sessionId' END AS dimensions
+        ELSE attributes - 'sessionId' - 'durationMs' END AS dimensions,
+        CASE WHEN kind = 'game_completed' THEN (attributes->>'durationMs')::bigint END AS duration_ms
       FROM inserted WHERE kind <> 'activity'
     ), aggregated AS (
-      INSERT INTO nha_choi_metric_days(scope, day, source, kind, dimensions, count)
-      SELECT $1, day, $2, kind, dimensions, count(*) FROM grouped
+      INSERT INTO nha_choi_metric_days(scope, day, source, kind, dimensions, count, duration_ms, duration_samples)
+      SELECT $1, day, $2, kind, dimensions, count(*), coalesce(sum(duration_ms), 0), count(duration_ms) FROM grouped
       GROUP BY day, kind, dimensions
       ORDER BY day, kind, dimensions
       ON CONFLICT (scope, day, source, kind, dimensions)
-      DO UPDATE SET count = nha_choi_metric_days.count + EXCLUDED.count
+      DO UPDATE SET count = nha_choi_metric_days.count + EXCLUDED.count,
+        duration_ms = nha_choi_metric_days.duration_ms + EXCLUDED.duration_ms,
+        duration_samples = nha_choi_metric_days.duration_samples + EXCLUDED.duration_samples
     )
     SELECT id, bool_or(occurred_at >= statement_timestamp() - interval '30 days'
       AND occurred_at <= statement_timestamp() + interval '5 minutes') AS accepted

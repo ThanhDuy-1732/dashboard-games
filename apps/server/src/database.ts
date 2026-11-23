@@ -108,6 +108,9 @@ export class NeonRoomStore implements RoomStore, MetricWriter {
       await this.pool.query(
         await readFile(new URL("../migrations/002_admin_metrics.sql", import.meta.url), "utf8"),
       );
+      await this.pool.query(
+        await readFile(new URL("../migrations/003_game_duration.sql", import.meta.url), "utf8"),
+      );
       this.initialized = true;
     }
     const records = await this.transaction(async (client) => {

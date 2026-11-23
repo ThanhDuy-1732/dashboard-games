@@ -1,3 +1,4 @@
+import { trackGame } from "../telemetry.js";
 import { App as CapacitorApp } from "@capacitor/app";
 import { createDinoRun, DINO_STEP_SECONDS, stepDinoRun } from "@nha-choi/game-core";
 import type { DinoLane, DinoRun } from "@nha-choi/game-core";
@@ -44,6 +45,7 @@ export function DinoScreen({
   const stage = useRef<HTMLElement>(null);
   const primary = useRef<HTMLButtonElement>(null);
   const run = useRef(createDinoRun(0));
+  const telemetry = useRef<{ id: string; startedAt: number } | null>(null);
   const wantsJump = useRef(false);
   const wantsFire = useRef(false);
   const moves = useRef<Array<-1 | 1>>([]);
@@ -80,6 +82,9 @@ export function DinoScreen({
   }, []);
 
   function start() {
+    const id = crypto.randomUUID();
+    telemetry.current = { id, startedAt: Date.now() };
+    trackGame("dino", id, "game_started", "solo");
     run.current = createDinoRun(Math.floor(Math.random() * 0x100000000));
     setDistance(0);
     setAirborne(false);
@@ -145,6 +150,9 @@ export function DinoScreen({
             previous.evolutionSeconds !== current.evolutionSeconds) setEffects(current);
         }
         if (next.status === "crashed") {
+          const recorded = telemetry.current;
+          if (recorded) trackGame("dino", recorded.id, "game_completed", "solo", recorded.startedAt);
+          telemetry.current = null;
           let record = meters;
           try {
             record = saveDinoBest(window.localStorage, meters);

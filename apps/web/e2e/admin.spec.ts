@@ -6,7 +6,8 @@ test("opens protected admin pages directly and shows the cleanup preview before 
   const summary = {
     days: ["2026-11-21"], updatedAt: "2026-11-21T10:00:00Z", traffic: { active: 0, rows: [] },
     games: [
-      { day: "2026-11-21", kind: "game_started", dimensions: { game: "caro", mode: "offline" }, count: 2 },
+      { day: "2026-11-21", kind: "game_started", dimensions: { game: "caro", mode: "offline", playMode: "bot" }, count: 2 },
+      { day: "2026-11-21", kind: "game_completed", dimensions: { game: "caro", mode: "offline", playMode: "bot" }, count: 2, durationMs: 420000, durationSamples: 2 },
       { day: "2026-11-21", kind: "game_started", dimensions: { game: "ty-phu", mode: "online" }, count: 3 },
     ],
     system: { bytes: 1024, ramBytes: 2048, tables: [], storageHistory: [], latency: [] },
@@ -35,6 +36,12 @@ test("opens protected admin pages directly and shows the cleanup preview before 
   await expect(page.getByRole("heading", { name: "Ván chơi" })).toBeVisible();
   await page.getByLabel("Khoảng thời gian").selectOption("30d");
   await expect(page.getByRole("cell", { name: "Caro" }).first()).toBeVisible();
+  await page.getByLabel("Chế độ").selectOption("bot");
+  await expect(page.getByRole("cell", { name: "Đấu máy" }).first()).toBeVisible();
+  await page.getByRole("link", { name: "Tổng quan" }).click();
+  const caro = page.getByRole("row").filter({ has: page.getByRole("cell", { name: "Caro", exact: true }) });
+  await expect(caro).toContainText("3 phút 30 giây");
+  await expect(caro).toContainText("7 phút");
 });
 
 test("shows HTTP health separately from the latest production deploy", async ({ page }) => {

@@ -1,7 +1,7 @@
 import { createHash, randomInt, randomUUID } from "node:crypto";
 import { CARO_SIZE, createCaro, playCaro } from "@nha-choi/game-core";
 import type { CaroGame, CaroMark } from "@nha-choi/game-core";
-import { resumeTokenSchema } from "@nha-choi/protocol";
+import { gameDurationMs, resumeTokenSchema } from "@nha-choi/protocol";
 import type { CaroRoomReply, CaroRoomView, TelemetryEvent } from "@nha-choi/protocol";
 import type { Server, Socket } from "socket.io";
 import { z } from "zod";
@@ -20,6 +20,7 @@ interface Room {
   round: number;
   revision: number;
   updatedAt: number;
+  startedAt?: number;
 }
 const name = z.string().trim().min(1).max(24);
 const code = z
@@ -63,9 +64,12 @@ export class CaroRooms {
   }
 
   private milestone(room: Room, kind: "game_started" | "game_completed") {
+    const now = this.now();
+    if (kind === "game_started") room.startedAt = now;
+    const durationMs = kind === "game_completed" ? gameDurationMs(room.startedAt, now) : undefined;
     this.record?.({
-      id: `${room.id}:${room.round}:${kind}`, occurredAt: new Date(this.now()).toISOString(),
-      kind, game: "caro", mode: "online",
+      id: `${room.id}:${room.round}:${kind}`, occurredAt: new Date(now).toISOString(),
+      kind, game: "caro", mode: "online", ...(durationMs === undefined ? {} : { durationMs }),
     });
   }
 

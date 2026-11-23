@@ -56,7 +56,7 @@ Bằng chứng trình duyệt và trạng thái WEB-PASS ghi trong `docs/runbook
 
 ## Dashboard quản trị
 
-Dashboard nằm tại `https://<tên-miền-web>/admin`. Backend cần PostgreSQL và sẽ tự chạy migration `002_admin_metrics.sql`. Triển khai cả frontend lẫn backend cùng phiên bản và đóng gói cả hai file migration.
+Dashboard nằm tại `https://<tên-miền-web>/admin`. Backend cần PostgreSQL và sẽ tự chạy migration `002_admin_metrics.sql`. Triển khai cả frontend lẫn backend cùng phiên bản và đóng gói các file migration.
 
 Trên backend, đặt `ADMIN_ORIGIN` bằng origin chính xác của trang web (ví dụ `https://nha-choi.example`, không có dấu / cuối) và `ADMIN_PASSWORD_HASH` bằng chuỗi salt và hash. Dùng một mật khẩu dài, riêng cho admin. Lệnh sau đọc mật khẩu từ terminal và chỉ in giá trị hash để cấu hình.
 
@@ -88,3 +88,5 @@ Nếu reverse proxy gom lưu lượng về cùng địa chỉ kết nối, giớ
 Trang **Hệ thống** kiểm tra phản hồi HTTP của frontend và backend khi mở hoặc bấm **Làm mới**. Quy tắc Vercel chuyển tiếp `/api/health` tới Render. Kết quả phản hồi được hiển thị riêng với trạng thái triển khai. Commit Vercel là commit của bản web đang mở; bật **Automatically expose System Environment Variables** trên Vercel để thấy commit, nhánh và môi trường của bản đó.
 
 Để hiển thị lượt build production mới nhất, đặt trên **backend Render** các biến `RENDER_API_KEY`, `VERCEL_API_TOKEN`, `VERCEL_PROJECT_ID` và `VERCEL_TEAM_ID` nếu dự án Vercel thuộc team. Render tự cấp `RENDER_SERVICE_ID`. Chỉ dùng quyền tối thiểu mà từng nền tảng cho phép. Hai khóa chỉ gửi đến API của nhà cung cấp tương ứng từ backend và giao diện chỉ nhận thông tin triển khai đã lọc. Nếu chưa cấp API token, mục trạng thái triển khai sẽ báo chưa cấu hình. Kiểm tra phản hồi HTTP và metadata bản đang mở vẫn hoạt động.
+
+Tổng quan và trang Ván chơi chia lượt theo trò và chế độ. Thời lượng là thời gian thực từ lúc bắt đầu đến lúc kết thúc ván, có tính thời gian tạm dừng hoặc rời đi rồi tiếp tục. Chỉ các ván có hai mốc hợp lệ trong tối đa 30 ngày góp vào trung bình và tổng thời lượng. Ván cũ không có mốc bắt đầu và ván chưa kết thúc vẫn có thể xuất hiện trong số lượt, nhưng không có mẫu thời lượng. Thống kê lưu theo ngày ván kết thúc và còn nguyên khi dọn dữ liệu chi tiết.

@@ -5,7 +5,7 @@ import { z } from "zod";
 export type KilnSave = {
   version: 1;
   unlocked: KilnLevelId;
-  active: { level: KilnLevelId; size?: KilnSize; moves: KilnMove[] };
+  active: { level: KilnLevelId; size?: KilnSize; moves: KilnMove[]; id?: string; startedAt?: number };
 };
 
 const levelId = z.literal([1, 2, 3]);
@@ -15,6 +15,8 @@ const saveSchema = z.strictObject({
   active: z.strictObject({
     level: levelId,
     size: z.literal(KILN_SIZES).optional(),
+    id: z.uuid().optional(),
+    startedAt: z.int().nonnegative().optional(),
     moves: z.array(z.strictObject({ slot: z.literal([0, 1, 2]), anchor: z.int().min(0).max(KILN_SIZES[2] ** 2 - 1) })).max(12),
   }),
 });

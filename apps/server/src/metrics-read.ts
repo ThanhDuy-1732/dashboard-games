@@ -13,6 +13,8 @@ export interface DayRow {
   source: string;
   dimensions: Dimensions;
   count: number;
+  durationMs: number;
+  durationSamples: number;
 }
 function latencySummary(rows: DayRow[]) {
   return ["backend", "database", "device"].map((metric) => {
@@ -34,7 +36,8 @@ function latencySummary(rows: DayRow[]) {
 export async function readMetrics(db: Db, scope: string, days: number, includeSystem: boolean) {
   const updatedAt = new Date().toISOString();
   const { rows } = await db.query<DayRow>(`
-    SELECT day::text, kind, source, dimensions, count::float8
+    SELECT day::text, kind, source, dimensions, count::float8,
+           duration_ms::float8 AS "durationMs", duration_samples::float8 AS "durationSamples"
     FROM nha_choi_metric_days WHERE scope = $1 AND day BETWEEN ${localDay} - ($2::int - 1) AND ${localDay}
     ORDER BY day, kind
   `, [scope, days]);

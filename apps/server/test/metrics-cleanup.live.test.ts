@@ -8,6 +8,7 @@ test.skipIf(!process.env.ADMIN_TEST_PG_SOCKET)("cleans only old detail in the re
   const client = await pool.connect();
   try {
     await client.query(await readFile(new URL("../migrations/002_admin_metrics.sql", import.meta.url), "utf8"));
+    await client.query(await readFile(new URL("../migrations/003_game_duration.sql", import.meta.url), "utf8"));
     await client.query("BEGIN");
     const scope = "cleanup-fixture";
     await client.query(`
@@ -39,6 +40,7 @@ test.skipIf(!process.env.ADMIN_TEST_PG_SOCKET)("concurrent cleanup batches repor
   const scope = "cleanup-concurrent-" + crypto.randomUUID();
   try {
     await pool.query(await readFile(new URL("../migrations/002_admin_metrics.sql", import.meta.url), "utf8"));
+    await pool.query(await readFile(new URL("../migrations/003_game_duration.sql", import.meta.url), "utf8"));
     await pool.query(`
       INSERT INTO nha_choi_metric_events
       SELECT $1, 'device', n::text, now() - interval '45 days', 'view', '{}'

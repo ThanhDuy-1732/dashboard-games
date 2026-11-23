@@ -8,6 +8,7 @@ export const savedGameSchema = z
     gameId: z.string().min(1).max(64),
     revision: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
     savedAt: z.iso.datetime(),
+    startedAt: z.int().nonnegative().optional(),
     state: gameStateSchema,
     humanId: z.string().min(1).max(64),
   })
@@ -23,13 +24,14 @@ export const savedGameSchema = z
       ctx.addIssue({ code: "custom", message: "Invalid offline player" });
   });
 export type SavedGame = z.infer<typeof savedGameSchema>;
-export function makeSavedGame(state: GameState, humanId: PlayerId): SavedGame {
+export function makeSavedGame(state: GameState, humanId: PlayerId, startedAt?: number): SavedGame {
   return savedGameSchema.parse({
     schemaVersion: 1,
     rulesVersion: "classic-v1",
     gameId: state.gameId,
     revision: state.revision,
     savedAt: new Date().toISOString(),
+    ...(startedAt === undefined ? {} : { startedAt }),
     state: structuredClone(state),
     humanId,
   });

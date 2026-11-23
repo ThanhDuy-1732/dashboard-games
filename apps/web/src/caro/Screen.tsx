@@ -92,6 +92,7 @@ export function CaroScreen({
   }, [inGame, onInGame]);
 
   function persist(save: CaroSave, moved = false) {
+    if (moved && save.game.moves.length === 1) save.startedAt ??= Date.now();
     try {
       writeCaroSave(save);
       setSaved(save);
@@ -102,8 +103,9 @@ export function CaroScreen({
       );
     }
     if (moved && save.id) {
-      if (save.game.moves.length === 1) trackGame("caro", save.id, "game_started");
-      if (save.game.result) trackGame("caro", save.id, "game_completed");
+      const playMode = save.mode === "local" ? "same-device" : "bot";
+      if (save.game.moves.length === 1) trackGame("caro", save.id, "game_started", playMode);
+      if (save.game.result) trackGame("caro", save.id, "game_completed", playMode, save.startedAt);
     }
   }
 

@@ -29,6 +29,7 @@ export const roomCheckpointSchema = z
       .max(6),
     authority: authorityCheckpointSchema.nullable(),
     lastActivity: timestamp,
+    startedAt: timestamp.optional(),
     closedAt: timestamp.nullable(),
     reason: z.string().max(500),
     publishedCanEnd: z.boolean(),

@@ -6,6 +6,7 @@ export type CaroLocalMode = "local" | CaroDifficulty;
 
 export interface CaroSave {
   id?: string;
+  startedAt?: number;
   mode: CaroLocalMode;
   firstMark: CaroMark;
   game: CaroGame;
@@ -23,6 +24,7 @@ export function readCaroSave(): CaroSave | null {
     const game = restoreCaro(data.moves);
     return game ? {
       mode: data.mode, firstMark: data.firstMark, game,
+      ...(Number.isSafeInteger(data.startedAt) && data.startedAt >= 0 ? { startedAt: data.startedAt } : {}),
       ...(typeof data.id === "string" && /^[a-f0-9-]{36}$/.test(data.id) ? { id: data.id } : {}),
     } : null;
   } catch {
@@ -36,6 +38,7 @@ export function writeCaroSave(save: CaroSave) {
     JSON.stringify({
       version: 1,
       id: save.id,
+      startedAt: save.startedAt,
       mode: save.mode,
       firstMark: save.firstMark,
       moves: save.game.moves,

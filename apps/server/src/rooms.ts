@@ -1,3 +1,4 @@
+import { gameDurationMs } from "@nha-choi/protocol";
 import type { TelemetryEvent } from "@nha-choi/protocol";
 import { createHash, randomBytes, randomInt, randomUUID } from "node:crypto";
 import { createGame } from "@nha-choi/game-core";
@@ -33,6 +34,7 @@ interface Room {
   members: Member[];
   authority: GameAuthority | null;
   lastActivity: number;
+  startedAt?: number;
   closedAt: number | null;
   reason: string;
   publishedCanEnd: boolean;
@@ -47,8 +49,11 @@ export class Rooms {
       room.closedAt === null && room.authority && room.authority.state.phase !== "finished").length;
   }
 
-  private milestone(id: string, kind: "game_started" | "game_completed") {
-    this.milestones?.push({ id: id + ":" + kind, kind, occurredAt: new Date(this.now()).toISOString(), game: "ty-phu", mode: "online" });
+  private milestone(room: Room, kind: "game_started" | "game_completed") {
+    const now = this.now();
+    const durationMs = kind === "game_completed" ? gameDurationMs(room.startedAt, now) : undefined;
+    this.milestones?.push({ id: room.id + ":" + kind, kind, occurredAt: new Date(now).toISOString(), game: "ty-phu", mode: "online",
+      ...(durationMs === undefined ? {} : { durationMs }) });
   }
 
   private pendingCheckpoint: RoomCheckpoint[] | null = null;
@@ -381,7 +386,8 @@ export class Rooms {
       this.random,
     );
     room.lastActivity = this.now();
-    this.milestone(room.id, "game_started");
+    room.startedAt = room.lastActivity;
+    this.milestone(room, "game_started");
     this.publish(room);
     return this.reply(room, member);
   }
@@ -458,7 +464,7 @@ export class Rooms {
     if (room.authority.snapshot().phase === "finished") {
       room.closedAt = this.now();
       room.reason = "Ván đấu đã kết thúc.";
-      if (reply.ok) this.milestone(room.id, "game_completed");
+      if (reply.ok) this.milestone(room, "game_completed");
     }
     this.publish(room);
     return reply;

@@ -1,4 +1,5 @@
-import type { TelemetryEvent } from "@nha-choi/protocol";
+import { gameDurationMs } from "@nha-choi/protocol";
+import type { OfflinePlayMode, TelemetryEvent, TrackedGame } from "@nha-choi/protocol";
 import { getPlatform, onlineServerUrl } from "./platform.js";
 
 let opening: Promise<IDBDatabase> | undefined;
@@ -81,8 +82,14 @@ export function flushTelemetry() {
   return sending;
 }
 
-export function trackGame(game: "caro" | "ty-phu", id: string, kind: "game_started" | "game_completed") {
-  track({ id: `${game}:${id}:${kind}`, kind, occurredAt: new Date().toISOString(), mode: "offline", game });
+export function trackGame(
+  game: TrackedGame, id: string, kind: "game_started" | "game_completed",
+  playMode: OfflinePlayMode, startedAt?: number,
+) {
+  const now = Date.now();
+  const durationMs = kind === "game_completed" ? gameDurationMs(startedAt, now) : undefined;
+  track({ id: `${game}:${id}:${kind}`, kind, occurredAt: new Date(now).toISOString(), mode: "offline", game,
+    playMode, ...(durationMs === undefined ? {} : { durationMs }) });
 }
 
 export function trackDeviceLatency(start: number, technicalError: boolean) {

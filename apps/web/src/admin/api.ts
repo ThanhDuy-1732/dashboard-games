@@ -3,6 +3,8 @@ export interface MetricRow {
   kind: string;
   dimensions: Record<string, string | number | boolean>;
   count: number;
+  durationMs?: number;
+  durationSamples?: number;
 }
 export interface Summary {
   days: string[];

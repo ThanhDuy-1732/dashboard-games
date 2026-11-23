@@ -208,7 +208,7 @@ export function App() {
       created = createOfflineSession({ human, botCount, boardSize }, saved);
       created.pause("Đang chuẩn bị bản lưu.");
       await persistence.write(created, replace);
-      if (!saved) trackGame("ty-phu", created.snapshot().gameId, "game_started");
+      if (!saved) trackGame("ty-phu", created.snapshot().gameId, "game_started", "bot");
       created.resume();
       setSession(created);
       setNewGame(null);
@@ -311,9 +311,7 @@ export function App() {
   const finished =
     update?.view?.phase === "finished" || Boolean(online && lobby?.closed);
   const telemetryScreen = page === "game" ? finished ? "results" : online && !lobby?.started ? "lobby" : "game" : page;
-  useEffect(() => {
-    if (telemetryScreen !== "kiln" && telemetryScreen !== "dino") trackScreen(telemetryScreen);
-  }, [telemetryScreen]);
+  useEffect(() => trackScreen(telemetryScreen), [telemetryScreen]);
   useEffect(startTelemetry, []);
   const hubStyle = page === "dino" ? { display: "none" } : undefined;
   return (

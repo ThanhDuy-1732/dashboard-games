@@ -16,8 +16,13 @@ function formatBytes(bytes: number) {
   return `${number.format(Math.round(bytes / 1024 ** unit * 10) / 10)} ${units[unit]}`;
 }
 const sum = (rows: MetricRow[], kind: string) => rows.reduce((total, row) => total + (row.kind === kind ? row.count : 0), 0);
-const gameNames = { caro: "Caro", "ty-phu": "Cờ tỷ phú" } as const;
-const modeNames = { online: "Online", offline: "Offline" } as const;
+const gameNames: Record<string, string> = {
+  caro: "Caro", "ty-phu": "Cờ tỷ phú", kiln: "Lò Gốm", dino: "Thằn Lằn Núi Lửa",
+};
+const modeNames: Record<string, string> = {
+  online: "Online", bot: "Đấu máy", "same-device": "Hai người cùng thiết bị",
+  solo: "Chơi một mình", offline: "Offline (chưa rõ chế độ)",
+};
 const systems: Record<string, string> = { backend: "Backend", database: "PostgreSQL", device: "Thiết bị" };
 
 export function Dashboard({ onExpired }: { onExpired: () => void }) {
@@ -87,6 +92,7 @@ function Overview({ summary }: { summary: Summary }) {
       ["Dung lượng PostgreSQL", formatBytes(summary.system.bytes)],
       ["Phản hồi thiết bị p95", deviceP95 == null ? "Chưa có mẫu" : `≈ ${number.format(deviceP95)} ms`],
     ]} />
+    <PlayBreakdown rows={summary.games} />
     <DayTraffic summary={summary} />
   </>;
 }
@@ -119,33 +125,63 @@ function Traffic({ summary }: { summary: Summary }) {
     </table></div>
   </>;
 }
+function formatDuration(ms: number) {
+  const seconds = Math.round(ms / 1000);
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor(seconds % 3600 / 60);
+  const remainder = seconds % 60;
+  return [hours ? hours + " giờ" : "", minutes ? minutes + " phút" : "", remainder || seconds === 0 ? remainder + " giây" : ""]
+    .filter(Boolean).join(" ");
+}
+
+function PlayBreakdown({ rows, game = "", mode = "" }: { rows: MetricRow[]; game?: string; mode?: string }) {
+  const groups = new Map<string, { game: string; mode: string; started: number; completed: number; ms: number; samples: number }>();
+  for (const row of rows) {
+    const gameId = String(row.dimensions.game);
+    if (!Object.hasOwn(gameNames, gameId)) continue;
+    const rawMode = String(row.dimensions.playMode ?? (gameId === "ty-phu" ? "bot" : "offline"));
+    const playMode = row.dimensions.mode === "online" ? "online" : Object.hasOwn(modeNames, rawMode) ? rawMode : "offline";
+    if ((game && game !== gameId) || (mode && mode !== playMode)) continue;
+    const key = gameId + ":" + playMode;
+    const group = groups.get(key) ?? { game: gameId, mode: playMode, started: 0, completed: 0, ms: 0, samples: 0 };
+    if (row.kind === "game_started") group.started += row.count;
+    if (row.kind === "game_completed") {
+      group.completed += row.count;
+      group.ms += row.durationMs ?? 0;
+      group.samples += row.durationSamples ?? 0;
+    }
+    groups.set(key, group);
+  }
+  const ranked = [...groups.values()].sort((a, b) => b.started - a.started || b.completed - a.completed);
+  return <>
+    <div className="admin-table"><table><caption>Ván chơi theo trò và chế độ</caption>
+      <thead><tr><th scope="col">Trò chơi</th><th scope="col">Chế độ</th><th scope="col">Bắt đầu</th><th scope="col">Kết thúc</th><th scope="col">Trung bình mỗi ván</th><th scope="col">Tổng thời lượng đo được</th></tr></thead>
+      <tbody>{ranked.map((row) => <tr key={row.game + ":" + row.mode}>
+        <td>{gameNames[row.game]}</td><td>{modeNames[row.mode]}</td>
+        <td>{number.format(row.started)}</td><td>{number.format(row.completed)}</td>
+        <td>{row.samples ? <>{formatDuration(row.ms / row.samples)} <span className="admin-muted">({number.format(row.samples)} ván đo được)</span></> : "Chưa có mẫu"}</td>
+        <td>{row.samples ? formatDuration(row.ms) : "—"}</td>
+      </tr>)}
+      {!ranked.length && <tr><td colSpan={6}>Chưa có ván chơi trong khoảng đã chọn.</td></tr>}</tbody>
+    </table></div>
+    <p className="admin-muted">Thời lượng tính từ lúc bắt đầu đến khi ván kết thúc, kể cả lúc tạm dừng. Ván offline có thể đồng bộ muộn.</p>
+  </>;
+}
+
 function Games({ summary }: { summary: Summary }) {
   const [game, setGame] = useState("");
   const [mode, setMode] = useState("");
-  const rows = (Object.keys(gameNames) as (keyof typeof gameNames)[])
-    .filter((value) => !game || game === value).flatMap((value) =>
-      (Object.keys(modeNames) as (keyof typeof modeNames)[])
-        .filter((key) => !mode || mode === key).map((key) => ({
-          game: value, mode: key, rows: summary.games.filter(({ dimensions }) => dimensions.game === value && dimensions.mode === key),
-        })));
   return <>
     <Stats values={[["Caro online đang diễn ra", summary.ongoing.caro], ["Cờ tỷ phú online đang diễn ra", summary.ongoing["ty-phu"]]]} />
     <div className="admin-actions">
       <label>Trò chơi <select value={game} onChange={(event) => setGame(event.target.value)}>
-        <option value="">Tất cả</option><option value="caro">Caro</option><option value="ty-phu">Cờ tỷ phú</option>
+        <option value="">Tất cả</option>{Object.entries(gameNames).map(([id, name]) => <option key={id} value={id}>{name}</option>)}
       </select></label>
       <label>Chế độ <select value={mode} onChange={(event) => setMode(event.target.value)}>
-        <option value="">Tất cả</option><option value="online">Online</option><option value="offline">Offline</option>
+        <option value="">Tất cả</option>{Object.entries(modeNames).map(([id, name]) => <option key={id} value={id}>{name}</option>)}
       </select></label>
     </div>
-    <div className="admin-table"><table><caption>Ván trong khoảng đã chọn</caption>
-      <thead><tr><th scope="col">Trò chơi</th><th scope="col">Chế độ</th><th scope="col">Bắt đầu</th><th scope="col">Hoàn thành</th></tr></thead>
-      <tbody>{rows.map((row) => <tr key={row.game + row.mode}>
-        <td>{gameNames[row.game]}</td><td>{modeNames[row.mode]}</td>
-        <td>{number.format(sum(row.rows, "game_started"))}</td><td>{number.format(sum(row.rows, "game_completed"))}</td>
-      </tr>)}</tbody>
-    </table></div>
-    <p className="admin-muted">Thiết bị gửi số liệu offline khi có mạng. Các mốc có thể đến muộn.</p>
+    <PlayBreakdown rows={summary.games} game={game} mode={mode} />
   </>;
 }
 function System({ summary }: { summary: Summary }) {

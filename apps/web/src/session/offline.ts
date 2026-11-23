@@ -12,6 +12,7 @@ import type { SavedGame } from "../storage/save-schema.js";
 import { trackGame } from "../telemetry.js";
 export interface OfflineSession extends GameSession {
   snapshot(): GameState;
+  startedAt?: number;
   pause(reason: string): void;
   resume(): void;
 }
@@ -63,12 +64,13 @@ export function createOfflineSession(
       ...(failure ? { reason: failure } : {}),
     };
   }
+  const startedAt = restored ? restored.startedAt : Date.now();
   let finished = restored?.state.phase === "finished";
   function emit() {
     const value = update();
     if (!finished && value.view?.phase === "finished") {
       finished = true;
-      trackGame("ty-phu", value.view.gameId, "game_completed");
+      trackGame("ty-phu", value.view.gameId, "game_completed", "bot", startedAt);
     }
     for (const listener of listeners) listener(value);
   }
@@ -124,6 +126,7 @@ export function createOfflineSession(
   }
   schedule();
   return {
+    startedAt,
     async setActive(active) {
       if (active) this.resume();
       else this.pause("Ván đang tạm dừng khi ứng dụng ở nền.");
