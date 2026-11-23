@@ -19,6 +19,7 @@ import { getPlatform } from "./platform.js";
 import { PwaStatus } from "./components/PwaStatus.js";
 import { CaroRules, CaroScreen, caroInviteCode } from "./caro/Screen.js";
 import { readCaroSave } from "./caro/save.js";
+import { KilnRules, KilnScreen } from "./kiln/Screen.js";
 import { Home } from "./screens/Home.js";
 import { Setup } from "./screens/Setup.js";
 import { Game } from "./screens/Game.js";
@@ -43,7 +44,7 @@ const ERROR_TEXT: Record<string, string> = {
     "Hành động không còn hợp lệ. Hãy kiểm tra tiền, tài sản và lượt hiện tại.",
   PAUSED: "Ván đang tạm dừng. Hãy đợi kết nối hoặc thử mở lại ván đã lưu.",
 };
-type Destination = "home" | "setup" | "caro";
+type Destination = "home" | "setup" | "caro" | "kiln";
 
 export function App() {
   const [page, setPage] = useState<Destination | "game">(() =>
@@ -51,6 +52,7 @@ export function App() {
   );
   const [resumeCaro, setResumeCaro] = useState(false);
   const [caroInGame, setCaroInGame] = useState(false);
+  const [kilnInGame, setKilnInGame] = useState(false);
   const [session, setSession] = useState<OfflineSession | OnlineSession | null>(
     null,
   );
@@ -160,7 +162,7 @@ export function App() {
     setError("");
   };
   function openCurrentGame() {
-    if (page === "caro") return;
+    if (page === "caro" || page === "kiln") return;
     if (session) setPage("game");
     else navigate("setup");
   }
@@ -307,7 +309,9 @@ export function App() {
   const finished =
     update?.view?.phase === "finished" || Boolean(online && lobby?.closed);
   const telemetryScreen = page === "game" ? finished ? "results" : online && !lobby?.started ? "lobby" : "game" : page;
-  useEffect(() => trackScreen(telemetryScreen), [telemetryScreen]);
+  useEffect(() => {
+    if (telemetryScreen !== "kiln") trackScreen(telemetryScreen);
+  }, [telemetryScreen]);
   useEffect(startTelemetry, []);
   return (
     <>
@@ -377,6 +381,14 @@ export function App() {
               </span>
               <span className="tiny-arrow">↗</span>
             </button>
+            <button
+              onClick={() => navigate("kiln")}
+              aria-current={page === "kiln" ? "page" : undefined}
+            >
+              <span className="mini-game kiln-nav-icon" aria-hidden="true"><span className="kiln-vase" /></span>
+              <span>Lò Gốm<small>Xếp khối · Offline</small></span>
+              <span className="tiny-arrow" aria-hidden="true">↗</span>
+            </button>
           </div>
           <div className="sidebar-bottom">
             <div className="little-dice">⚄</div>
@@ -399,11 +411,13 @@ export function App() {
                   ? "Khám phá"
                   : page === "caro"
                     ? "Cờ Caro"
-                    : page === "setup"
-                      ? "Chọn chế độ"
-                      : finished
-                        ? "Kết quả"
-                        : "Bàn chơi"}
+                    : page === "kiln"
+                      ? "Lò Gốm"
+                      : page === "setup"
+                        ? "Chọn chế độ"
+                        : finished
+                          ? "Kết quả"
+                          : "Bàn chơi"}
               </strong>
             </div>
             <div className="header-tools">
@@ -432,7 +446,7 @@ export function App() {
             </div>
           </header>
           <main id="main" tabIndex={-1}>
-            <PwaStatus inGame={Boolean(session) || caroInGame} />
+            <PwaStatus inGame={Boolean(session) || caroInGame || kilnInGame} />
             {persistence.notice && (
               <div className="app-error">
                 {persistence.notice}
@@ -500,6 +514,7 @@ export function App() {
             )}
             {page === "home" && (
               <Home
+                onKiln={() => navigate("kiln")}
                 onCaro={() => openCaro()}
                 onResumeCaro={readCaroSave() ? () => openCaro(true) : undefined}
                 onPlay={() => navigate("setup")}
@@ -509,6 +524,14 @@ export function App() {
                 busy={pending}
               />
             )}
+            <div hidden={page !== "kiln"}>
+              <KilnScreen
+                active={page === "kiln"}
+                onHome={() => navigate("home")}
+                onRules={() => setRules(true)}
+                onInGame={setKilnInGame}
+              />
+            </div>
             {page === "setup" && (
               <Setup
                 onOnline={(input) => void joinOnline(input)}
@@ -547,7 +570,7 @@ export function App() {
           </main>
           <footer className="workspace-footer">
             <span>Nhà Chơi — Cùng nhau, thêm vui.</span>
-            {page !== "caro" && (
+            {page !== "caro" && page !== "kiln" && (
               <span>Tiền trong game, không có giá trị quy đổi</span>
             )}
           </footer>
@@ -579,7 +602,14 @@ export function App() {
           </button>
         </Dialog>
       )}
-      {rules && page !== "caro" && (
+      {rules && page === "kiln" && (
+        <Dialog title="Luật chơi Lò Gốm" onClose={() => setRules(false)}>
+          <h2>Canh lửa, lấy gốm</h2>
+          <KilnRules />
+          <button className="button primary full" onClick={() => setRules(false)}>Mình hiểu rồi</button>
+        </Dialog>
+      )}
+      {rules && page !== "caro" && page !== "kiln" && (
         <Dialog title="Luật chơi Cờ tỷ phú" onClose={() => setRules(false)}>
           <h2>Một vòng luật chơi</h2>
           <p className="dialog-lead">

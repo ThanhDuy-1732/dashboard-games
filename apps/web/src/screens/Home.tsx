@@ -3,6 +3,7 @@ import { LocationPhoto } from "../components/LocationDetails.js";
 import type { SavedGame } from "../storage/save-schema.js";
 export function Home({
   onPlay,
+  onKiln,
   onCaro,
   onResumeCaro,
   onRules,
@@ -11,6 +12,7 @@ export function Home({
   busy = false,
 }: {
   onPlay: () => void;
+  onKiln: () => void;
   onCaro: () => void;
   onResumeCaro?: () => void;
   onRules: () => void;
@@ -151,6 +153,14 @@ export function Home({
             </button>
           )}
         </div>
+      </article>
+      <article className="game-card">
+        <div className="game-cover kiln-cover" aria-hidden="true"><span className="kiln-vase" /></div>
+        <div className="game-description">
+          <h3>Lò Gốm</h3>
+          <p>Xếp khối, canh lửa và lấy gốm đúng lúc trong ba màn chơi offline.</p>
+        </div>
+        <button className="button secondary" onClick={onKiln}>Chơi Lò Gốm<Icon name="arrow" /></button>
       </article>
       <div className="home-bottom">
         <div className="start-tip">

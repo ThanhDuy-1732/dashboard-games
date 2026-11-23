@@ -8,3 +8,4 @@ export { chooseBotAction } from "./bot.js";
 
 export { buildableSpaces } from "./assets.js";
 export * from "./caro.js";
+export * from "./kiln.js";

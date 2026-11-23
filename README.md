@@ -1,5 +1,7 @@
 # Nhà Chơi
 
+**Lò Gốm** có ba màn xếp khối và canh lượt lấy gốm chín, với bàn 8 × 8, 9 × 9 hoặc 10 × 10. Chọn **Chơi Lò Gốm** ở trang Khám phá để bắt đầu hoặc tiếp tục ván đã lưu trên thiết bị. Bản PWA chơi offline sau khi đã tải đủ dữ liệu lần đầu.
+
 Dashboard game với Cờ tỷ phú truyền thống, web/PWA trước rồi Android/iOS dùng chung lõi luật và giao diện.
 
 Web/PWA đã đạt WEB-PASS (A1–A10): luật truyền thống đầy đủ, offline với 1–5 máy, tự lưu/tiếp tục, phòng online 2–6 người và cài PWA. Android/iOS đã dựng và chạy thử trên giả lập (B1), có lưu/tiếp tục, xử lý Back và chuyển nền. Bluetooth và chơi online mobile qua HTTPS chưa nghiệm thu.
