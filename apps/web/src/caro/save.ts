@@ -16,12 +16,12 @@ export function readCaroSave(): CaroSave | null {
   try {
     const data = JSON.parse(localStorage.getItem(KEY) ?? "null");
     if (
-      data?.version !== 1 ||
+      (data?.version !== 1 && data?.version !== 2) ||
       (data.mode !== "local" && !isCaroDifficulty(data.mode)) ||
       (data.firstMark !== "X" && data.firstMark !== "O")
     )
       return null;
-    const game = restoreCaro(data.moves);
+    const game = restoreCaro(data.moves, { legacySave: data.version === 1 });
     return game ? {
       mode: data.mode, firstMark: data.firstMark, game,
       ...(Number.isSafeInteger(data.startedAt) && data.startedAt >= 0 ? { startedAt: data.startedAt } : {}),
@@ -36,7 +36,7 @@ export function writeCaroSave(save: CaroSave) {
   localStorage.setItem(
     KEY,
     JSON.stringify({
-      version: 1,
+      version: 2,
       id: save.id,
       startedAt: save.startedAt,
       mode: save.mode,

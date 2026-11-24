@@ -90,7 +90,7 @@ it("authorizes turns, restores a disconnected seat and swaps marks on mutual rem
   expect(move(host, 0, room.revision - 1)).toMatchObject({
     code: "STALE_REVISION",
   });
-  ({ room } = accepted(move(host, 0)));
+  ({ room } = accepted(move(host, 1)));
 
   guest.disconnect();
   room = host.view!;
@@ -101,13 +101,15 @@ it("authorizes turns, restores a disconnected seat and swaps marks on mutual rem
     returned.send("resume", { resumeToken: guestEntry.resumeToken }),
   );
   expect(resumed.mark).toBe("O");
-  expect(resumed.room.game.moves).toEqual([0]);
+  expect(resumed.room.game.moves).toEqual([1]);
   room = resumed.room;
-  for (let i = 0; i < 4; i++) {
-    ({ room } = accepted(move(returned, 30 + i)));
-    ({ room } = accepted(move(host, i + 1)));
+  for (const [o, x] of [[0, 2], [6, 3], [20, 4], [40, 5]] as const) {
+    ({ room } = accepted(move(returned, o)));
+    ({ room } = accepted(move(host, x)));
   }
-  expect(room.game.result).toMatchObject({ winner: "X" });
+  const result = { winner: "X", line: [1, 2, 3, 4, 5] };
+  expect(room.game.result).toEqual(result);
+  expect(returned.view?.game.result).toEqual(result);
   expect(events.filter((event) => event.kind !== "latency").map((event) => event.kind)).toEqual(["game_started", "game_completed"]);
 
   accepted(host.send("rematch", { round: 1 }));

@@ -36,11 +36,11 @@ export function CaroRules() {
     <ol className="rules-list">
       <li>X đi trước. Hai bên lần lượt đánh vào ô trống.</li>
       <li>
-        Tạo đúng 5 quân liên tiếp theo hàng ngang, dọc hoặc chéo để thắng. Chuỗi
-        bị đối thủ chặn cả hai đầu hoặc dài từ 6 quân trở lên không tính thắng.
+        Tạo đúng 5 quân liên tiếp theo hàng ngang, dọc hoặc chéo để thắng, kể cả
+        khi đối thủ chặn cả hai đầu. Chuỗi từ 6 quân trở lên không tính thắng.
       </li>
       <li>
-        Mép bàn không tính là quân chặn. Bàn đầy mà chưa ai thắng thì hòa.
+        Bàn đầy mà chưa ai thắng thì hòa.
       </li>
       <li>Khi tái đấu, hai bên đổi X/O.</li>
     </ol>

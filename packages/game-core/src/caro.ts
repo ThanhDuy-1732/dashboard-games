@@ -40,7 +40,12 @@ const directions = [
   [1, -1],
 ] as const;
 
-function winningLine(board: CaroGame["board"], index: number, mark: CaroMark) {
+function winningLine(
+  board: CaroGame["board"],
+  index: number,
+  mark: CaroMark,
+  allowBlockedWin = true,
+) {
   const row = Math.floor(index / CARO_SIZE);
   const column = index % CARO_SIZE;
   for (const [dy, dx] of directions) {
@@ -53,11 +58,14 @@ function winningLine(board: CaroGame["board"], index: number, mark: CaroMark) {
     while (board[cell(row + (end + 1) * dy, column + (end + 1) * dx)] === mark)
       end++;
     if (end - start !== 4) continue;
-    const opponent = mark === "X" ? "O" : "X";
-    const before =
-      board[cell(row + (start - 1) * dy, column + (start - 1) * dx)];
-    const after = board[cell(row + (end + 1) * dy, column + (end + 1) * dx)];
-    if (before === opponent && after === opponent) continue;
+    if (!allowBlockedWin) {
+      const opponent = mark === "X" ? "O" : "X";
+      const before =
+        board[cell(row + (start - 1) * dy, column + (start - 1) * dx)];
+      const after =
+        board[cell(row + (end + 1) * dy, column + (end + 1) * dx)];
+      if (before === opponent && after === opponent) continue;
+    }
     return Array.from({ length: 5 }, (_, offset) =>
       cell(row + (start + offset) * dy, column + (start + offset) * dx),
     );
@@ -66,12 +74,20 @@ function winningLine(board: CaroGame["board"], index: number, mark: CaroMark) {
 }
 
 export function playCaro(game: CaroGame, index: number): CaroGame | null {
+  return applyMove(game, index, true);
+}
+
+function applyMove(
+  game: CaroGame,
+  index: number,
+  allowBlockedWin: boolean,
+): CaroGame | null {
   if (game.result || !Number.isInteger(index) || game.board[index] !== null)
     return null;
   const board = [...game.board];
   board[index] = game.turn;
   const moves = [...game.moves, index];
-  const line = winningLine(board, index, game.turn);
+  const line = winningLine(board, index, game.turn, allowBlockedWin);
   return {
     board,
     moves,
@@ -84,12 +100,27 @@ export function playCaro(game: CaroGame, index: number): CaroGame | null {
   };
 }
 
-export function restoreCaro(moves: unknown): CaroGame | null {
+export function restoreCaro(
+  moves: unknown,
+  { legacySave = false } = {},
+): CaroGame | null {
   if (!Array.isArray(moves) || moves.length > CELL_COUNT) return null;
+  const current = replay(moves, true);
+  if (current || !legacySave || !replay(moves, false)) return current;
+  // Valid legacy games may have continued past a win under the current rules.
+  return replay(moves, true, true);
+}
+
+function replay(
+  moves: readonly unknown[],
+  allowBlockedWin: boolean,
+  stopAtResult = false,
+): CaroGame | null {
   let game = createCaro();
   for (const move of moves) {
+    if (stopAtResult && game.result) break;
     if (typeof move !== "number") return null;
-    const next = playCaro(game, move);
+    const next = applyMove(game, move, allowBlockedWin);
     if (!next) return null;
     game = next;
   }

@@ -66,3 +66,18 @@ it.each(["easy", "hard", "expert"])("plays and persists a %s bot reply", (mode) 
   expect(saved?.game.moves).toHaveLength(2);
   expect(saved?.game.turn).toBe("X");
 });
+
+it("shows the blocked five as a win when reopening an older Caro save", () => {
+  const moves = [1, 0, 2, 6, 3, 20, 4, 40, 5, 41];
+  localStorage.setItem(
+    "nha-choi-caro-offline-v1",
+    JSON.stringify({ version: 1, mode: "local", firstMark: "X", moves }),
+  );
+  render(<App />);
+  fireEvent.click(screen.getByRole("button", { name: "Mở ván Caro đã lưu" }));
+  expect(screen.getByRole("heading", { name: "Người chơi 1 thắng!" })).toBeTruthy();
+  const board = within(screen.getByRole("group", { name: /Bàn cờ Caro/ }));
+  expect(
+    board.getAllByRole("button", { name: /nằm trong hàng thắng/ }),
+  ).toHaveLength(5);
+});

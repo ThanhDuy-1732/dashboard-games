@@ -27,9 +27,20 @@ describe("Cờ Caro", () => {
     expect(playCaro(game, at(1, 1))).toBeNull();
   });
 
-  it("rejects two opposing ends and overlines, while allowing the board edge", () => {
+  it("counts exactly five as a win even when the opponent blocks both ends", () => {
     const blocked = [1, 0, 2, 6, 3, 20, 4, 40, 5];
-    expect(restoreCaro(blocked)?.result).toBeNull();
+    const result = { winner: "X", line: [1, 2, 3, 4, 5] };
+    expect(restoreCaro(blocked)?.result).toEqual(result);
+    expect(restoreCaro([...blocked, 41])).toBeNull();
+    expect(restoreCaro([...blocked, 41], { legacySave: true })).toMatchObject({
+      moves: blocked,
+      result,
+    });
+    expect(restoreCaro([...blocked, 40], { legacySave: true })).toBeNull();
+    expect(chooseCaroMove(restoreCaro(blocked.slice(0, 7))!, "normal")).toBe(5);
+  });
+
+  it("rejects overlines and row wrapping, while allowing the board edge", () => {
     expect(restoreCaro([0, 5, 1, 20, 2, 22, 3, 24, 4])?.result).toEqual({
       winner: "X",
       line: [0, 1, 2, 3, 4],

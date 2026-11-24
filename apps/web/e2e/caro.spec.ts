@@ -14,7 +14,7 @@ async function mark(page: Page, coordinate: string) {
     .click();
 }
 
-test("Caro local shows the winning line, resumes after reload and swaps first player", async ({
+test("Caro local shows a blocked winning line, resumes after reload and swaps first player", async ({
   page,
 }) => {
   await page.goto("/");
@@ -24,19 +24,19 @@ test("Caro local shows the winning line, resumes after reload and swaps first pl
     .click();
   await expect(page.locator(".caro-cell")).toHaveCount(225);
   const first = caro(page).getByRole("button", {
-    name: "A1 trống",
+    name: "B1 trống",
     exact: true,
   });
   await first.click();
   await expect(first).toHaveAttribute("aria-pressed", "true");
   await caro(page)
-    .getByRole("button", { name: "Đánh ô A1", exact: true })
+    .getByRole("button", { name: "Đánh ô B1", exact: true })
     .click();
   for (const [o, x] of [
-    ["A3", "B1"],
-    ["B3", "C1"],
-    ["C3", "D1"],
-    ["D3", "E1"],
+    ["A1", "C1"],
+    ["G1", "D1"],
+    ["C3", "E1"],
+    ["D3", "F1"],
   ]) {
     await mark(page, o!);
     await mark(page, x!);
