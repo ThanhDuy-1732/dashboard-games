@@ -1,14 +1,18 @@
 import { KILN_LEVELS, kilnBatch, kilnOpening } from "./kiln-levels.js";
+import { KILN_LOCKED_SIZE, makeKilnLocks, tickKilnLocks } from "./kiln-locks.js";
+import type { KilnLock } from "./kiln-locks.js";
 import { advanceKilnOrder, startKilnOrder, validKilnOrder } from "./kiln-orders.js";
 import type { KilnOrderResult, KilnOrderState } from "./kiln-orders.js";
 
 export { KILN_LEVELS } from "./kiln-levels.js";
+export { KILN_LOCKED_SIZE, KILN_LOCK_COUNT, KILN_LOCK_KINDS } from "./kiln-locks.js";
 export { KILN_ORDER_KINDS, KILN_ORDERS } from "./kiln-orders.js";
 
 export const KILN_SIZES = [8, 9, 10] as const;
 export type KilnSize = (typeof KILN_SIZES)[number];
 export type KilnLevelId = 1 | 2 | 3;
-export type KilnMode = KilnLevelId | "endless";
+export type KilnFreeMode = "endless" | "locked";
+export type KilnMode = KilnLevelId | KilnFreeMode;
 export type KilnSlot = 0 | 1 | 2;
 export type KilnMove = { slot: KilnSlot; anchor: number };
 export type KilnStatus = "playing" | "won" | "lost-turns" | "lost-space";
@@ -30,8 +34,9 @@ export type KilnGame = {
   collected: number;
   status: KilnStatus;
   order?: KilnOrderState;
+  locks?: readonly KilnLock[];
 };
-export type KilnEndlessState = Pick<KilnGame, "size" | "board" | "turn" | "score" | "collected" | "order"> & {
+export type KilnFreeState = Pick<KilnGame, "size" | "board" | "turn" | "score" | "collected" | "order" | "locks"> & {
   used: readonly KilnSlot[];
 };
 export type KilnPlacement = {
@@ -41,6 +46,7 @@ export type KilnPlacement = {
   lines: number;
   points: number;
   order?: KilnOrderResult;
+  lockUpdate?: ReturnType<typeof tickKilnLocks>;
 };
 
 function boardLines(size: KilnSize): number[][] {
@@ -51,12 +57,14 @@ function boardLines(size: KilnSize): number[][] {
   ]);
 }
 
-export function createKilnGame(level: KilnMode, size: KilnSize = KILN_SIZES[0]): KilnGame {
-  const board = level === "endless" ? Array<null>(size * size).fill(null) : kilnOpening(level, size);
+export function createKilnGame(level: KilnMode, boardSize: KilnSize = KILN_SIZES[0], random = Math.random): KilnGame {
+  const size = level === "locked" ? KILN_LOCKED_SIZE : boardSize;
+  const board = typeof level === "string" ? Array<null>(size * size).fill(null) : kilnOpening(level, size);
   return {
     level, size, board, tray: kilnBatch(level, 0),
     batch: 0, turn: 0, score: 0, collected: 0, status: "playing",
     ...(level === "endless" ? { order: startKilnOrder() } : {}),
+    ...(level === "locked" ? { locks: makeKilnLocks(random) } : {}),
   };
 }
 
@@ -65,7 +73,7 @@ export function kilnPotteryState(age: number): "raw" | "ready" | "broken" {
   return age < 4 ? "ready" : "broken";
 }
 
-function positions({ board, size }: Pick<KilnGame, "board" | "size">, piece: KilnPiece, anchor: number): number[] | null {
+function positions({ board, size, locks }: Pick<KilnGame, "board" | "size" | "locks">, piece: KilnPiece, anchor: number): number[] | null {
   if (!Number.isInteger(anchor) || anchor < 0 || anchor >= board.length) return null;
   const row = Math.floor(anchor / size);
   const column = anchor % size;
@@ -75,27 +83,34 @@ function positions({ board, size }: Pick<KilnGame, "board" | "size">, piece: Kil
     const x = column + dx;
     if (y < 0 || x < 0 || y >= size || x >= size) return null;
     const index = y * size + x;
-    if (board[index]) return null;
+    if (board[index] || locks?.some(lock => lock.index === index)) return null;
     placed.push(index);
   }
   return placed;
 }
 
-function hasPlacement(game: Pick<KilnGame, "board" | "size" | "tray">): boolean {
+function hasPlacement(game: Pick<KilnGame, "board" | "size" | "tray" | "locks">): boolean {
   return game.tray.some(piece => piece && game.board.some((_, index) => positions(game, piece, index)));
 }
 
-export function restoreKilnEndless({ used, board, size, turn, score, collected, order = startKilnOrder() }: KilnEndlessState): KilnGame | null {
+export function restoreKilnFreePlay(level: KilnFreeMode, { used, board, size, turn, score, collected, order = startKilnOrder(), locks }: KilnFreeState): KilnGame | null {
   if (board.length !== size * size || used.length !== turn % 3 || new Set(used).size !== used.length) return null;
   if (!turn && (score || collected || board.some(Boolean))) return null;
   if (board.some(tile => tile?.placedAt != null && tile.placedAt > turn)) return null;
   if (boardLines(size).some(line => line.every(index => board[index]))) return null;
-  if (!validKilnOrder(order)) return null;
+  if (level === "endless" && !validKilnOrder(order)) return null;
+  if (level === "locked") {
+    if (size !== KILN_LOCKED_SIZE || !locks || new Set(locks.map(lock => lock.index)).size !== locks.length) return null;
+    if (locks.some(lock => board[lock.index])) return null;
+  }
   const batch = Math.floor(turn / 3);
-  const tray: [KilnPiece | null, KilnPiece | null, KilnPiece | null] = [...kilnBatch("endless", batch)];
+  const tray: [KilnPiece | null, KilnPiece | null, KilnPiece | null] = [...kilnBatch(level, batch)];
   for (const slot of used) tray[slot] = null;
-  const status = hasPlacement({ board, size, tray }) ? "playing" : "lost-space";
-  return { level: "endless", size, board, tray, batch, turn, score, collected, status, order };
+  const status = hasPlacement({ board, size, tray, locks }) ? "playing" : "lost-space";
+  return {
+    level, size, board, tray, batch, turn, score, collected, status,
+    ...(level === "endless" ? { order } : { locks }),
+  };
 }
 
 export function inspectKilnMove(game: KilnGame, { slot, anchor }: KilnMove): KilnPlacement | null {
@@ -117,7 +132,8 @@ export function inspectKilnMove(game: KilnGame, { slot, anchor }: KilnMove): Kil
     ? advanceKilnOrder(game.order ?? startKilnOrder(), { pots: collected.length, rows, columns: full.length - rows })
     : undefined;
   const points = placed.length + full.length * 10 + collected.length * 50 + (collected.length >= 2 ? 25 : 0) + (order?.bonus ?? 0);
-  return { placed, cleared, collected, lines: full.length, points, ...(order ? { order } : {}) };
+  const lockUpdate = game.locks ? tickKilnLocks(game.locks, full.length) : undefined;
+  return { placed, cleared, collected, lines: full.length, points, ...(order ? { order } : {}), ...(lockUpdate ? { lockUpdate } : {}) };
 }
 
 export function placeKilnPiece(game: KilnGame, move: KilnMove): KilnGame | null {
@@ -140,13 +156,15 @@ export function placeKilnPiece(game: KilnGame, move: KilnMove): KilnGame | null 
   }
 
   const collected = game.collected + result.collected.length;
-  const level = game.level === "endless" ? null : KILN_LEVELS[game.level];
+  const level = typeof game.level === "number" ? KILN_LEVELS[game.level] : null;
+  const locks = result.lockUpdate?.remaining;
   let status: KilnStatus = "playing";
   if (level && collected >= level.target) status = "won";
   else if (level && turn >= level.turnLimit) status = "lost-turns";
-  else if (!hasPlacement({ board, size: game.size, tray })) status = "lost-space";
+  else if (!hasPlacement({ board, size: game.size, tray, locks })) status = "lost-space";
   return {
     ...game, board, tray, batch, turn, score: game.score + result.points, collected, status,
     ...(result.order ? { order: result.order.next } : {}),
+    ...(locks ? { locks } : {}),
   };
 }

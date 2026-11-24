@@ -5,6 +5,7 @@ type Batch = readonly [KilnPiece, KilnPiece, KilnPiece];
 const domino: KilnPiece = { name: "Hai ô ngang", offsets: [[0, 0], [0, 1]], glaze: "green", potteryOffset: null };
 const corner: KilnPiece = { name: "Ba ô chữ L", offsets: [[0, 0], [0, 1], [1, 0]], glaze: "clay", potteryOffset: null };
 const bar: KilnPiece = { name: "Ba ô ngang", offsets: [[0, 0], [0, 1], [0, 2]], glaze: "green", potteryOffset: null };
+const potteryBar: KilnPiece = { ...bar, name: "Ba ô ngang có gốm", glaze: "clay", potteryOffset: 1 };
 const single: KilnPiece = { name: "Một ô", offsets: [[0, 0]], glaze: "clay", potteryOffset: null };
 const square: KilnPiece = { name: "Vuông có gốm", offsets: [[0, 0], [0, 1], [1, 0], [1, 1]], glaze: "clay", potteryOffset: 0 };
 const upright: KilnPiece = { name: "Hai ô dọc có gốm", offsets: [[0, 0], [1, 0]], glaze: "green", potteryOffset: 1 };
@@ -43,6 +44,9 @@ export function kilnOpening(level: KilnLevelId, size: KilnSize): (KilnTile | nul
 }
 
 export function kilnBatch(level: KilnMode, batch: number): Batch {
+  if (level === "locked") {
+    return batch === 0 ? [domino, bar, potteryBar] : laterBatches[(batch - 1) % laterBatches.length]!;
+  }
   if (level === "endless") return laterBatches[batch % laterBatches.length]!;
   if (level !== 1) return [domino, single, corner];
   if (!batch) return [domino, corner, bar];

@@ -11,6 +11,7 @@ export type KilnBurst = {
   label: string;
   points: number;
   highlight: boolean;
+  opened: readonly number[];
   tiles: ReadonlyMap<number, KilnTile["glaze"] | "gold">;
 };
 
@@ -150,10 +151,12 @@ export function KilnBoard({ game, burst, onMove, onBurstEnd }: {
         {game.board.map((tile, index) => {
           const row = Math.floor(index / size) + 1;
           const column = index % size + 1;
+          const lock = game.locks?.find(entry => entry.index === index);
           const age = tile?.placedAt == null ? null : game.turn - tile.placedAt;
           const state = age === null ? null : kilnPotteryState(age);
           const mark = state === "raw" ? String(2 - age!) : state === "ready" ? "✦" : "ϟ";
-          const label = state === "raw" ? `gốm còn ${mark} nhịp`
+          const label = lock ? `ô khóa, còn ${lock.remaining} ${lock.kind === "turns" ? "lượt đặt" : "hàng hoặc cột cần xóa"}`
+            : state === "raw" ? `gốm còn ${mark} nhịp`
             : state === "ready" ? "gốm chín"
               : state === "broken" ? "gốm nứt"
                 : tile ? "đã có khối" : "ô trống";
@@ -166,6 +169,7 @@ export function KilnBoard({ game, burst, onMove, onBurstEnd }: {
             : 0;
           const className = [
             "kiln-cell",
+            lock && `kiln-locked kiln-lock-${lock.kind}`,
             tile && `kiln-${tile.glaze}`,
             state && `kiln-${state}`,
             hint && "kiln-hint",
@@ -181,6 +185,7 @@ export function KilnBoard({ game, burst, onMove, onBurstEnd }: {
               ref={element => { cellRefs.current[index] = element; }}
               className={className}
               data-kiln-cell={index}
+              data-kiln-lock={lock?.kind}
               aria-label={`Hàng ${row}, cột ${column}, ${label}`}
               aria-disabled={!playing}
               tabIndex={index === focused ? 0 : -1}
@@ -196,6 +201,13 @@ export function KilnBoard({ game, burst, onMove, onBurstEnd }: {
                 setHover(null);
               }}
             >
+              {lock && (
+                <span className="kiln-lock-marker" aria-hidden="true">
+                  <span>{lock.kind === "turns" ? "⌛︎" : "✷"}</span>
+                  <strong>{lock.remaining}</strong>
+                </span>
+              )}
+              {burst?.opened.includes(index) && <span key={`unlock-${burst.turn}`} className="kiln-unlock" aria-hidden="true" />}
               {state && <><span className="kiln-vase" aria-hidden="true" /><span className="kiln-mark" aria-hidden="true">{pickUp ? "✦" : mark}</span></>}
               {landed?.cells.includes(index) && (
                 <span

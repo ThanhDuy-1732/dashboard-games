@@ -308,3 +308,45 @@ test("previews an order bonus, celebrates the harvest and saves the next order",
   await expect(score(page)).toHaveText("241");
   await scan(page);
 });
+
+test("opens locks by their own conditions and resumes the same layout offline", async ({ page, context }) => {
+  await page.goto("/");
+  await enter(page);
+  await expect(page.getByText("Đã sẵn sàng chơi với máy khi offline.", { exact: false })).toBeVisible();
+  await page.evaluate(() => { Math.random = () => 0; });
+  await piece(page, "Lò Khóa").click();
+  await expect(kiln(page).getByRole("heading", { name: "Lò Khóa" })).toBeVisible();
+  await expect(kiln(page).getByText("Bàn 8 × 8", { exact: true })).toBeVisible();
+  const locked = kiln(page).locator("[data-kiln-lock]");
+  await expect(locked).toHaveCount(5);
+  await expect(cell(page, 9)).toHaveAccessibleName(/còn 4 lượt đặt/);
+  await expect(cell(page, 10)).toHaveAccessibleName(/còn 1 hàng hoặc cột/);
+  await cell(page, 9).click();
+  await expect(cell(page, 9)).toHaveAccessibleName(/còn 4 lượt đặt/);
+  await expect(score(page)).toHaveText("0");
+
+  for (const index of [0, 2, 5]) await cell(page, index).click();
+  await expect(locked).toHaveCount(4);
+  await expect(cell(page, 9)).toHaveAccessibleName(/còn 1 lượt đặt/);
+  await expect(cell(page, 10)).toHaveAccessibleName(/ô trống/);
+  await expect(kiln(page).locator(".kiln-result")).toContainText("Mở 1 ô khóa");
+  await expect(kiln(page).locator(".kiln-unlock")).toHaveCount(1);
+
+  await expect(kiln(page).getByText("Đang lưu…")).toBeHidden();
+  await page.reload();
+  await context.setOffline(true);
+  await page.reload();
+  await enter(page);
+  await expect(kiln(page).getByRole("heading", { name: "Lò Khóa" })).toBeVisible();
+  await expect(locked).toHaveCount(4);
+  await expect(cell(page, 9)).toHaveAccessibleName(/còn 1 lượt đặt/);
+  await expect(cell(page, 10)).toHaveAccessibleName(/ô trống/);
+  await cell(page, 16).click();
+  await expect(score(page)).toHaveText("22");
+  await expect(locked).toHaveCount(0);
+  await expect(kiln(page).getByText("Đã mở tất cả ô")).toBeVisible();
+  await piece(page, "Vô tận").click();
+  await expect(score(page)).toHaveText("0");
+  await piece(page, "Lò Khóa").click();
+  await expect(score(page)).toHaveText("22");
+});

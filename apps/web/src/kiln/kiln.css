@@ -56,6 +56,17 @@
 .kiln-sizes > span { color: var(--kiln-muted); font-size: 13px; margin-right: 2px; }
 .kiln-sizes button[aria-pressed="true"] { background: var(--kiln-panel); border-color: var(--kiln-action); box-shadow: inset 0 0 0 1px var(--kiln-action); }
 .kiln-saving { color: var(--kiln-muted); font-size: 13px; }
+.kiln-fixed-size { color: var(--kiln-muted); font-size: 13px; }
+.kiln-lock-guide {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 15px;
+  margin-bottom: 12px;
+  color: var(--kiln-muted);
+  font-size: 13px;
+}
+.kiln-lock-guide strong { color: var(--kiln-ink); }
 .kiln-levels button:disabled { color: var(--kiln-muted); cursor: default; }
 .kiln-levels button[aria-current] { background: var(--kiln-action); border-color: var(--kiln-action); color: #fff4e4; opacity: 1; }
 .kiln-layout {
@@ -125,6 +136,52 @@
 }
 .kiln-cell.kiln-broken { background: #4b4040; border-color: #aa8d83; }
 .kiln-cell.kiln-hint { border: 1px dashed #e5ba8b; }
+.kiln-cell.kiln-locked {
+  border-color: #a48f9f;
+  background: repeating-linear-gradient(135deg, #514552 0 6px, #625362 6px 9px);
+  color: #fff1e6;
+}
+.kiln-cell.kiln-lock-turns {
+  border-color: #91acb4;
+  background: repeating-linear-gradient(135deg, #36484c 0 6px, #435a5e 6px 9px);
+}
+.kiln-lock-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: #fff5dd;
+  font-size: clamp(9px, 1.65vw, 16px);
+  line-height: 1;
+  text-shadow: 0 1px 2px #241b18;
+}
+.kiln-lock-marker strong { font-variant-numeric: tabular-nums; }
+.kiln-unlock {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  background: radial-gradient(circle, #fff9c9 0, #f6ca7c90 42%, transparent 78%);
+  pointer-events: none;
+  animation: kiln-burst-fade 530ms ease-out both;
+}
+.kiln-unlock::before, .kiln-unlock::after {
+  position: absolute;
+  width: 48%;
+  height: 26%;
+  top: 36%;
+  content: "";
+  border: 2px solid #fff1bd;
+  border-radius: 35%;
+  box-shadow: 0 0 5px #fff1bea0;
+  animation: kiln-link-break 530ms ease-out both;
+}
+.kiln-unlock::before { left: 9%; --link-x: -78%; --link-y: 84%; --link-spin: 25deg; }
+.kiln-unlock::after { right: 9%; --link-x: 78%; --link-y: -84%; --link-spin: -83deg; }
+@keyframes kiln-link-break {
+  from { transform: rotate(-32deg); }
+  to { transform: translate(var(--link-x), var(--link-y)) rotate(var(--link-spin)); }
+}
 .kiln-cell.kiln-ghost { border-color: #ffe4ae; }
 .kiln-cell.kiln-clear { box-shadow: inset 0 0 0 2px #ffdb8f; }
 .kiln-cell.kiln-pickup .kiln-vase { filter: brightness(1.25); }
@@ -283,8 +340,9 @@
   /* Keep a stationary fade despite the app-wide animation reset. */
   .kiln-burst { animation: kiln-burst-fade 150ms ease-out both !important; }
   .kiln-landed { animation: kiln-burst-fade 150ms ease-out both !important; }
+  .kiln-unlock { animation: kiln-burst-fade 180ms ease-out both !important; }
   .kiln-burst::before { animation: none; opacity: .65; }
-  .kiln-shard, .kiln-burst::after, .kiln-harvest { display: none; }
+  .kiln-shard, .kiln-burst::after, .kiln-harvest, .kiln-unlock::before, .kiln-unlock::after { display: none; }
   .kiln-result { animation: kiln-burst-fade 500ms ease-out both !important; }
 }
 .kiln-screen button:focus-visible { outline: 3px solid #17646c; outline-offset: 2px; position: relative; z-index: 1; }
