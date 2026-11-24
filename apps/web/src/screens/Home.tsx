@@ -1,7 +1,9 @@
 import { Icon } from "../components/Icon.js";
+import { Flower } from "../flower/Flower.js";
 import type { SavedGame } from "../storage/save-schema.js";
 export function Home({
   onPlay,
+  onFlower,
   onKiln,
   onDino,
   onCaro,
@@ -12,6 +14,7 @@ export function Home({
   busy = false,
 }: {
   onPlay: () => void;
+  onFlower: () => void;
   onKiln: () => void;
   onDino: () => void;
   onCaro: () => void;
@@ -36,6 +39,7 @@ export function Home({
       art: <span>×○</span>,
       play: onCaro,
     },
+    { id: "flower", title: "Vườn Hoa", genre: "Ghép 3 hoa", art: <span>✿</span>, play: onFlower },
     {
       id: "kiln",
       title: "Lò Gốm",
@@ -197,6 +201,15 @@ export function Home({
         <button className="button secondary" onClick={onDino}>
           Chơi Thằn Lằn Núi Lửa <Icon name="arrow" />
         </button>
+      </article>
+      <article className="game-card flower-home-card">
+        <div className="game-cover flower-cover" aria-hidden="true"><Flower color={0} /><Flower color={1} /><Flower color={3} /></div>
+        <div className="game-description">
+          <div className="tags"><span className="tag green">Ghép 3 hoa</span><span className="tag">Chơi offline</span></div>
+          <h3>Vườn Hoa</h3>
+          <p>Kéo đổi chỗ, ghép ba hoa cùng màu.<br />Chơi một ván nhanh hoặc khám phá 12 khu vườn.</p>
+        </div>
+        <button className="button secondary" onClick={onFlower}>Chơi Vườn Hoa<Icon name="arrow" /></button>
       </article>
       <div className="home-bottom">
         <div className="start-tip">

@@ -19,6 +19,8 @@ import { getPlatform } from "./platform.js";
 import { PwaStatus } from "./components/PwaStatus.js";
 import { CaroRules, CaroScreen, caroInviteCode } from "./caro/Screen.js";
 import { readCaroSave } from "./caro/save.js";
+import { FlowerScreen, FlowerRules } from "./flower/Screen.js";
+import type { FlowerScreenHandle } from "./flower/Screen.js";
 import { KilnRules, KilnScreen } from "./kiln/Screen.js";
 import { Home } from "./screens/Home.js";
 import { Setup } from "./screens/Setup.js";
@@ -45,7 +47,7 @@ const ERROR_TEXT: Record<string, string> = {
   PAUSED: "Ván đang tạm dừng. Hãy đợi kết nối hoặc thử mở lại ván đã lưu.",
 };
 const DinoScreen = lazy(async () => ({ default: (await import("./dino/Screen.js")).DinoScreen }));
-type Destination = "home" | "setup" | "caro" | "kiln" | "dino";
+type Destination = "home" | "setup" | "caro" | "kiln" | "dino" | "flower";
 
 export function App() {
   const [page, setPage] = useState<Destination | "game">(() =>
@@ -53,6 +55,8 @@ export function App() {
   );
   const [resumeCaro, setResumeCaro] = useState(false);
   const [caroInGame, setCaroInGame] = useState(false);
+  const [flowerInGame, setFlowerInGame] = useState(false);
+  const flowerScreen = useRef<FlowerScreenHandle>(null);
   const [kilnInGame, setKilnInGame] = useState(false);
   const [dinoInGame, setDinoInGame] = useState(false);
   const [session, setSession] = useState<OfflineSession | OnlineSession | null>(
@@ -165,7 +169,9 @@ export function App() {
   };
   function openCurrentGame() {
     if (page === "caro" || page === "kiln") return;
+    if (page === "flower") { flowerScreen.current?.openCurrentGame(); return; }
     if (session) setPage("game");
+    else if (page === "home" && flowerScreen.current?.openCurrentGame()) navigate("flower");
     else navigate("setup");
   }
   function openCaro(resume = false) {
@@ -310,7 +316,7 @@ export function App() {
   }
   const finished =
     update?.view?.phase === "finished" || Boolean(online && lobby?.closed);
-  const telemetryScreen = page === "game" ? finished ? "results" : online && !lobby?.started ? "lobby" : "game" : page;
+  const telemetryScreen = page === "flower" ? "game" : page === "game" ? finished ? "results" : online && !lobby?.started ? "lobby" : "game" : page;
   useEffect(() => trackScreen(telemetryScreen), [telemetryScreen]);
   useEffect(startTelemetry, []);
   const hubStyle = page === "dino" ? { display: "none" } : undefined;
@@ -383,6 +389,14 @@ export function App() {
               <span className="tiny-arrow">↗</span>
             </button>
             <button
+              onClick={() => navigate("flower")}
+              aria-current={page === "flower" ? "page" : undefined}
+            >
+              <span className="mini-game flower-mini">✿</span>
+              <span>Vườn Hoa<small>Ghép 3 hoa · Offline</small></span>
+              <span className="tiny-arrow">↗</span>
+            </button>
+            <button
               onClick={() => navigate("kiln")}
               aria-current={page === "kiln" ? "page" : undefined}
             >
@@ -392,7 +406,6 @@ export function App() {
             </button>
             <button
               onClick={() => navigate("dino")}
-              aria-label="Thằn Lằn Núi Lửa"
               aria-current={page === "dino" ? "page" : undefined}
             >
               <span className="mini-game dino-nav-icon" aria-hidden="true">🦖</span>
@@ -421,7 +434,9 @@ export function App() {
                   ? "Khám phá"
                   : page === "caro"
                     ? "Cờ Caro"
-                    : page === "kiln"
+                    : page === "flower"
+                      ? "Vườn Hoa"
+                      : page === "kiln"
                       ? "Lò Gốm"
                       : page === "setup"
                         ? "Chọn chế độ"
@@ -456,7 +471,7 @@ export function App() {
             </div>
           </header>
           <main id="main" tabIndex={-1}>
-            <PwaStatus inGame={Boolean(session) || caroInGame || kilnInGame || dinoInGame} />
+            <PwaStatus inGame={Boolean(session) || caroInGame || flowerInGame || kilnInGame || dinoInGame} />
             {persistence.notice && (
               <div className="app-error">
                 {persistence.notice}
@@ -524,6 +539,7 @@ export function App() {
             )}
             {page === "home" && (
               <Home
+                onFlower={() => navigate("flower")}
                 onKiln={() => navigate("kiln")}
                 onDino={() => navigate("dino")}
                 onCaro={() => openCaro()}
@@ -535,6 +551,15 @@ export function App() {
                 busy={pending}
               />
             )}
+            <div hidden={page !== "flower"}>
+              <FlowerScreen
+                ref={flowerScreen}
+                active={page === "flower"}
+                onHome={() => navigate("home")}
+                onRules={() => setRules(true)}
+                onInGame={setFlowerInGame}
+              />
+            </div>
             <div hidden={page !== "kiln"}>
               <KilnScreen
                 active={page === "kiln"}
@@ -581,7 +606,7 @@ export function App() {
           </main>
           <footer className="workspace-footer">
             <span>Nhà Chơi — Cùng nhau, thêm vui.</span>
-            {page !== "caro" && page !== "kiln" && (
+            {page !== "caro" && page !== "flower" && page !== "kiln" && (
               <span>Tiền trong game, không có giá trị quy đổi</span>
             )}
           </footer>
@@ -620,6 +645,13 @@ export function App() {
           </button>
         </Dialog>
       )}
+      {rules && page === "flower" && (
+        <Dialog title="Luật chơi Vườn Hoa" onClose={() => setRules(false)}>
+          <h2>Đổi chỗ, ghép ba hoa</h2>
+          <FlowerRules />
+          <button className="button primary full" onClick={() => setRules(false)}>Mình hiểu rồi</button>
+        </Dialog>
+      )}
       {rules && page === "kiln" && (
         <Dialog title="Luật chơi Lò Gốm" onClose={() => setRules(false)}>
           <h2>Canh lửa, lấy gốm</h2>
@@ -627,7 +659,7 @@ export function App() {
           <button className="button primary full" onClick={() => setRules(false)}>Mình hiểu rồi</button>
         </Dialog>
       )}
-      {rules && page !== "caro" && page !== "kiln" && (
+      {rules && page !== "caro" && page !== "flower" && page !== "kiln" && (
         <Dialog title="Luật chơi Cờ tỷ phú" onClose={() => setRules(false)}>
           <h2>Một vòng luật chơi</h2>
           <p className="dialog-lead">
