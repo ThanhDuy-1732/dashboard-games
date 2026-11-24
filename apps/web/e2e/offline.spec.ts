@@ -2,6 +2,33 @@ import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { makeState } from "../../../packages/game-core/test/fixtures/state-factory.js";
 import { makeSavedGame } from "../src/storage/save-schema.js";
+
+for (const width of [390, 1360]) {
+  test(`centers the exit dialog after scrolling at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 540 });
+    await page.goto("/");
+    await page.getByRole("button", { name: "Chơi Cờ tỷ phú" }).click();
+    await page.getByRole("textbox", { name: "Tên của bạn" }).fill("Bạn chơi");
+    await page.getByRole("button", { name: "Bắt đầu ván", exact: true }).click();
+    await expect(page.locator(".board")).toBeVisible();
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(100);
+
+    const navigation = page.getByRole("navigation", {
+      name: width === 390 ? "Điều hướng điện thoại" : "Điều hướng chính",
+    });
+    await navigation.getByRole("button", { name: "Khám phá" }).click();
+    const dialog = page.getByRole("dialog", { name: "Rời ván đang chơi?" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toHaveCSS("position", "fixed");
+    const { x, y, width: dialogWidth, height } = (await dialog.boundingBox())!;
+    expect(Math.abs(x + dialogWidth / 2 - width / 2)).toBeLessThanOrEqual(1);
+    expect(Math.abs(y + height / 2 - 270)).toBeLessThanOrEqual(1);
+    await dialog.getByRole("button", { name: "Tiếp tục chơi" }).click();
+    await expect(dialog).toHaveCount(0);
+    expect(await page.evaluate(() => scrollY)).toBeGreaterThan(100);
+  });
+}
 async function readSave(page: Page) {
   return page.evaluate(
     () =>

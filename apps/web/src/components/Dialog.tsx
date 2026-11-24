@@ -30,12 +30,13 @@ export function Dialog({
     return () => {
       active = false;
       dialog.close?.();
-      opener?.focus();
+      opener?.focus({ preventScroll: true });
     };
   }, []);
   return (
     <dialog
       ref={ref}
+      className="app-dialog"
       aria-label={title}
       onCancel={(event) => {
         event.preventDefault();
