@@ -30,7 +30,9 @@ Proof hiện ở sessionStorage của tab; database không tạo khả năng l�
 
 ## Một backend có quyền ghi
 
-Lease PostgreSQL dùng thời gian database, hạn 45 giây, gia hạn tối đa mỗi 10 giây hoặc khi có thay đổi. Mỗi giao dịch kiểm tra đúng owner còn hạn trước khi ghi. Backend thứ hai cùng kho phòng bị từ chối; đây không phải hệ thống nhiều instance. Sau SIGKILL/mất điện có thể cần chờ lease cũ tối đa 45 giây trước khi khởi động lại; shutdown bình thường nhả lease ngay.
+Lease PostgreSQL dùng thời gian database, hạn 45 giây, gia hạn tối đa mỗi 10 giây hoặc khi có thay đổi. Mỗi giao dịch kiểm tra đúng owner còn hạn trước khi ghi. Backend thứ hai cùng kho phòng bị từ chối khi khởi động ngoài Render. Sau SIGKILL/mất điện có thể cần chờ lease cũ tối đa 45 giây trước khi khởi động lại; shutdown bình thường nhả lease ngay.
+
+Trong lúc Render chuyển bản, nếu backend mới gặp lease của tiến trình cũ, `/health` trả HTTP 200 với `ok: false` và `status: WAITING_FOR_WRITER` để Render có thể chuyển tuyến và gửi SIGTERM cho tiến trình cũ. Backend mới tạm ngừng nhận Socket.IO và API cho tới khi có quyền ghi và khôi phục checkpoint. Nếu quá 150 giây hoặc gặp lỗi dữ liệu không phải xung đột lease, `/health` trả 503. Duy trì một instance cho dịch vụ.
 
 Heartbeat chạy khi còn phòng hoặc backend đang phục hồi sau lỗi. Khi không có phòng, backend ngừng truy vấn định kỳ để Neon có thể tự ngủ; lần thao tác tiếp theo đọc lại dữ liệu và quyền ghi. Phòng đang hoạt động vẫn giữ compute có truy vấn, cần theo dõi quota Neon. Không dùng session advisory lock hoặc SET phụ thuộc session, tương thích URL pooler. Không tự chọn provider hay triển khai backend trong tích hợp này.
 

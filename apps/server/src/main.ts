@@ -42,6 +42,7 @@ try {
     metrics: store,
     telemetryPeerLimit,
     revision: process.env.RENDER_GIT_COMMIT,
+    allowWriterHandoff: Boolean(process.env.RENDER_SERVICE_ID),
     admin: adminIssue ? undefined : admin,
   });
 } catch (error) {

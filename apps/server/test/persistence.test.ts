@@ -8,6 +8,7 @@ import type {
   TelemetryEvent,
 } from "@nha-choi/protocol";
 import type { RoomCheckpoint } from "../src/room-checkpoint.js";
+import { RoomStoreError } from "../src/database.js";
 import type { RoomStore } from "../src/database.js";
 import { createGameServer } from "../src/server.js";
 class MemoryStore implements RoomStore {
@@ -86,6 +87,38 @@ async function pair(store: MemoryStore) {
   await ack(host, "room:start", {});
   return { app, close, host, guest, a, b, updates };
 }
+it("waits for the old Render writer before admitting clients or writing checkpoints", async () => {
+  const store = new MemoryStore();
+  const old = await pair(store);
+  let oldOwnsWriter = true;
+  const save = vi.fn(store.save.bind(store));
+  const replacement: RoomStore = {
+    needsReload: () => store.needsReload(),
+    async load() {
+      if (oldOwnsWriter) throw new RoomStoreError("BACKEND_ALREADY_RUNNING");
+      return store.load();
+    },
+    save,
+    async close() {},
+  };
+  const app = await createGameServer({ port: 0, store: replacement, allowWriterHandoff: true });
+  cleanup.push(app.close);
+  const health = await fetch(app.url + "/health");
+  expect(health.status).toBe(200);
+  expect(await health.json()).toEqual({ ok: false, status: "WAITING_FOR_WRITER" });
+  expect((await fetch(app.url + "/socket.io/?EIO=4&transport=polling")).status).toBe(403);
+  expect(save).not.toHaveBeenCalled();
+
+  await old.close();
+  oldOwnsWriter = false;
+  await vi.waitFor(async () => {
+    expect(await (await fetch(app.url + "/health")).json()).toEqual({ ok: true });
+  }, { timeout: 4000 });
+  const client = await connect(app.url);
+  expect(await ack(client, "room:resume", { resumeToken: old.a.resumeToken }))
+    .toMatchObject({ ok: true, selfId: old.a.selfId });
+});
+
 it("persists_room_before_ack_and_does_not_publish_an_uncommitted_room", async () => {
   const store = new MemoryStore(),
     app = await createGameServer({ port: 0, store });
