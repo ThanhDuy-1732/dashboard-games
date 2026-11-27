@@ -104,9 +104,6 @@ test("jump and camera controls work on a touch viewport", async ({ browser, brow
     await expect(game(page)).toHaveAttribute("data-lane", "1");
     await page.getByRole("button", { name: "Sang trái" }).tap();
     await expect(game(page)).toHaveAttribute("data-lane", "0");
-    await expect(fire).toHaveAttribute("aria-disabled", "false");
-    await fire.tap();
-    await expect(fire).toHaveAttribute("aria-disabled", "true");
   } finally {
     await context.close();
   }
@@ -220,7 +217,7 @@ test("the sidebar opens the offline map picker and allows changing maps after a 
   await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
   await context.setOffline(true);
   await page.reload();
-  await page.locator(".sidebar-game").getByRole("button", { name: "Thằn Lằn Núi Lửa", exact: true }).click();
+  await page.locator(".sidebar-game").getByRole("button", { name: /^Thằn Lằn Núi Lửa/ }).click();
   const volcano = game(page).getByRole("radio", { name: "Núi lửa", exact: true });
   const ice = game(page).getByRole("radio", { name: "Hẻm núi băng" });
   const forest = game(page).getByRole("radio", { name: "Rừng cổ đại" });
@@ -278,4 +275,60 @@ test("a seeded run warns about a pit and a falling rock in different lanes", asy
   await expect(game(page).getByText("Hố mở · làn phải")).toBeVisible({ timeout: 22000 });
   await expect(game(page).getByText("Đá rơi · làn giữa")).toBeVisible({ timeout: 7000 });
   await expect.poll(async () => Number.parseInt(await score(page).innerText(), 10)).toBeGreaterThan(167);
+});
+
+test("a low desert arch requires ducking and lowers the first-person view", async ({ page, context, browserName }) => {
+  test.skip(browserName !== "chromium", "The 3D suite uses the Chromium WebGL test runner.");
+  await page.goto("/");
+  await expect(page.getByText("Đã sẵn sàng chơi với máy khi offline.")).toBeVisible();
+  await page.reload();
+  await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
+  await context.setOffline(true);
+  await page.reload();
+  await openGame(page);
+  const stage = game(page);
+  for (const name of ["Giáp long", "Kiếm long", "Dực long"]) {
+    const option = stage.getByRole("radio", { name });
+    await option.check();
+    await expect(option).toBeChecked();
+  }
+  await stage.getByRole("radio", { name: "Sa mạc đỏ" }).check();
+  await play(page).click();
+  await expect(stage.getByText("Vòm đá thấp · Giữ cúi")).toBeVisible();
+  await expect(stage.getByRole("heading", { name: "Kết thúc lượt" })).toBeVisible({ timeout: 9500 });
+  await expect(stage.getByText("24 m", { exact: true })).toHaveCount(2);
+  await stage.getByRole("button", { name: "Chơi lại" }).click();
+  await page.keyboard.press("v");
+  await page.keyboard.down("ArrowDown");
+  await expect(stage).toHaveAttribute("data-view", "first");
+  await expect(stage).toHaveAttribute("data-ducking", "true");
+  await expect.poll(async () => Number.parseInt(await score(page).innerText(), 10), { timeout: 9500 }).toBeGreaterThan(26);
+  await page.keyboard.up("ArrowDown");
+  await expect(stage).toHaveAttribute("data-ducking", "false");
+});
+
+test("the touch duck button stays active until the finger lifts", async ({ browser, browserName, baseURL }) => {
+  test.skip(browserName !== "chromium", "Uses Chromium touch input.");
+  const context = await browser.newContext({ baseURL, viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  try {
+    const page = await context.newPage();
+    await page.goto("/");
+    await openGame(page);
+    await play(page).tap();
+    const button = game(page).getByRole("button", { name: "Cúi", exact: true });
+    const bounds = await button.boundingBox();
+    if (!bounds) throw new Error("Missing duck button");
+    const input = await context.newCDPSession(page);
+    const touch = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
+    await input.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [touch] });
+    await expect(button).toHaveAttribute("aria-pressed", "true");
+    await input.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    await expect(button).toHaveAttribute("aria-pressed", "false");
+    const fire = game(page).getByRole("button", { name: "Phun lửa", exact: true });
+    await expect(fire).toHaveAttribute("aria-disabled", "false");
+    await fire.tap();
+    await expect(fire).toHaveAttribute("aria-disabled", "true");
+  } finally {
+    await context.close();
+  }
 });

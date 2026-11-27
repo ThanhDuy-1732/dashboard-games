@@ -4,10 +4,13 @@ export const DINO_RUNNERS = {
   lizard: { title: "Thằn lằn", color: 0x71944e },
   raptor: { title: "Raptor", color: 0x38939b },
   triceratops: { title: "Tam giác long", color: 0xc5794a },
+  ankylosaurus: { title: "Giáp long", color: 0x7e689a },
+  pteranodon: { title: "Dực long", color: 0xd2844f },
+  stegosaurus: { title: "Kiếm long", color: 0x668354 },
 } as const;
 
 export type DinoRunner = keyof typeof DINO_RUNNERS;
-export const DINO_RUNNER_IDS = ["lizard", "raptor", "triceratops"] as const;
+export const DINO_RUNNER_IDS = ["lizard", "raptor", "triceratops", "ankylosaurus", "pteranodon", "stegosaurus"] as const;
 
 export const DINO_FORMS = {
   giant: { title: "Khổng lồ", detail: "To hơn, húc vỡ thân cây", color: 0xffb16b },

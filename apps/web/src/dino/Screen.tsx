@@ -1,6 +1,9 @@
 import { trackGame } from "../telemetry.js";
 import { App as CapacitorApp } from "@capacitor/app";
-import { createDinoRun, DINO_FALL_WARNING_M, DINO_PIT_REVEAL_M, DINO_STEP_SECONDS, stepDinoRun } from "@nha-choi/game-core";
+import {
+  createDinoRun, DINO_DUCK_WARNING_M, DINO_FALL_WARNING_M, DINO_PIT_REVEAL_M,
+  DINO_STEP_SECONDS, dinoIsOverhead, stepDinoRun,
+} from "@nha-choi/game-core";
 import type { DinoLane, DinoMap, DinoRun } from "@nha-choi/game-core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isNative } from "../platform.js";
@@ -15,15 +18,24 @@ import "./dino.css";
 type Phase = "ready" | "running" | "paused" | "finished" | "unavailable";
 const itemLabels = { "speed-up": "Tăng tốc", "slow-down": "Giảm tốc" } as const;
 const laneLabels = { "-1": "làn trái", 0: "làn giữa", 1: "làn phải" };
+const laneWarningLabels = {
+  "falling-rock": "Đá rơi", pit: "Hố mở", "lava-vent": "Dung nham phun",
+  "ice-spike": "Cột băng", mud: "Vũng bùn",
+} as const;
 
 function dangerLabel(run: DinoRun): string {
-  const hazard = run.obstacles.find(({ kind, startM, broken }) => {
+  const hazard = run.obstacles.find(({ kind, startM, lengthM, broken }) => {
     const remaining = startM - run.distanceM;
-    return !broken && remaining >= 0 &&
-      ((kind === "falling-rock" && remaining <= DINO_FALL_WARNING_M) ||
-        (kind === "pit" && remaining <= DINO_PIT_REVEAL_M));
+    if (dinoIsOverhead(kind)) return remaining >= -lengthM && remaining <= DINO_DUCK_WARNING_M;
+    if (broken || remaining < 0) return false;
+    if (kind === "falling-rock") return remaining <= DINO_FALL_WARNING_M;
+    if (kind === "pit") return remaining <= DINO_PIT_REVEAL_M;
+    return kind in laneWarningLabels && remaining <= 16;
   });
-  return hazard ? `${hazard.kind === "pit" ? "Hố mở" : "Đá rơi"} · ${laneLabels[hazard.lane ?? 0]}` : "";
+  if (!hazard) return "";
+  if (dinoIsOverhead(hazard.kind)) return hazard.kind === "arch" ? "Vòm đá thấp · Giữ cúi" : "Thân cây treo · Giữ cúi";
+  const label = laneWarningLabels[hazard.kind as keyof typeof laneWarningLabels];
+  return label ? `${label} · ${laneLabels[hazard.lane ?? 0]}` : "";
 }
 
 function effectHud(run: DinoRun) {
@@ -63,6 +75,8 @@ export function DinoScreen({
   const telemetry = useRef<{ id: string; startedAt: number } | null>(null);
   const wantsJump = useRef(false);
   const wantsFire = useRef(false);
+  const duckKeys = useRef(new Set<string>());
+  const duckPointer = useRef<number | null>(null);
   const moves = useRef<Array<-1 | 1>>([]);
   const [phase, setPhase] = useState<Phase>("ready");
   const mode = useRef<Phase>("ready");
@@ -71,6 +85,7 @@ export function DinoScreen({
   const camera = useRef<DinoView>("third");
   const [distance, setDistance] = useState(0);
   const [airborne, setAirborne] = useState(false);
+  const [ducking, setDucking] = useState(false);
   const [lane, setLane] = useState<DinoLane>(0);
   const [effects, setEffects] = useState(() => effectHud(run.current));
   const [fireReady, setFireReady] = useState(false);
@@ -87,6 +102,8 @@ export function DinoScreen({
     clock.current.owed = 0;
     wantsJump.current = false;
     wantsFire.current = false;
+    duckKeys.current.clear();
+    duckPointer.current = null;
     moves.current.length = 0;
     setPhase(next);
     onInGameChange(next === "running" || next === "paused");
@@ -106,6 +123,7 @@ export function DinoScreen({
     run.current = createDinoRun(Math.floor(Math.random() * 0x100000000), map);
     setDistance(0);
     setAirborne(false);
+    setDucking(false);
     setLane(0);
     setEffects(effectHud(run.current));
     setFireReady(false);
@@ -157,7 +175,8 @@ export function DinoScreen({
         time.previous = now;
         const before = run.current;
         while (time.owed >= DINO_STEP_SECONDS && run.current.status === "running") {
-          run.current = stepDinoRun(run.current, wantsJump.current, moves.current.shift(), wantsFire.current);
+          run.current = stepDinoRun(run.current, wantsJump.current, moves.current.shift(), wantsFire.current,
+            duckKeys.current.size > 0 || duckPointer.current !== null);
           wantsJump.current = false;
           wantsFire.current = false;
           time.owed -= DINO_STEP_SECONDS;
@@ -166,6 +185,7 @@ export function DinoScreen({
         const meters = Math.floor(next.distanceM);
         if (meters !== Math.floor(before.distanceM)) setDistance(meters);
         if ((next.heightM > 0) !== (before.heightM > 0)) setAirborne(next.heightM > 0);
+        if (next.ducking !== before.ducking) setDucking(next.ducking);
         if (next.lane !== before.lane) setLane(next.lane);
         if (next.hasFire !== before.hasFire) setFireReady(next.hasFire);
         if (armorHud(next) !== armorHud(before)) setArmor(armorHud(next));
@@ -203,8 +223,14 @@ export function DinoScreen({
     }
 
     function keydown(event: KeyboardEvent) {
-      if (event.defaultPrevented || event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
       if (mode.current !== "running") return;
+      if (event.code === "ArrowDown" || event.code === "KeyS") {
+        event.preventDefault();
+        if (!event.repeat) duckKeys.current.add(event.code);
+        return;
+      }
+      if (event.repeat) return;
       if (event.code === "Escape") {
         event.preventDefault();
         pause();
@@ -223,6 +249,12 @@ export function DinoScreen({
       }
     }
 
+    const keyup = (event: KeyboardEvent) => { duckKeys.current.delete(event.code); };
+    function releaseDuck() {
+      duckKeys.current.clear();
+      duckPointer.current = null;
+    }
+
     function visibility() {
       if (document.hidden) pause();
     }
@@ -237,6 +269,8 @@ export function DinoScreen({
     scene.render(lastRun, lastView, lastReducedMotion);
     frameId = requestAnimationFrame(animate);
     document.addEventListener("keydown", keydown);
+    document.addEventListener("keyup", keyup);
+    window.addEventListener("blur", releaseDuck);
     document.addEventListener("visibilitychange", visibility);
     surface.addEventListener("webglcontextlost", contextLost);
     const nativeListener = isNative()
@@ -249,6 +283,8 @@ export function DinoScreen({
       stopped = true;
       cancelAnimationFrame(frameId);
       document.removeEventListener("keydown", keydown);
+      document.removeEventListener("keyup", keyup);
+      window.removeEventListener("blur", releaseDuck);
       document.removeEventListener("visibilitychange", visibility);
       surface.removeEventListener("webglcontextlost", contextLost);
       void nativeListener?.then((listener) => listener?.remove()).catch(() => undefined);
@@ -270,6 +306,7 @@ export function DinoScreen({
       data-evolution={effects.evolution ?? undefined}
       data-view={view}
       data-airborne={airborne}
+      data-ducking={ducking}
       data-lane={lane}
       data-armor={armor ?? undefined}
     >
@@ -337,6 +374,33 @@ export function DinoScreen({
           </div>
           <div className="dino-run-actions">
             <button
+              className="dino-duck dino-fire"
+              aria-label="Cúi"
+              aria-keyshortcuts="ArrowDown S"
+              aria-pressed={ducking}
+              onPointerDown={(event) => {
+                if (event.button !== 0 || duckPointer.current !== null) return;
+                event.currentTarget.setPointerCapture(event.pointerId);
+                duckPointer.current = event.pointerId;
+              }}
+              onPointerUp={(event) => { if (duckPointer.current === event.pointerId) duckPointer.current = null; }}
+              onPointerCancel={(event) => { if (duckPointer.current === event.pointerId) duckPointer.current = null; }}
+              onLostPointerCapture={(event) => { if (duckPointer.current === event.pointerId) duckPointer.current = null; }}
+              onContextMenu={(event) => event.preventDefault()}
+              onKeyDown={(event) => {
+                if (event.code !== "Space" && event.code !== "Enter") return;
+                event.preventDefault();
+                if (!event.repeat) duckKeys.current.add(`button-${event.code}`);
+              }}
+              onKeyUp={(event) => { duckKeys.current.delete(`button-${event.code}`); }}
+              onBlur={() => {
+                duckKeys.current.delete("button-Space");
+                duckKeys.current.delete("button-Enter");
+              }}
+            >
+              <span>Cúi</span><kbd>↓</kbd>
+            </button>
+            <button
               className="dino-fire"
               aria-label="Phun lửa"
               aria-keyshortcuts="F"
@@ -377,6 +441,7 @@ export function DinoScreen({
                     ))}
                   </div>
                 </fieldset>
+                <p className="dino-map-feature">{DINO_MAPS[map].feature}</p>
                 <fieldset className="dino-picker">
                   <legend>Nhân vật</legend>
                   <div>
@@ -423,14 +488,15 @@ export function DinoScreen({
             {phase === "ready" && (
               <details className="dino-guide">
                 <summary>Cách chơi và tiến hóa</summary>
-                <p>Nhặt lửa để phá đá. Nhảy qua khe và thân cây đổ. Khi có báo đá rơi hoặc hố mở, đổi sang làn an toàn.</p>
+                <p>Nhảy qua khe và thân cây đổ. Giữ cúi đến khi qua hết vòm đá hoặc thân cây treo.</p>
                 <p className="dino-hint">
                   <span><kbd>←</kbd><kbd>→</kbd> Đổi làn</span>
                   <span><kbd>Space</kbd> Nhảy</span>
+                  <span><kbd>↓</kbd><kbd>S</kbd> Giữ để cúi</span>
                   <span><kbd>F</kbd> Phun lửa</span>
                   <span><kbd>V</kbd> Đổi góc nhìn</span>
                 </p>
-                <p className="dino-touch-hint">Dùng hai mũi tên để đổi làn.</p>
+                <p className="dino-touch-hint">Dùng hai mũi tên để đổi làn và nhấn giữ nút Cúi để luồn qua vật cản cao.</p>
                 <ul className="dino-item-legend">
                   <li data-kind="fire">Phun lửa · 1 lần</li>
                   <li data-kind="armor">Giáp · Chặn 1 va chạm</li>

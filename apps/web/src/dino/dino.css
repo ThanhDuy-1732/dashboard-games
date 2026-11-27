@@ -218,6 +218,14 @@
   border-color: #d59b8290;
   color: #ecd8cc;
 }
+.dino-stage .dino-duck {
+  touch-action: none;
+  user-select: none;
+}
+.dino-stage .dino-duck[aria-pressed="true"] {
+  background: #ffcf91;
+  color: #3b2420;
+}
 
 .dino-fire kbd,
 .dino-fire small {
@@ -342,6 +350,13 @@
 .dino-picker [data-runner-option="lizard"] span { background: #354a34; }
 .dino-picker [data-runner-option="raptor"] span { background: #244e56; }
 .dino-picker [data-runner-option="triceratops"] span { background: #5e3f35; }
+.dino-picker [data-runner-option="ankylosaurus"] span { background: #4b3c62; }
+.dino-picker [data-runner-option="pteranodon"] span { background: #753f31; }
+.dino-picker [data-runner-option="stegosaurus"] span { background: #464e38; }
+.dino-panel .dino-map-feature {
+  margin-top: -8px;
+  font-size: 13px;
+}
 .dino-picker input:checked + span {
   border-color: #ffd19e;
   box-shadow: inset 0 0 0 1px #ffd19e;

@@ -59,12 +59,18 @@ describe("Thằn Lằn Núi Lửa simulation", () => {
       let run = createDinoRun(seed);
       expect(run).toEqual(createDinoRun(seed));
       expect(run.obstacles[0].startM).toBe(24);
-      expect(run.obstacles.slice(0, 4).map(({ kind }) => kind)).toEqual(["boulder", "gap", "log", "pillar"]);
+      expect(run.obstacles.slice(0, 4).map(({ kind }) => kind)).toEqual(["boulder", "gap", "log", "lava-vent"]);
       for (let index = 0; index < 30; index++) {
         const next = run.obstacles.find(({ id }) => id === index)!;
         const following = run.obstacles.find(({ id }) => id === index + 1)!;
         expect(following.startM - next.startM - next.lengthM).toBeGreaterThanOrEqual(22);
-        if (next.kind === "pillar") {
+        if (next.kind === "arch" || next.kind === "overhang") {
+          run = approach(run, next.startM - 2);
+          while (run.status === "running" && run.distanceM < next.startM + next.lengthM) {
+            run = stepDinoRun(run, false, 0, false, true);
+          }
+          expect(run.status).toBe("running");
+        } else if (next.kind === "pillar" || next.kind === "lava-vent" || next.kind === "ice-spike") {
           if (run.lane === next.lane) run = stepDinoRun(run, false, run.lane === -1 ? 1 : -1);
           run = approach(run, next.startM + next.lengthM);
           expect(run.status).toBe("running");
@@ -200,11 +206,11 @@ describe("Dino maps", () => {
   it("keeps the original course and gives the two new courses distinct openings", () => {
     const order = (map: Parameters<typeof createDinoRun>[1]) =>
       createDinoRun(9, map).obstacles.slice(0, 4).map(({ kind }) => kind);
-    expect(order(undefined)).toEqual(["boulder", "gap", "log", "pillar"]);
-    expect(order("forest")).toEqual(["log", "boulder", "pillar", "gap"]);
-    expect(order("ice")).toEqual(["gap", "pillar", "boulder", "log"]);
-    expect(order("desert")).toEqual(["pillar", "boulder", "gap", "log"]);
-    expect(order("swamp")).toEqual(["gap", "log", "pillar", "boulder"]);
+    expect(order(undefined)).toEqual(["boulder", "gap", "log", "lava-vent"]);
+    expect(order("forest")).toEqual(["log", "overhang", "pillar", "gap"]);
+    expect(order("ice")).toEqual(["gap", "ice-spike", "boulder", "log"]);
+    expect(order("desert")).toEqual(["arch", "boulder", "gap", "log"]);
+    expect(order("swamp")).toEqual(["gap", "mud", "pillar", "boulder"]);
     expect(createDinoRun(9, "desert").items[0]?.kind).toBe("swift");
     expect(createDinoRun(9, "swamp").items[0]?.kind).toBe("winged");
   });
@@ -275,5 +281,47 @@ describe("single-lane hazards", () => {
     expect(approach(start, 27).status).toBe("crashed");
     expect(approach(stepDinoRun(start, false, -1), 27).status).toBe("running");
     expect(approach({ ...start, hasArmor: true }, 27)).toMatchObject({ status: "running", hasArmor: false });
+  });
+});
+
+describe("ducking under overhead obstacles", () => {
+  it.each(["arch", "overhang"] as const)("requires holding duck throughout the %s", (kind) => {
+    const beam = { ...obstacle("boulder"), kind, lengthM: 1.8, clearanceM: 0.58 };
+    const start = { ...createDinoRun(0), obstacles: [beam] };
+    expect(approach(stepDinoRun(start, false, -1), 26).status).toBe("crashed");
+    const before = approach(start, 23);
+    const jumping = stepDinoRun(before, true);
+    expect(stepDinoRun(jumping, false, 0, false, true).ducking).toBe(false);
+    expect(approach(jumping, 26).status).toBe("crashed");
+
+    let ducked = before;
+    while (ducked.status === "running" && ducked.distanceM < 24.5) {
+      ducked = stepDinoRun(ducked, true, 0, false, true);
+    }
+    expect(ducked).toMatchObject({ ducking: true, heightM: 0, status: "running" });
+    expect(stepDinoRun(ducked, false).status).toBe("crashed");
+    while (ducked.distanceM <= 25.8) ducked = stepDinoRun(ducked, false, 0, false, true);
+    expect(stepDinoRun(ducked, false)).toMatchObject({ ducking: false, status: "running" });
+  });
+});
+
+describe("biome obstacles", () => {
+  it("melts an ice spike using fire but cannot put out a lava vent", () => {
+    const obstacleBase = { ...obstacle("boulder"), clearanceM: 2.4, lane: 0 as const };
+    for (const kind of ["ice-spike", "lava-vent"] as const) {
+      const start = { ...createDinoRun(0), obstacles: [{ ...obstacleBase, kind }], hasFire: true };
+      const fired = stepDinoRun(approach(start, 20), false, 0, true);
+      expect(Boolean(fired.obstacles[0]?.broken)).toBe(kind === "ice-spike");
+    }
+  });
+
+  it("swamp mud slows the runner once per puddle without costing armor", () => {
+    const mud = { ...obstacle("boulder"), kind: "mud" as const, clearanceM: 0.2 };
+    const start = { ...createDinoRun(0), hasArmor: true, obstacles: [mud], items: [] };
+    const crossing = approach(start, 24.1);
+    const later = approach(crossing, 25);
+    expect(crossing).toMatchObject({ status: "running", hasArmor: true, speedEffect: { kind: "slow-down" } });
+    expect(later.speedEffect!.ticksLeft).toBeLessThan(crossing.speedEffect!.ticksLeft);
+    expect(approach(stepDinoRun(start, false, 1), 25).speedEffect).toBeNull();
   });
 });

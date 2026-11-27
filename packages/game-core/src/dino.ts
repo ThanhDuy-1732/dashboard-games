@@ -8,10 +8,14 @@ export const DINO_FALL_WARNING_M = 22;
 export const DINO_FALL_START_M = 16;
 export const DINO_FALL_LAND_M = 6;
 export const DINO_PIT_REVEAL_M = 18;
+export const DINO_DUCK_WARNING_M = 18;
+export const DINO_DUCK_CLEARANCE_M = 0.58;
 export type DinoLane = -1 | 0 | 1;
 export type DinoMap = "volcano" | "forest" | "ice" | "desert" | "swamp";
 export type DinoEvolution = "giant" | "swift" | "winged";
 export type DinoItemKind = "speed-up" | "slow-down" | "fire" | "armor" | DinoEvolution;
+export type DinoObstacleKind = "boulder" | "gap" | "log" | "pillar" | "falling-rock" | "pit"
+  | "arch" | "overhang" | "lava-vent" | "ice-spike" | "mud";
 
 const LANES = [-1, 0, 1] as const;
 const ITEMS = [
@@ -24,12 +28,12 @@ const ITEMS = [
   { kind: "winged", lane: 1 },
 ] as const;
 const COURSES = {
-  volcano: { order: ["boulder", "gap", "log", "pillar"], firstItem: 0 },
-  forest: { order: ["log", "boulder", "pillar", "gap"], firstItem: 1 },
-  ice: { order: ["gap", "pillar", "boulder", "log"], firstItem: 3 },
-  desert: { order: ["pillar", "boulder", "gap", "log"], firstItem: 5 },
-  swamp: { order: ["gap", "log", "pillar", "boulder"], firstItem: 6 },
-} as const;
+  volcano: { order: ["boulder", "gap", "log", "lava-vent"], special: "lava-vent", firstItem: 0 },
+  forest: { order: ["log", "overhang", "pillar", "gap"], special: "overhang", firstItem: 1 },
+  ice: { order: ["gap", "ice-spike", "boulder", "log"], special: "ice-spike", firstItem: 3 },
+  desert: { order: ["arch", "boulder", "gap", "log"], special: "arch", firstItem: 5 },
+  swamp: { order: ["gap", "mud", "pillar", "boulder"], special: "mud", firstItem: 6 },
+} as const satisfies Record<DinoMap, { order: readonly DinoObstacleKind[]; special: DinoObstacleKind; firstItem: number }>;
 const BOULDER_SIDE_CLEARANCE = 0.7;
 const LANE_CHANGE_METERS_PER_SECOND = 8;
 
@@ -47,7 +51,7 @@ export interface DinoSpeedEffect {
 
 export interface DinoObstacle {
   id: number;
-  kind: (typeof COURSES.volcano.order)[number] | "falling-rock" | "pit";
+  kind: DinoObstacleKind;
   startM: number;
   lengthM: number;
   clearanceM: number;
@@ -75,6 +79,7 @@ export interface DinoRun {
   lane: DinoLane;
   xM: number;
   heightM: number;
+  ducking: boolean;
   verticalSpeedMps: number;
   status: "running" | "crashed";
   obstacles: readonly DinoObstacle[];
@@ -87,6 +92,11 @@ export interface DinoRun {
   hasArmor: boolean;
   absorbedObstacleId: number | null;
   armorFlashTicks: number;
+  mudObstacleId: number | null;
+}
+
+export function dinoIsOverhead(kind: DinoObstacle["kind"]): boolean {
+  return kind === "arch" || kind === "overhang";
 }
 
 export function dinoObstacleCenterX(obstacle: DinoObstacle): number {
@@ -106,18 +116,24 @@ function nextObstacle(seed: number, map: DinoMap, previous?: DinoObstacle): Dino
   const id = previous ? previous.id + 1 : 0;
   const mixed = Math.imul((seed + id) ^ 0x9e3779b9, 0x85ebca6b);
   const random = (mixed ^ (mixed >>> 16)) >>> 0;
-  const { order } = COURSES[map];
+  const { order, special } = COURSES[map];
   const startM = previous
     ? Math.ceil(previous.startM + previous.lengthM) + 22 + (id < order.length ? 1 : random % 12)
     : 24;
-  const slot = id % 6;
-  const pitFirst = ((seed ^ Math.floor(id / 6)) & 1) === 0;
-  const kind = slot >= 4 ? (pitFirst === (slot === 4) ? "pit" : "falling-rock") : order[slot];
+  const slot = id % 8;
+  const pitFirst = ((seed ^ Math.floor(id / 8)) & 1) === 0;
+  const kind = slot === 6 ? special : slot === 7 ? "pillar"
+    : slot >= 4 ? (pitFirst === (slot === 4) ? "pit" : "falling-rock") : order[slot];
   const lane = id < order.length ? 0 : (LANES[(random >>> 4) % LANES.length] ?? 0);
   switch (kind) {
     case "gap": return { id, kind, startM, lengthM: 1.8, clearanceM: 0.3 };
     case "pit": return { id, kind, startM, lengthM: 1.65, clearanceM: 0.3, lane };
     case "falling-rock": return { id, kind, startM, lengthM: 1.2, clearanceM: 0.78, lane };
+    case "arch":
+    case "overhang": return { id, kind, startM, lengthM: 1.8, clearanceM: DINO_DUCK_CLEARANCE_M };
+    case "lava-vent": return { id, kind, startM, lengthM: 1.05, clearanceM: 2.45, lane };
+    case "ice-spike": return { id, kind, startM, lengthM: 1.05, clearanceM: 2.4, lane };
+    case "mud": return { id, kind, startM, lengthM: 2.1, clearanceM: 0.22, lane };
     case "log": return { id, kind, startM, lengthM: 0.9, clearanceM: 0.55, lane: lane < 0 ? -1 : 0 };
     case "pillar": return { id, kind, startM, lengthM: 1.05, clearanceM: 2.4, lane };
     default: return { id, kind: "boulder", startM, lengthM: 1.2, clearanceM: 0.75, lane };
@@ -125,6 +141,9 @@ function nextObstacle(seed: number, map: DinoMap, previous?: DinoObstacle): Dino
 }
 
 function itemBefore(obstacle: DinoObstacle, map: DinoMap): DinoItem {
+  if (obstacle.kind === "ice-spike") {
+    return { id: obstacle.id, kind: "fire", lane: obstacle.lane ?? 0, atM: obstacle.startM - 12 };
+  }
   const slot = (obstacle.id + COURSES[map].firstItem) % ITEMS.length;
   const item = ITEMS[slot] ?? ITEMS[0];
   return { id: obstacle.id, kind: item.kind, lane: obstacle.id === 0 ? 0 : item.lane, atM: obstacle.startM - 12 };
@@ -139,13 +158,13 @@ export function createDinoRun(seed: number, map: DinoMap = "volcano"): DinoRun {
   }
   return {
     seed, map, distanceM: 0, speedMps: 8, lane: 0, xM: 0,
-    heightM: 0, verticalSpeedMps: 0, status: "running", obstacles,
+    heightM: 0, ducking: false, verticalSpeedMps: 0, status: "running", obstacles,
     items: obstacles.map((obstacle) => itemBefore(obstacle, map)), speedEffect: null, evolution: null, crushed: null,
-    hasFire: false, fireBurst: null, hasArmor: false, absorbedObstacleId: null, armorFlashTicks: 0,
+    hasFire: false, fireBurst: null, hasArmor: false, absorbedObstacleId: null, armorFlashTicks: 0, mudObstacleId: null,
   };
 }
 
-export function stepDinoRun(run: DinoRun, jumpPressed: boolean, move: DinoLane = 0, firePressed = false): DinoRun {
+export function stepDinoRun(run: DinoRun, jumpPressed: boolean, move: DinoLane = 0, firePressed = false, duckHeld = false): DinoRun {
   if (run.status === "crashed") return run;
 
   const dt = DINO_STEP_SECONDS;
@@ -159,7 +178,8 @@ export function stepDinoRun(run: DinoRun, jumpPressed: boolean, move: DinoLane =
   const shift = LANE_CHANGE_METERS_PER_SECOND * dt * (form === "swift" ? 1.7 : 1);
   const xM = run.xM + Math.max(-shift, Math.min(shift, targetX - run.xM));
   const xPerMeter = (xM - run.xM) / (distanceM - run.distanceM);
-  const launchSpeed = jumpPressed && run.heightM === 0
+  const ducking = duckHeld && run.heightM === 0;
+  const launchSpeed = jumpPressed && run.heightM === 0 && !ducking
     ? (form === "winged" ? 8.2 : 7)
     : run.verticalSpeedMps;
   const gravity = form === "winged" && launchSpeed < 0 ? 8 : 20;
@@ -174,6 +194,10 @@ export function stepDinoRun(run: DinoRun, jumpPressed: boolean, move: DinoLane =
     ? { ...run.crushed, ticksLeft: run.crushed.ticksLeft - 1 }
     : null;
   let { hasFire, hasArmor, absorbedObstacleId } = run;
+  let mudObstacleId = run.mudObstacleId;
+  let speedEffect = run.speedEffect && run.speedEffect.ticksLeft > 1
+    ? { ...run.speedEffect, ticksLeft: run.speedEffect.ticksLeft - 1 }
+    : null;
   let armorFlashTicks = Math.max(0, run.armorFlashTicks - 1);
   let fireBurst = run.fireBurst && run.fireBurst.ticksLeft > 1
     ? { ...run.fireBurst, ticksLeft: run.fireBurst.ticksLeft - 1 }
@@ -182,7 +206,8 @@ export function stepDinoRun(run: DinoRun, jumpPressed: boolean, move: DinoLane =
     let hit: DinoFireBurst["hit"] = null;
     const target = obstacles.find((obstacle) => {
       const remaining = obstacle.startM - run.distanceM;
-      const hittable = obstacle.kind === "boulder" || (obstacle.kind === "falling-rock" && remaining <= DINO_FALL_LAND_M);
+      const hittable = obstacle.kind === "boulder" || obstacle.kind === "ice-spike" ||
+        (obstacle.kind === "falling-rock" && remaining <= DINO_FALL_LAND_M);
       if (!hittable || obstacle.broken || remaining < 0 || remaining > DINO_FIRE_RANGE_M) return false;
       if ((obstacle.lane ?? 0) !== lane) return false;
       const rockX = dinoObstacleCenterX(obstacle) + dinoBoulderOffsetM(obstacle, run.distanceM);
@@ -200,10 +225,11 @@ export function stepDinoRun(run: DinoRun, jumpPressed: boolean, move: DinoLane =
   }
 
   for (const obstacle of obstacles) {
-    if (obstacle.broken || obstacle.id === absorbedObstacleId) continue;
+    if (obstacle.broken || obstacle.id === absorbedObstacleId || obstacle.id === mudObstacleId) continue;
+    const overhead = dinoIsOverhead(obstacle.kind);
     let from = Math.max(run.distanceM, obstacle.startM);
     let to = Math.min(distanceM, obstacle.startM + obstacle.lengthM);
-    if (obstacle.kind !== "gap") {
+    if (obstacle.kind !== "gap" && !overhead) {
       const offsetX = dinoObstacleCenterX(obstacle) - run.xM;
       const sideClearance = obstacle.kind === "log" ? 1.83
         : obstacle.kind === "pit" ? DINO_LANE_WIDTH / 2 : BOULDER_SIDE_CLEARANCE;
@@ -219,7 +245,13 @@ export function stepDinoRun(run: DinoRun, jumpPressed: boolean, move: DinoLane =
     if (from > to) continue;
     const entryHeight = heightAt(from);
     const exitHeight = heightAt(to);
-    if (Math.min(entryHeight, exitHeight) >= obstacle.clearanceM) continue;
+    if (overhead ? ducking : Math.min(entryHeight, exitHeight) >= obstacle.clearanceM) continue;
+    if (obstacle.kind === "mud") {
+      const remaining = speedEffect?.kind === "slow-down" ? speedEffect.ticksLeft : 0;
+      speedEffect = { kind: "slow-down", ticksLeft: Math.max(remaining, 150) };
+      mudObstacleId = obstacle.id;
+      continue;
+    }
     if (form === "giant" && obstacle.kind === "log") {
       crushed = { atM: obstacle.startM + obstacle.lengthM / 2, xM: dinoObstacleCenterX(obstacle), ticksLeft: DINO_FIRE_BURST_TICKS };
       obstacles = obstacles.map((entry) => entry === obstacle ? { ...entry, broken: true } : entry);
@@ -231,17 +263,14 @@ export function stepDinoRun(run: DinoRun, jumpPressed: boolean, move: DinoLane =
       armorFlashTicks = DINO_ARMOR_FLASH_TICKS;
       continue;
     }
-    const crashDistance = entryHeight < obstacle.clearanceM ? from : to;
+    const crashDistance = overhead || entryHeight < obstacle.clearanceM ? from : to;
     return {
-      ...run, speedMps, lane, obstacles, hasFire, fireBurst, hasArmor, absorbedObstacleId, armorFlashTicks, crushed,
+      ...run, speedMps, lane, obstacles, hasFire, fireBurst, hasArmor, absorbedObstacleId, armorFlashTicks, crushed, ducking, mudObstacleId,
       xM: run.xM + xPerMeter * (crashDistance - run.distanceM),
       status: "crashed", distanceM: crashDistance, heightM: heightAt(crashDistance), verticalSpeedMps: 0,
     };
   }
 
-  let speedEffect = run.speedEffect && run.speedEffect.ticksLeft > 1
-    ? { ...run.speedEffect, ticksLeft: run.speedEffect.ticksLeft - 1 }
-    : null;
   let evolution = run.evolution && run.evolution.ticksLeft > 1
     ? { ...run.evolution, ticksLeft: run.evolution.ticksLeft - 1 }
     : null;
@@ -274,8 +303,8 @@ export function stepDinoRun(run: DinoRun, jumpPressed: boolean, move: DinoLane =
     items = [...items, itemBefore(next, run.map)];
   }
   return {
-    ...run, distanceM, speedMps, lane, xM, heightM, obstacles, items, speedEffect, evolution, crushed,
-    hasFire, fireBurst, hasArmor, absorbedObstacleId, armorFlashTicks,
+    ...run, distanceM, speedMps, lane, xM, heightM, ducking, obstacles, items, speedEffect, evolution, crushed,
+    hasFire, fireBurst, hasArmor, absorbedObstacleId, armorFlashTicks, mudObstacleId,
     verticalSpeedMps: heightM > 0 ? verticalSpeedMps : 0,
   };
 }

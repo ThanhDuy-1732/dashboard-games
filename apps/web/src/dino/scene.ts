@@ -38,6 +38,10 @@ export function createDinoScene(canvas: HTMLCanvasElement, map: DinoMap, runner:
   scene.add(new HemisphereLight(theme.sun, 0x765869, 1.55), new AmbientLight(0xffad85, 0.16), sun);
   const art = createDinoArt(map, runner);
   scene.add(art.world);
+  const fixedModels = [
+    ["log", art.logs], ["pillar", art.pillars], ["arch", art.arches], ["overhang", art.overhangs],
+    ["lava-vent", art.vents.map(({ group }) => group)], ["ice-spike", art.iceSpikes], ["mud", art.puddles],
+  ] as const;
 
   let redraw = () => {};
   function resize() {
@@ -72,7 +76,7 @@ export function createDinoScene(canvas: HTMLCanvasElement, map: DinoMap, runner:
       const form = run.evolution?.kind;
       const phase = distance * (form === "swift" ? 6.3 : 4.6);
       const air = run.heightM > 0;
-      const bob = air ? 0 : Math.abs(Math.sin(phase)) * 0.024;
+      const bob = air ? 0 : Math.abs(Math.sin(phase)) * (run.ducking ? 0.007 : 0.024);
       const landing = distance - landedAt;
       art.dino.visible = view === "third";
       art.dino.position.x = run.xM;
@@ -82,11 +86,15 @@ export function createDinoScene(canvas: HTMLCanvasElement, map: DinoMap, runner:
       art.dino.rotation.z = reducedMotion ? 0 : -Math.max(-0.15, Math.min(0.15, laneOffset * 0.17));
       const size = form === "giant" ? 1.52 : 1;
       const landingSquash = 1 - Math.max(0, 1 - landing * 2) * 0.12;
-      art.dino.scale.set(size, size * landingSquash, size);
+      const bodyHeight = run.ducking ? 0.4 : size * landingSquash;
+      art.dino.scale.set(size, bodyHeight, size);
       art.giantCrest.visible = form === "giant";
       art.green.color.setHex(form ? DINO_FORMS[form].color : DINO_RUNNERS[runner].color);
+      art.membrane.color.setHex(form === "winged" ? 0xb786fa : 0x4e8493);
       art.wings.forEach((wing, index) => {
-        wing.visible = form === "winged";
+        wing.visible = form === "winged" || runner === "pteranodon";
+        const spread = form === "winged" ? 1 : air ? 0.75 : 0.47;
+        wing.scale.set(spread, 1, 1);
         const flap = reducedMotion ? 0 : Math.sin(phase * 0.7) * (air ? 0.38 : 0.16);
         wing.rotation.z = (index ? 1 : -1) * (flap + (air ? 0 : 0.24));
       });
@@ -115,11 +123,12 @@ export function createDinoScene(canvas: HTMLCanvasElement, map: DinoMap, runner:
       const shieldFlash = run.armorFlashTicks / DINO_ARMOR_FLASH_TICKS;
       art.shield.visible = third && (run.hasArmor || shieldFlash > 0);
       art.shield.position.x = run.xM;
-      art.shield.position.y = run.heightM + 0.59 * size;
-      art.shield.scale.set(0.63 * size, 0.78 * size, 0.87 * size);
+      art.shield.position.y = run.heightM + (run.ducking ? 0.28 : 0.59 * size);
+      art.shield.scale.set(0.63 * size, run.ducking ? 0.32 : 0.78 * size, 0.87 * size);
       art.shieldMaterial.opacity = run.hasArmor ? 0.33 : shieldFlash * 0.76;
-      camera.position.set(third ? run.xM * 0.6 + 0.65 : run.xM, (third ? 2.2 + (size - 1) : (art.mouthY + 0.32) * size) + run.heightM + (reducedMotion ? 0 : bob), third ? 3.75 + (size - 1) * 1.2 : -0.64 * size);
-      camera.lookAt(third ? run.xM * 0.3 : run.xM * 0.28, third ? 0.65 + run.heightM * 0.42 : 0.48 + run.heightM * 0.72, third ? -5 : -12);
+      const eyeHeight = run.ducking ? 0.44 : (art.mouthY + 0.32) * size;
+      camera.position.set(third ? run.xM * 0.6 + 0.65 : run.xM, (third ? 2.2 + (size - 1) : eyeHeight) + run.heightM + (reducedMotion ? 0 : bob), third ? 3.75 + (size - 1) * 1.2 : -0.64 * size);
+      camera.lookAt(third ? run.xM * 0.3 : run.xM * 0.28, third ? 0.65 + run.heightM * 0.42 : run.ducking ? 0.36 : 0.48 + run.heightM * 0.72, third ? -5 : -12);
 
       function placeSlab(slab: (typeof art.road)[number][number][number] | undefined, start: number, end: number) {
         if (!slab) return;
@@ -186,22 +195,31 @@ export function createDinoScene(canvas: HTMLCanvasElement, map: DinoMap, runner:
           pebble.rotation.z = distance + pebbleIndex;
         });
       });
-      for (const [kind, pool] of [["log", art.logs], ["pillar", art.pillars]] as const) {
+      for (const [kind, pool] of fixedModels) {
         const obstacles = run.obstacles.filter((obstacle) => obstacle.kind === kind && !obstacle.broken);
         pool.forEach((model, index) => {
           const obstacle = obstacles[index];
-          model.visible = Boolean(obstacle);
+          const cameraAt = distance - camera.position.z;
+          const insideOverhead = third && obstacle && (kind === "arch" || kind === "overhang") &&
+            cameraAt > obstacle.startM - 0.12 && cameraAt < obstacle.startM + obstacle.lengthM + 0.12;
+          model.visible = Boolean(obstacle) && !insideOverhead;
           if (!obstacle) return;
           model.position.x = dinoObstacleCenterX(obstacle);
           model.position.z = distance - obstacle.startM - obstacle.lengthM / 2;
         });
       }
+      art.vents.forEach(({ group, plume }, index) => {
+        const remaining = -group.position.z;
+        plume.visible = group.visible && remaining <= 16;
+        if (!plume.visible) return;
+        plume.scale.y = reducedMotion ? 1 : 1 + Math.sin(distance * 2.3 + index) * 0.13;
+      });
 
       const burst = run.fireBurst;
       const hit = burst?.hit;
       const age = burst ? 1 - burst.ticksLeft / DINO_FIRE_BURST_TICKS : 0;
       const reach = hit ? hit.atM - distance : DINO_FIRE_RANGE_M;
-      const mouthY = run.heightM + art.mouthY * size;
+      const mouthY = run.heightM + art.mouthY * bodyHeight;
       const mouthZ = 0.84 * size;
       art.flames.forEach((flame, index) => {
         flame.visible = Boolean(burst) && reach > mouthZ && (!reducedMotion || index < 7);
